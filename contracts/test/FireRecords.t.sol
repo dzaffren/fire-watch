@@ -26,6 +26,13 @@ contract FireRecordsTest is Test {
         assertEq(sealedAt, 1791785880);
     }
 
+    function test_SealEmitsSealed() public {
+        vm.expectEmit(true, false, false, true, address(records));
+        emit FireRecords.Sealed(RECORD_ID, FINGERPRINT);
+        vm.prank(recorder);
+        records.seal(RECORD_ID, FINGERPRINT);
+    }
+
     function test_RevertWhen_CallerIsNotRecorder() public {
         vm.prank(makeAddr("stranger"));
         vm.expectRevert(FireRecords.NotRecorder.selector);

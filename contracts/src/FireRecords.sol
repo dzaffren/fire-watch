@@ -9,6 +9,8 @@ contract FireRecords {
         uint64 sealedAt;
     }
 
+    event Sealed(bytes32 indexed recordId, bytes32 fingerprint);
+
     error NotRecorder();
     error AlreadySealed(bytes32 recordId);
     error EmptyFingerprint();
@@ -28,6 +30,7 @@ contract FireRecords {
         if (fingerprint == 0) revert EmptyFingerprint();
         if (seals[recordId].fingerprint != 0) revert AlreadySealed(recordId);
         seals[recordId] = Seal(fingerprint, uint64(block.timestamp));
+        emit Sealed(recordId, fingerprint);
     }
 
     /// @notice Returns the sealed fingerprint and the block time it was sealed at, or zeros.
