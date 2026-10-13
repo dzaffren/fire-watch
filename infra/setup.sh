@@ -59,14 +59,17 @@ JSON
 )" -o none
 
 APP_ID=$(az ad app list --display-name firewatch-github --query "[0].appId" -o tsv)
-if [ -z "$APP_ID" ]; then
-  APP_ID=$(az ad app create --display-name firewatch-github --query appId -o tsv)
-  az ad sp create --id "$APP_ID" -o none
+[ -n "$APP_ID" ] || APP_ID=$(az ad app create --display-name firewatch-github --query appId -o tsv)
+SP_ID=$(az ad sp show --id "$APP_ID" --query id -o tsv 2>/dev/null || az ad sp create --id "$APP_ID" --query id -o tsv)
+if [ -z "$(az ad app federated-credential list --id "$APP_ID" --query "[?name=='main'].name" -o tsv)" ]; then
   az ad app federated-credential create --id "$APP_ID" --parameters "{
     \"name\": \"main\", \"issuer\": \"https://token.actions.githubusercontent.com\",
     \"subject\": \"repo:$GITHUB_REPO:ref:refs/heads/main\", \"audiences\": [\"api://AzureADTokenExchange\"]}" -o none
-  az role assignment create --assignee "$APP_ID" --role Contributor \
-    --scope "/subscriptions/$SUB/resourceGroups/$RG" -o none
+fi
+RG_SCOPE="/subscriptions/$SUB/resourceGroups/$RG"
+if [ -z "$(az role assignment list --assignee "$SP_ID" --role Contributor --scope "$RG_SCOPE" --query "[0].id" -o tsv)" ]; then
+  az role assignment create --assignee-object-id "$SP_ID" --assignee-principal-type ServicePrincipal \
+    --role Contributor --scope "$RG_SCOPE" -o none
 fi
 
 TOKEN_NOTE="az staticwebapp secrets list -g $RG -n firewatch-web --query properties.apiKey -o tsv | gh secret set AZURE_STATIC_WEB_APPS_API_TOKEN -R $GITHUB_REPO"
