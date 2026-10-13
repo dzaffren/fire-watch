@@ -29,7 +29,7 @@ Needs Docker, uv, pnpm and Foundry (`forge`, `anvil` on the path).
 
 | Task | Command |
 | ---- | ------- |
-| Database for tests | `docker compose up -d db` |
+| Database for tests | `docker compose up -d --wait db` |
 | Contract tests | `cd contracts && forge test` |
 | API and recorder tests | `cd api && uv run pytest` |
 | Page tests | `cd web && pnpm install && pnpm test` |
