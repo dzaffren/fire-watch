@@ -1,30 +1,35 @@
 # ClimateChain hackathon entry
 
-**Status:** Active · **Updated:** 2026-10-12 by /shape onboarding
+**Status:** Active · **Updated:** 2026-10-13 by /ship walking-skeleton
 
-An entry for the IEEE ClimateChain Global Hackathon (AI and blockchain for climate, deadline 2026-10-25).
-The product is not chosen yet; /shape picks it.
+Fire Watch, an entry for the IEEE ClimateChain Global Hackathon (deadline 2026-10-25). It shows
+satellite fire hotspots with on-chain proof that each record hasn't changed since it was written,
+for watchdog investigators who file grievances over fires on plantation land.
 
 ## Run it
 
-| Task    | Command          |
-| ------- | ---------------- |
-| install | not set up yet   |
-| run     | not set up yet   |
-| test    | not set up yet   |
-| lint    | not set up yet   |
+| Task    | Command                                                                                         |
+| ------- | ----------------------------------------------------------------------------------------------- |
+| install | `cd web && pnpm install --frozen-lockfile`; the API installs on its first `uv run`               |
+| run     | `cd web && pnpm dev`; `cd api && uv run uvicorn firewatch.app:app`                               |
+| test    | `cd contracts && forge test`; `cd api && uv run pytest`; `cd web && pnpm test && pnpm e2e`       |
+| lint    | `cd contracts && forge fmt --check`                                                             |
 
 ## Where things are
 
-- `docs/` — architecture notes and specs
+- `contracts/` — FireRecords, the write-once seal contract (Foundry)
+- `api/` — the `record-latest` recorder and the read-only FastAPI service
+- `web/` — the map page (Vite, React, TypeScript) and the e2e test
+- `fixtures/` — FIRMS CSVs and fingerprint vectors shared by Python and TypeScript
+- `infra/` — one-time Azure setup and the Neon read-only role
+- `.github/workflows/` — CI on every push, deploy on main
+- `docs/` — architecture, specs, design system and lessons
 
 ## Slices
 
-Nothing shipped yet
-
-| Slice    | Status   | What it does | Page     |
-| -------- | -------- | ------------ | -------- |
-| none yet | none yet | none yet     | none yet |
+| Slice            | Status | What it does                                                                                              | Page                              |
+| ---------------- | ------ | --------------------------------------------------------------------------------------------------------- | --------------------------------- |
+| walking-skeleton | Built  | See the latest fire hotspot on a map, with a check that its record still matches the seal on Base Sepolia. | docs/specs/walking-skeleton.md    |
 
 ## More
 
