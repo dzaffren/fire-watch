@@ -46,6 +46,10 @@ jobs:
         with:
           version: v1.8.5
       - uses: astral-sh/setup-uv@v10
+      - name: Check runtime dependencies for known advisories
+        run: |
+          uv export --frozen --no-dev --no-hashes --no-emit-project -o "$RUNNER_TEMP/requirements.txt"
+          uvx pip-audit -r "$RUNNER_TEMP/requirements.txt" --disable-pip --no-deps
       - run: uv run pytest
 
   web:
