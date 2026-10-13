@@ -1,0 +1,77 @@
+name: Deploy
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+  id-token: write
+
+env:
+  SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+jobs:
+  api:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.SHA }}
+      - id: image
+        run: echo "ref=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/firewatch-api:${SHA}" >> "$GITHUB_OUTPUT"
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v7
+        with:
+          context: api
+          push: true
+          tags: ${{ steps.image.outputs.ref }}
+      - uses: azure/login@v3
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - run: az containerapp update -g firewatch -n firewatch-api --image "${{ steps.image.outputs.ref }}"
+      - name: Health check (allows for a cold start)
+        run: curl --fail --silent --show-error --retry 6 --retry-delay 10 --retry-all-errors --max-time 90 "${{ vars.API_URL }}/api/health"
+
+  web:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.SHA }}
+      - uses: pnpm/action-setup@v6
+        with:
+          package_json_file: web/package.json
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+        env:
+          VITE_API_URL: ${{ vars.API_URL }}
+          VITE_RPC_URL: ${{ vars.RPC_URL }}
+          VITE_CONTRACT_ADDRESS: ${{ vars.CONTRACT_ADDRESS }}
+          VITE_GOOGLE_MAPS_KEY: ${{ vars.GOOGLE_MAPS_KEY }}
+      - uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+          action: upload
+          app_location: web/dist
+          skip_app_build: true
