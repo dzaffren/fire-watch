@@ -52,7 +52,7 @@ export function RecordPanel({ record, fingerprint, check, onCheckAgain }: Props)
   const tx = record.tx_hash;
 
   return (
-    <article className="fw-panel rec" aria-labelledby="h-rec">
+    <article className="fw-panel rec enter" aria-labelledby="h-rec">
       <div className="rec-head">
         <h2 id="h-rec">Hotspot record</h2>
         {status && (
