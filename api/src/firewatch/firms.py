@@ -45,7 +45,7 @@ def _hotspot(row: dict) -> Hotspot:
         lat_e5=_scaled(row["latitude"], 5, Decimal(-90), Decimal(90)),
         lon_e5=_scaled(row["longitude"], 5, Decimal(-180), Decimal(180)),
         acquired_at=acquired_at,
-        frp_e2=_scaled(row["frp"], 2, Decimal(0), Decimal(2**32 - 1) / 100),
+        frp_e2=_scaled(row["frp"], 2, Decimal(0), Decimal(2**31 - 1) / 100),
         confidence=row["confidence"],
     )
 
