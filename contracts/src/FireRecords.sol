@@ -9,6 +9,8 @@ contract FireRecords {
         uint64 sealedAt;
     }
 
+    error NotRecorder();
+
     address public immutable recorder;
 
     mapping(bytes32 recordId => Seal) private seals;
@@ -19,6 +21,7 @@ contract FireRecords {
 
     /// @notice Seals `fingerprint` under `recordId`.
     function seal(bytes32 recordId, bytes32 fingerprint) external {
+        if (msg.sender != recorder) revert NotRecorder();
         seals[recordId] = Seal(fingerprint, uint64(block.timestamp));
     }
 
