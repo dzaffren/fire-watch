@@ -1,0 +1,7 @@
+[
+  {"name": "riau, scenario 1", "fields": {"source": "VIIRS_NOAA20_NRT", "lat_e5": 43120, "lon_e5": 10121540, "acquired_unix": 1791785880, "frp_e2": 1420, "confidence": "n"}, "fingerprint": "0x5c16e53d7df3be615bca703d8580e3fec0fbd86d85da8dac6265a6ec08d1b6bc"},
+  {"name": "riau with edited longitude, scenario 3", "fields": {"source": "VIIRS_NOAA20_NRT", "lat_e5": 43120, "lon_e5": 10131540, "acquired_unix": 1791785880, "frp_e2": 1420, "confidence": "n"}, "fingerprint": "0x155522dd8dee890ce0882285555c34e12f59b3203ac84cdfc25cb832f93f15a4"},
+  {"name": "papua, negative latitude", "fields": {"source": "VIIRS_NOAA20_NRT", "lat_e5": -821427, "lon_e5": 14072481, "acquired_unix": 1791821880, "frp_e2": 16077, "confidence": "n"}, "fingerprint": "0x82e304b211fd4ba318fc594bfe995e7372546cbf4cb095bb2ee08bec276391c9"},
+  {"name": "timor, low confidence", "fields": {"source": "VIIRS_NOAA20_NRT", "lat_e5": -1018087, "lon_e5": 12403936, "acquired_unix": 1791520020, "frp_e2": 1073, "confidence": "l"}, "fingerprint": "0x44b50a0122db3a1baa4dcf61286269d3bcdb83b1f59ce332b9173902b10cb84e"},
+  {"name": "zeros, high confidence", "fields": {"source": "VIIRS_NOAA20_NRT", "lat_e5": 0, "lon_e5": 0, "acquired_unix": 0, "frp_e2": 0, "confidence": "h"}, "fingerprint": "0x88de802453d73d250b31016a936936d42169b0db3bdedd93b77044a9c738d3c2"}
+]

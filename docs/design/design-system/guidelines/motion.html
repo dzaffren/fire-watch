@@ -1,0 +1,33 @@
+<!-- @dsCard group="Motion" -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Motion</title>
+<link rel="stylesheet" href="../styles.css">
+<style>
+.pad { padding: 24px; display: grid; gap: 14px; }
+table { border-collapse: collapse; font-size: var(--fw-text-sm); }
+th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--fw-line); vertical-align: top; }
+th { color: var(--fw-muted); font-weight: var(--fw-weight-medium); }
+.demo { display: flex; gap: 12px; align-items: center; }
+.demo .fw-panel { transition: transform var(--fw-dur) var(--fw-ease), opacity var(--fw-dur) var(--fw-ease); }
+.demo:hover .fw-panel { transform: translateY(-4px); }
+</style>
+</head>
+<body>
+<div class="pad">
+<div class="fw-label">Motion tiers</div>
+<table>
+<thead><tr><th>Tier</th><th>Where</th><th>Tokens</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>Working screens: hover, press, panels and details entering</td><td class="fw-mono">--fw-dur-fast 120ms · --fw-dur 180ms · --fw-dur-slow 240ms · --fw-ease</td></tr>
+<tr><td>2</td><td>The fire replay, pass by pass</td><td class="fw-mono">--fw-replay-step 240ms</td></tr>
+<tr><td>3</td><td>The fire globe only: public intro and demo opening, within the 250 kB budget</td><td class="fw-mono">see system-brief.md</td></tr>
+</tbody>
+</table>
+<p class="fw-help">Animate transform and opacity only. The Checking icon spins once every 900ms while a check runs. Under reduced motion every duration is 0ms, the Checking icon stays still and the replay steps without easing.</p>
+<div class="demo"><div class="fw-panel" style="width: 220px">Hover me: a panel lifts 4px over 180ms.</div></div>
+</div>
+</body>
+</html>

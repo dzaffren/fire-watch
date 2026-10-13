@@ -1,0 +1,59 @@
+<!-- @dsCard group="Components" -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Record panel and states</title>
+<link rel="stylesheet" href="../styles.css">
+<style>
+.pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.pair > div { padding: 24px; background: var(--fw-bg); color: var(--fw-ink); display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-content: start; }
+.pair > div > .fw-label { grid-column: 1 / -1; }
+.head { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+.head h2 { font-size: var(--fw-text-lg); font-weight: var(--fw-weight-semibold); }
+details { border-top: 1px solid var(--fw-line); padding-top: 10px; font-size: var(--fw-text-sm); }
+summary { cursor: pointer; color: var(--fw-accent); font-weight: var(--fw-weight-medium); }
+pre { margin: 8px 0 0; padding: 10px 12px; background: var(--fw-bg); border-radius: var(--fw-radius-control); font: var(--fw-text-xs)/1.55 var(--fw-font-mono); white-space: pre-wrap; }
+.stack { display: grid; gap: 16px; align-content: start; }
+.sk { display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: 10px 14px; }
+</style>
+</head>
+<body>
+<div class="pair">
+<div data-theme="light">
+<div class="fw-label">Light</div>
+<aside class="fw-panel">
+<div class="head"><h2>Hotspot record</h2><span class="fw-chip fw-chip--ok"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Matches the chain</span></div>
+<dl class="fw-kv">
+<dt>Detected</dt><dd>2026-10-12 06:57 UTC</dd>
+<dt>Satellite</dt><dd>VIIRS · NOAA-20</dd>
+<dt>Location</dt><dd class="fw-mono">3.68605°S, 105.68251°E</dd>
+<dt>Fire power</dt><dd>8.25 MW</dd>
+<dt>Confidence</dt><dd>Nominal</dd>
+<dt>Fingerprint</dt><dd class="fw-mono">babe72288d…4af5fc</dd>
+</dl>
+<a class="fw-link" href="#">View on Basescan</a>
+<details><summary>Show the raw record</summary><pre>{
+  "source": "VIIRS_NOAA20_NRT",
+  "latitude": -3.68605,
+  "longitude": 105.68251,
+  "acquired": "2026-10-12T06:57Z",
+  "frp_mw": 8.25,
+  "confidence": "nominal"
+}</pre></details>
+</aside>
+<div class="stack">
+<div class="fw-panel fw-empty"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color: var(--fw-control)"><path d="M12 22s7-6.1 7-12a7 7 0 0 0-14 0c0 5.9 7 12 7 12z"/><circle cx="12" cy="10" r="2.5"/></svg><h3 style="font-size: var(--fw-text-lg)">No hotspot recorded yet</h3><p class="fw-help" style="margin: 0">The newest hotspot appears here once it is recorded and sealed.</p></div>
+<div class="fw-panel" aria-busy="true" aria-label="Loading the record"><div class="sk"><div class="fw-skeleton" style="background: var(--fw-skeleton-2)"></div><div class="fw-skeleton" style="width: 70%"></div><div class="fw-skeleton" style="background: var(--fw-skeleton-2)"></div><div class="fw-skeleton" style="width: 55%"></div><div class="fw-skeleton" style="background: var(--fw-skeleton-2)"></div><div class="fw-skeleton" style="width: 85%"></div></div></div>
+</div>
+</div>
+</div>
+<script>
+document.querySelectorAll('.pair > [data-theme="light"]').forEach(function (el) {
+  var d = el.cloneNode(true); d.dataset.theme = "dark";
+  d.querySelector(".fw-label").textContent = "Dark";
+  el.parentNode.appendChild(d);
+});
+</script>
+</body>
+</html>

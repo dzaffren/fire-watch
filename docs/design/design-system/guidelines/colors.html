@@ -1,0 +1,52 @@
+<!-- @dsCard group="Colors" -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Colours</title>
+<link rel="stylesheet" href="../styles.css">
+<style>
+.pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.pair > div { padding: 24px; background: var(--fw-bg); color: var(--fw-ink); display: grid; gap: 16px; align-content: start; }
+.sw { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.sw div { display: grid; gap: 4px; font-size: var(--fw-text-xs); }
+.sw i { display: block; height: 40px; border-radius: var(--fw-radius-control); border: 1px solid var(--fw-line); }
+.sw b { font-weight: var(--fw-weight-semibold); }
+.sw span { color: var(--fw-muted); }
+</style>
+</head>
+<body>
+<div class="pair">
+<div data-theme="light">
+<div class="fw-label">Light</div>
+<h2 style="font-size: var(--fw-text-lg)">Neutrals</h2>
+<div class="sw">
+<div><i style="background: var(--fw-bg)"></i><b>--fw-bg</b><span>page ground</span></div>
+<div><i style="background: var(--fw-surface)"></i><b>--fw-surface</b><span>panels, fields</span></div>
+<div><i style="background: var(--fw-ink)"></i><b>--fw-ink</b><span>text</span></div>
+<div><i style="background: var(--fw-muted)"></i><b>--fw-muted</b><span>labels, help text</span></div>
+<div><i style="background: var(--fw-line)"></i><b>--fw-line</b><span>dividers, panel borders</span></div>
+<div><i style="background: var(--fw-control)"></i><b>--fw-control</b><span>field and button borders, 3:1 or more</span></div>
+</div>
+<h2 style="font-size: var(--fw-text-lg)">Meaning</h2>
+<div class="sw">
+<div><i style="background: var(--fw-accent)"></i><b>--fw-accent</b><span>you can act: buttons, links, focus</span></div>
+<div><i style="background: var(--fw-fire)"></i><b>--fw-fire</b><span>fire marks only</span></div>
+<div><i style="background: var(--fw-ok)"></i><b>--fw-ok</b><span>matches the chain</span></div>
+<div><i style="background: var(--fw-bad)"></i><b>--fw-bad</b><span>does not match, errors</span></div>
+<div><i style="background: var(--fw-map)"></i><b>--fw-map</b><span>map ground</span></div>
+<div><i style="background: var(--fw-accent-tint)"></i><b>--fw-accent-tint</b><span>selected row</span></div>
+</div>
+</div>
+</div>
+<script>
+document.querySelectorAll('.pair > [data-theme="light"]').forEach(function (el) {
+  var d = el.cloneNode(true); d.dataset.theme = "dark";
+  d.querySelector(".fw-label").textContent = "Dark";
+  d.querySelectorAll("[id]").forEach(function (n) { n.id += "-dark"; });
+  d.querySelectorAll("[for]").forEach(function (n) { n.htmlFor += "-dark"; });
+  el.parentNode.appendChild(d);
+});
+</script>
+</body>
+</html>

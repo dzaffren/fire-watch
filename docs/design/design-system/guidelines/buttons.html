@@ -1,0 +1,31 @@
+<!-- @dsCard group="Components" -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Buttons</title>
+<link rel="stylesheet" href="../styles.css">
+<style>
+.pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.pair > div { padding: 24px; background: var(--fw-bg); color: var(--fw-ink); display: grid; gap: 14px; align-content: start; }
+.row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+</style>
+</head>
+<body>
+<div class="pair">
+<div data-theme="light">
+<div class="fw-label">Light</div>
+<div class="row"><button class="fw-btn" type="button">Check record</button><button class="fw-btn fw-btn--secondary" type="button">Show raw record</button><a class="fw-link" href="#"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>View on Basescan</a></div>
+<div class="row"><button class="fw-btn" type="button" disabled>Check record</button><button class="fw-btn fw-btn--secondary" type="button" disabled>Show raw record</button></div>
+<p class="fw-help">One primary per view. Primary acts, secondary reveals, the quiet link leaves the app.</p>
+</div>
+</div>
+<script>
+document.querySelectorAll('.pair > [data-theme="light"]').forEach(function (el) {
+  var d = el.cloneNode(true); d.dataset.theme = "dark";
+  d.querySelector(".fw-label").textContent = "Dark";
+  el.parentNode.appendChild(d);
+});
+</script>
+</body>
+</html>

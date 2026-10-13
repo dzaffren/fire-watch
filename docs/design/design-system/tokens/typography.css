@@ -1,0 +1,21 @@
+/* Fire Watch type tokens. IBM Plex Sans for text, IBM Plex Mono for coordinates, timestamps,
+   fingerprints and transaction hashes. */
+:root {
+  --fw-font-sans: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --fw-font-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+
+  --fw-text-xs: 12px;   /* chips, mono values in panels */
+  --fw-text-sm: 13px;   /* labels, help text, table cells */
+  --fw-text-base: 15px; /* body, buttons, inputs */
+  --fw-text-lg: 18px;   /* panel titles */
+  --fw-text-xl: 24px;   /* page titles */
+  --fw-text-2xl: 32px;  /* intro headline only */
+
+  --fw-weight-regular: 400;
+  --fw-weight-medium: 500;
+  --fw-weight-semibold: 600;
+
+  --fw-leading-tight: 1.2;
+  --fw-leading-normal: 1.5;
+  --fw-tracking-label: 0.08em; /* uppercase section labels */
+}

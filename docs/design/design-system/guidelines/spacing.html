@@ -1,0 +1,38 @@
+<!-- @dsCard group="Spacing" -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spacing and radius</title>
+<link rel="stylesheet" href="../styles.css">
+<style>
+.pad { padding: 24px; display: grid; gap: 18px; }
+.scale { display: grid; gap: 8px; }
+.scale div { display: grid; grid-template-columns: 120px auto; align-items: center; gap: 12px; font: var(--fw-text-xs) var(--fw-font-mono); color: var(--fw-muted); }
+.scale i { display: block; height: 12px; background: var(--fw-accent); border-radius: 2px; }
+.radii { display: flex; gap: 16px; flex-wrap: wrap; }
+.radii div { width: 120px; height: 64px; border: 1px solid var(--fw-control); background: var(--fw-surface); display: grid; place-items: center; font: var(--fw-text-xs) var(--fw-font-mono); color: var(--fw-muted); }
+</style>
+</head>
+<body>
+<div class="pad">
+<div class="fw-label">4px spacing scale</div>
+<div class="scale">
+<div>--fw-space-1 4<i style="width: 4px"></i></div>
+<div>--fw-space-2 8<i style="width: 8px"></i></div>
+<div>--fw-space-3 12<i style="width: 12px"></i></div>
+<div>--fw-space-4 16<i style="width: 16px"></i></div>
+<div>--fw-space-5 24<i style="width: 24px"></i></div>
+<div>--fw-space-6 32<i style="width: 32px"></i></div>
+<div>--fw-space-7 48<i style="width: 48px"></i></div>
+</div>
+<div class="fw-label">Radius</div>
+<div class="radii">
+<div style="border-radius: var(--fw-radius-chip)">chip 4</div>
+<div style="border-radius: var(--fw-radius-control)">control 6</div>
+<div style="border-radius: var(--fw-radius-panel)">panel 8</div>
+</div>
+<p class="fw-help">Controls are 40px tall, 44px on touch screens. Objects are marked by 1px borders, not shadows.</p>
+</div>
+</body>
+</html>

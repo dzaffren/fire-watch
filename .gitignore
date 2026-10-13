@@ -1,0 +1,6 @@
+docs/specs/.pages/
+.env
+.env.*
+ds-bundle/
+.ds-sync/
+**/.design-sync/.cache/

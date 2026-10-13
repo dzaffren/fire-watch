@@ -1,0 +1,90 @@
+/* Fire Watch colour tokens, Peatland palette. Each value traces to docs/design/system-brief.md. */
+:root,
+[data-theme="light"] {
+  --fw-bg: #f3f3f0;
+  --fw-surface: #ffffff;
+  --fw-ink: #1f2421;
+  --fw-muted: #5c635c;
+  --fw-faint: #8b9189;
+  --fw-line: #dcdcd5;
+  --fw-control: #7b827a;
+  --fw-hover-fill: #ededea;
+  --fw-disabled-fill: #e4e4df;
+  --fw-field-disabled: #ededea;
+  --fw-table-head: #f3f3f0;
+
+  --fw-accent: #0b6e6e;
+  --fw-accent-hover: #085858;
+  --fw-accent-fg: #ffffff;
+  --fw-accent-tint: #e1efee;
+
+  --fw-fire: #c2410c;
+  --fw-ok: #2e6b2e;
+  --fw-bad: #b42318;
+
+  --fw-map: #e7ebe4;
+  --fw-skeleton: #e8e8e3;
+  --fw-skeleton-2: #ededea;
+  --fw-tick-off: #a3a99f;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --fw-bg: #121412;
+    --fw-surface: #1a1d1a;
+    --fw-ink: #e8e9e4;
+    --fw-muted: #a3a99f;
+    --fw-faint: #636a61;
+    --fw-line: #2c312c;
+    --fw-control: #6f776d;
+    --fw-hover-fill: #232823;
+    --fw-disabled-fill: #232823;
+    --fw-field-disabled: #161916;
+    --fw-table-head: #161916;
+
+    --fw-accent: #5cc0bb;
+    --fw-accent-hover: #7fd1cc;
+    --fw-accent-fg: #121412;
+    --fw-accent-tint: #183332;
+
+    --fw-fire: #ff8a4c;
+    --fw-ok: #6fcf7f;
+    --fw-bad: #ff7b6e;
+
+    --fw-map: #161a16;
+    --fw-skeleton: #262b26;
+    --fw-skeleton-2: #202420;
+    --fw-tick-off: #4d554b;
+    color-scheme: dark;
+  }
+}
+
+[data-theme="dark"] {
+  --fw-bg: #121412;
+  --fw-surface: #1a1d1a;
+  --fw-ink: #e8e9e4;
+  --fw-muted: #a3a99f;
+  --fw-faint: #636a61;
+  --fw-line: #2c312c;
+  --fw-control: #6f776d;
+  --fw-hover-fill: #232823;
+  --fw-disabled-fill: #232823;
+  --fw-field-disabled: #161916;
+  --fw-table-head: #161916;
+
+  --fw-accent: #5cc0bb;
+  --fw-accent-hover: #7fd1cc;
+  --fw-accent-fg: #121412;
+  --fw-accent-tint: #183332;
+
+  --fw-fire: #ff8a4c;
+  --fw-ok: #6fcf7f;
+  --fw-bad: #ff7b6e;
+
+  --fw-map: #161a16;
+  --fw-skeleton: #262b26;
+  --fw-skeleton-2: #202420;
+  --fw-tick-off: #4d554b;
+  color-scheme: dark;
+}

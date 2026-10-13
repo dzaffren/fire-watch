@@ -1,0 +1,71 @@
+# Fire watch · design system brief
+
+**Status:** Approved · **Updated:** 2026-10-13 by /design-system
+
+The look of the one product in `docs/specs/fire-watch/shape.md`. Watchdog investigators use
+it at a desk to build a case: a map of fires next to a record panel. What they produce is
+handed to a buyer and picked apart by the company, so the interface has to read as
+evidence.
+
+Choices were made on the directions page
+(https://claude.ai/artifact/A591QqS2A6APUpDSpxRti3), built from real NASA FIRMS detections.
+
+## Answers
+
+| Question | Answer | From |
+| --- | --- | --- |
+| Must feel | precise, sober, trustworthy | user |
+| Must never feel | alarmist, playful, salesy | user |
+| Direction | A · Clear record | user, directions page |
+| Reference | Stripe: documentation-grade clarity, and detail revealed only when asked for | user, directions page |
+| Type | IBM Plex Sans + IBM Plex Mono | user, directions page |
+| Palette | Peatland: stone greys with a green cast, deep teal accent | user, canvas "Palette options", 2026-10-13 |
+| Motion ceiling | Tier 3, for one piece only: the fire globe | user, directions page |
+| Locked brand items | None | user, confirmed 2026-10-13 |
+| Accessibility floor | WCAG AA | user, confirmed 2026-10-13 |
+| Scripts | English, Latin script only; no right-to-left or CJK | user, confirmed 2026-10-13 |
+| Themes | Light and dark, both designed | user, confirmed 2026-10-13 (craft floor requires both) |
+| Oldest target | Current desktop and phone browsers, last two versions | user, confirmed 2026-10-13 |
+
+## Token trace
+
+Each token traces to an answer above.
+
+```
+"precise, sober" + Peatland palette → stone neutrals with a green cast: ink #1f2421 on #f3f3f0
+                                     (dark: #e8e9e4 on #121412); controls outlined #7b827a (dark #6f776d)
+                                   → 1px borders mark objects; no soft shadows on every surface
+one accent that means "you can act" → deep teal #0b6e6e (dark #5cc0bb): links, buttons, focus only
+fire is the data, not the brand    → ember #c2410c (dark #ff8a4c), used only for fire marks
+"trustworthy" evidence states      → status colours apart from the accent: matches #2e6b2e (dark #6fcf7f),
+                                     does not match #b42318 (dark #ff7b6e); always with an icon and words
+IBM Plex Sans + Mono               → Mono for coordinates, timestamps, fingerprints, transaction hashes
+desk use, map + panel density      → 15px base; scale 12 / 13 / 15 / 18 / 24 / 32 (12 for chips and mono values); 4px spacing scale
+                                     (4, 8, 12, 16, 24, 32, 48)
+Stripe-like, never "rounded-2xl"   → radius 6px on controls, 8px on panels
+"never alarmist"                   → no red banners for routine states; fire colour never fills large areas
+detail on request                  → raw record behind a disclosure, not on screen by default
+motion ceiling tier 3              → tier 1: 120–240 ms, cubic-bezier(.2,.8,.2,1)
+                                     tier 2: pass-by-pass replay, 240 ms a step
+                                     tier 3: the globe only, inside the budget below
+```
+
+## Tier 3 budget
+
+The globe lives in the public intro and the opening of the demo video, never on the
+working screens. How one fire spread over time stays on the tier 2 replay.
+
+| | |
+| --- | --- |
+| Download | three.js r128 150 kB, coastlines 56 kB, one day of fires 24 kB, gzipped and measured: 230 kB. Ceiling 250 kB |
+| Frame rate | 60 fps target on a laptop from the last five years, never below 30. Not measured yet |
+| Phones | The flat world map with the same fires, no 3D |
+| Reduced motion | No turning on its own; flights jump straight to the place |
+| Loading | Nothing downloads until asked; the flat map holds the same space until then, so nothing shifts |
+
+## Glossary
+
+- **Token** — a named design value (a colour, a size) that every screen uses instead of a raw number.
+- **WCAG AA** — the common accessibility standard: text contrast at least 4.5:1, large text 3:1.
+- **Tier 1 / 2 / 3** — how much motion is allowed: small feedback, choreographed sequences, one 3D piece.
+- **three.js** — the JavaScript library that draws the 3D globe in the browser.

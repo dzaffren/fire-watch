@@ -1,0 +1,67 @@
+<!-- @dsCard group="Components" -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Detections, map markers, timeline</title>
+<link rel="stylesheet" href="../styles.css">
+<style>
+.pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.pair > div { padding: 24px; background: var(--fw-bg); color: var(--fw-ink); display: grid; gap: 18px; align-content: start; min-width: 0; }
+.tablebox { background: var(--fw-surface); border: 1px solid var(--fw-line); border-radius: var(--fw-radius-panel); overflow-x: auto; }
+.legend { display: grid; gap: 8px; font-size: var(--fw-text-sm); }
+.legend div { display: flex; align-items: center; gap: 10px; }
+.key { width: 40px; display: inline-flex; align-items: center; gap: 4px; }
+.dot { border-radius: 50%; background: var(--fw-fire); display: inline-block; }
+.ring { width: 14px; height: 14px; border: 1.5px solid var(--fw-ink); border-radius: 50%; }
+.diamond { width: 8px; height: 8px; border: 1.5px solid var(--fw-ink); background: var(--fw-surface); transform: rotate(45deg); margin-left: 2px; }
+.dash { width: 40px; border-top: 1.5px dashed var(--fw-ink); }
+.dash.forecast { border-top-color: var(--fw-accent); }
+.timeline { display: flex; align-items: center; gap: 14px; }
+.track { position: relative; flex: 1; height: 16px; }
+.track .base, .track .fill { position: absolute; top: 6px; height: 4px; border-radius: 2px; left: 0; }
+.track .base { right: 0; background: var(--fw-line); }
+.track .fill { width: 44.9%; background: var(--fw-accent); }
+.track .thumb { position: absolute; left: 44.9%; top: 0; width: 16px; height: 16px; margin-left: -8px; border-radius: 50%; background: var(--fw-surface); border: 2px solid var(--fw-accent); box-sizing: border-box; }
+.play { width: 40px; padding: 0; }
+</style>
+</head>
+<body>
+<div class="pair">
+<div data-theme="light">
+<div class="fw-label">Light</div>
+<div class="tablebox">
+<table class="fw-table">
+<thead><tr><th scope="col">Detected (UTC)</th><th scope="col">Satellite</th><th scope="col">Fire power</th><th scope="col">Location</th></tr></thead>
+<tbody>
+<tr aria-selected="true"><td>12 Oct 06:57</td><td>NOAA-20</td><td>8.25 MW</td><td class="fw-mono">3.68605°S 105.68251°E</td></tr>
+<tr><td>12 Oct 06:57</td><td>NOAA-20</td><td>29.24 MW</td><td class="fw-mono">3.68675°S 105.67824°E</td></tr>
+<tr><td>12 Oct 06:35</td><td>S-NPP</td><td>2.18 MW</td><td class="fw-mono">3.59166°S 105.74779°E</td></tr>
+</tbody>
+</table>
+</div>
+<div class="legend">
+<div class="fw-label">Map markers</div>
+<div><span class="key"><span class="dot" style="width: 6px; height: 6px"></span><span class="dot" style="width: 9px; height: 9px"></span><span class="dot" style="width: 13px; height: 13px"></span></span>Fire power: under 5, 5–20, over 20 MW</div>
+<div><span class="key"><span class="dot" style="width: 9px; height: 9px; opacity: 0.3"></span><span class="dot" style="width: 9px; height: 9px; opacity: 0.65"></span><span class="dot" style="width: 9px; height: 9px"></span></span>Older to newer</div>
+<div><span class="key"><span class="ring"></span></span>Selected record</div>
+<div><span class="key"><span class="diamond"></span></span>First seen</div>
+<div><span class="dash"></span>Concession boundary</div>
+<div><span class="dash forecast"></span>Spread forecast</div>
+</div>
+<div class="timeline">
+<button class="fw-btn fw-btn--secondary play" type="button" aria-label="Play the replay"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15a1 1 0 0 0 1.5.86l12.5-7.5a1 1 0 0 0 0-1.72L8.5 3.64A1 1 0 0 0 7 4.5z"/></svg></button>
+<div class="track" role="img" aria-label="Replay at pass 14 of 28"><span class="base"></span><span class="fill"></span><span class="thumb"></span></div>
+<div class="fw-mono" style="font-size: var(--fw-text-sm)">Pass 14 of 28 · 10 Oct 05:53 UTC</div>
+</div>
+</div>
+</div>
+<script>
+document.querySelectorAll('.pair > [data-theme="light"]').forEach(function (el) {
+  var d = el.cloneNode(true); d.dataset.theme = "dark";
+  d.querySelector(".fw-label").textContent = "Dark";
+  el.parentNode.appendChild(d);
+});
+</script>
+</body>
+</html>

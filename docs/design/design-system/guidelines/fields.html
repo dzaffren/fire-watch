@@ -1,0 +1,42 @@
+<!-- @dsCard group="Components" -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Fields and controls</title>
+<link rel="stylesheet" href="../styles.css">
+<style>
+.pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.pair > div { padding: 24px; background: var(--fw-bg); color: var(--fw-ink); display: grid; gap: 18px; align-content: start; }
+.select { position: relative; }
+.select select { appearance: none; -webkit-appearance: none; width: 100%; padding-right: 36px; }
+.select svg { position: absolute; right: 12px; top: 12px; pointer-events: none; color: var(--fw-muted); }
+.dates { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+fieldset { margin: 0; padding: 0; border: 0; }
+.check { display: flex; gap: 10px; align-items: center; min-height: 32px; }
+.check input { width: 18px; height: 18px; margin: 0; accent-color: var(--fw-accent); }
+</style>
+</head>
+<body>
+<div class="pair">
+<div data-theme="light">
+<div class="fw-label">Light</div>
+<div class="fw-field"><label for="fp">Record fingerprint</label><input id="fp" class="fw-input fw-mono" type="text" value="babe72288de9dad2e933b3bfc406b70dee104a19e38dbfdd567cf5cb304af5fc"><div class="fw-help">Copy it from the record panel.</div></div>
+<div class="fw-field"><label for="fp-err">Record fingerprint</label><input id="fp-err" class="fw-input fw-mono" type="text" aria-invalid="true" aria-describedby="fp-err-msg" value="babe72288de9dad2e933b3bfc406b70dee104a19e38dbfdd567cf5cb304af5f"><div id="fp-err-msg" class="fw-error"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>A fingerprint has 64 characters. This one has 63; check the end was copied.</div></div>
+<div class="fw-field"><label for="sat">Satellite</label><div class="select"><select id="sat" class="fw-input"><option>VIIRS · NOAA-20</option><option>VIIRS · S-NPP</option><option>VIIRS · NOAA-21</option><option>All VIIRS satellites</option></select><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></div></div>
+<fieldset class="fw-field"><legend>Dates</legend><div class="dates"><input class="fw-input fw-mono" type="date" aria-label="From" value="2026-10-08"><input class="fw-input fw-mono" type="date" aria-label="To" value="2026-10-12"></div><div class="fw-help">Up to 5 days at a time.</div></fieldset>
+<fieldset class="fw-field"><legend>Map layers</legend><label class="check"><input type="checkbox" checked>Fires</label><label class="check"><input type="checkbox" checked>Concession boundaries</label><label class="check"><input type="checkbox">Fade older detections</label></fieldset>
+</div>
+</div>
+<script>
+document.querySelectorAll('.pair > [data-theme="light"]').forEach(function (el) {
+  var d = el.cloneNode(true); d.dataset.theme = "dark";
+  d.querySelector(".fw-label").textContent = "Dark";
+  d.querySelectorAll("[id]").forEach(function (n) { n.id += "-dark"; });
+  d.querySelectorAll("[for]").forEach(function (n) { n.htmlFor += "-dark"; });
+  d.querySelectorAll("[aria-describedby]").forEach(function (n) { n.setAttribute("aria-describedby", n.getAttribute("aria-describedby") + "-dark"); });
+  el.parentNode.appendChild(d);
+});
+</script>
+</body>
+</html>
