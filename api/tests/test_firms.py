@@ -1,0 +1,82 @@
+from datetime import datetime, timezone
+from pathlib import Path
+
+import httpx
+
+from firewatch.firms import Hotspot, fetch_latest, latest, parse
+
+FIRMS_FIXTURES = Path(__file__).parents[2] / "fixtures" / "firms"
+HEADER = (
+    "latitude,longitude,bright_ti4,scan,track,acq_date,acq_time,satellite,instrument,"
+    "confidence,version,bright_ti5,frp,daynight\n"
+)
+
+
+def fixture(name):
+    return (FIRMS_FIXTURES / name).read_text()
+
+
+def row(lat="0.4312", lon="101.2154", date="2026-10-12", time="618", conf="n", frp="14.2"):
+    return f"{lat},{lon},345.06,0.52,0.5,{date},{time},N20,VIIRS,{conf},2.0NRT,298.4,{frp},D\n"
+
+
+def test_latest_time_wins_and_frp_breaks_the_tie():
+    assert latest(parse(fixture("riau-latest.csv"))) == Hotspot(
+        source="VIIRS_NOAA20_NRT",
+        lat_e5=43120,
+        lon_e5=10121540,
+        acquired_at=datetime(2026, 10, 12, 6, 18, tzinfo=timezone.utc),
+        frp_e2=1420,
+        confidence="n",
+    )
+
+
+def test_lowest_latitude_then_longitude_breaks_an_frp_tie():
+    picked = latest(parse(fixture("ties.csv")))
+    assert (picked.lat_e5, picked.lon_e5, picked.confidence) == (-120410, 10399020, "h")
+
+
+def test_short_acq_time_is_zero_padded():
+    (hotspot,) = parse(HEADER + row(date="2026-10-09", time="427"))
+    assert hotspot.acquired_at == datetime(2026, 10, 9, 4, 27, tzinfo=timezone.utc)
+
+
+def test_coordinates_and_frp_convert_exactly():
+    (hotspot,) = parse(HEADER + row(lat="-8.21427", lon="140.72481", frp="160.77"))
+    assert (hotspot.lat_e5, hotspot.lon_e5, hotspot.frp_e2) == (-821427, 14072481, 16077)
+
+
+def test_bad_rows_are_skipped():
+    bad = [
+        row(lat="91"),
+        row(lon="-180.5"),
+        row(lat="abc"),
+        row(lat="0.123456"),
+        row(frp="-1"),
+        row(frp="1.234"),
+        row(frp="NaN"),
+        row(conf="x"),
+        row(time="2460"),
+        row(date="2026-13-01"),
+        "0.5,101.2\n",
+    ]
+    good = row()
+    assert parse(HEADER + "".join(bad) + good) == parse(HEADER + good)
+    assert len(parse(HEADER + good)) == 1
+
+
+def test_empty_csv_has_no_latest():
+    assert latest(parse(fixture("empty.csv"))) is None
+
+
+def test_fetch_latest_requests_the_indonesia_box():
+    seen = []
+
+    def handler(request):
+        seen.append(str(request.url))
+        return httpx.Response(200, text=fixture("riau-latest.csv"))
+
+    client = httpx.Client(transport=httpx.MockTransport(handler))
+    picked = fetch_latest("http://firms.test", "KEY", client=client)
+    assert seen == ["http://firms.test/api/area/csv/KEY/VIIRS_NOAA20_NRT/95,-11,141,6/5"]
+    assert picked.lat_e5 == 43120
