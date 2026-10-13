@@ -202,7 +202,7 @@ Indonesia, sealed on a public blockchain so anyone can check it hasn't changed s
 | Fire power  | 14.2 MW                                                  | Sans |
 | Confidence  | Nominal                                                  | Sans |
 | Fingerprint | first 10 and last 6 characters                           | Mono |
-| Transaction | `0x` plus 8, then the last 6; links to `sepolia.basescan.org/tx/{hash}` in a new tab | Mono |
+| Transaction | `0x` plus 8, then the last 6; links to `sepolia.basescan.org/tx/<hash>` in a new tab | Mono |
 
 "Show the raw record" opens the stored record as JSON plus the full fingerprint.
 
@@ -360,7 +360,7 @@ runs migrations and `record-latest` by hand.
 | `api/src/firewatch/chain.py` | `seal()`, `sealed()`, `seal_tx_hash()` over a hand-written ABI; turns a funds error into "insufficient funds in the recorder wallet" | Scenarios 1, 4 |
 | `api/src/firewatch/record_latest.py` | The CLI, entry point `record-latest` | Scenarios 1, 4, 5 |
 | `api/src/firewatch/app.py` | `GET /api/hotspots/latest` (200 or 404), `GET /api/health`; CORS for `ALLOWED_ORIGIN` only | Scenarios 2, 3, 5 |
-| `api/src/firewatch/db.py`, `migrate.py`, `api/migrations/001_hotspots.{up,down}.sql` | Connection from `DATABASE_URL`; up and down runner (D10) | Scenario 1, reverse path |
+| `api/src/firewatch/db.py`, `migrate.py`, `api/migrations/001_hotspots.up.sql` and `.down.sql` | Connection from `DATABASE_URL`; up and down runner (D10) | Scenario 1, reverse path |
 | `api/Dockerfile` | `python:3.12-slim`, no build tools, runs uvicorn on 8000 | Deploy; a smaller image starts faster (O8) |
 | `api/tests/` | pytest suites below | Test plan |
 | `compose.yaml` | `postgres:17` for local tests | pytest and e2e need a real Postgres |
@@ -492,7 +492,7 @@ Recorded as D6, D7, D8, D9, D10, D11.
 
 | ID | What | Type | Raised at | Owner | Status | Answer |
 | -- | ---- | ---- | --------- | ----- | ------ | ------ |
-| O1 | NASA FIRMS free key and archive cover the region and seasons needed (from shape O6). Docs checked 2026-10-13: area endpoint `/api/area/csv/{MAP_KEY}/{SOURCE}/{west,south,east,north}/{1..5}/{date}`, VIIRS near-real-time and archive sources, 5,000 calls per 10 minutes. Not yet called with a real key | unproven | shape | user | Resolved | Called with the real key 2026-10-13: `VIIRS_NOAA20_NRT`, box 95,-11,141,6, 1 day → 4,135 hotspots (2026-10-12); `VIIRS_NOAA20_SP` for 2023-09-15 → 1,930 hotspots, with a `type` column the live feed lacks |
+| O1 | NASA FIRMS free key and archive cover the region and seasons needed (from shape O6). Docs checked 2026-10-13: area endpoint `/api/area/csv/<MAP_KEY>/<SOURCE>/<west,south,east,north>/<1..5>/<date>`, VIIRS near-real-time and archive sources, 5,000 calls per 10 minutes. Not yet called with a real key | unproven | shape | user | Resolved | Called with the real key 2026-10-13: `VIIRS_NOAA20_NRT`, box 95,-11,141,6, 1 day → 4,135 hotspots (2026-10-12); `VIIRS_NOAA20_SP` for 2023-09-15 → 1,930 hotspots, with a `type` column the live feed lacks |
 | O2 | Base Sepolia test ETH is available from a faucet without holding mainnet ETH; Alchemy's rule is unclear | unproven | spec p1 | user | Accepted risk | Alchemy refused ("insufficient balance") and the Coinbase faucet sign-in code didn't arrive; wallet balance is 0. Proceeding: code, tests and CI use anvil, and test ETH is only needed for the Base Sepolia deploy at the end of build. Retry Coinbase, then QuickNode, before that deploy. 2026-10-13 |
 | O9 | The skeleton shows whatever hotspot is latest in the box, which also covers Malaysia and Singapore. On 2026-10-13 the latest was at 1.348, 104.176, east of Singapore, possibly an industrial flare (unchecked). Filtering false alarms and using real boundaries is fire-record's job | flag | spec p1 | user | Accepted risk | 2026-10-13: accepted for the skeleton; a demo may open on a non-Indonesian point until fire-record adds real borders and false-alarm filtering |
 | O3 | Assuming the React app is built with Vite and TypeScript | assumption | spec p1 | user | Resolved | Vite + TypeScript. 2026-10-13 |
