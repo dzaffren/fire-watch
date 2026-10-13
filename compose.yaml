@@ -1,0 +1,17 @@
+# A fixed project name, so every checkout and worktree shares one db on port 55432.
+name: firewatch
+
+services:
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: firewatch
+      POSTGRES_PASSWORD: firewatch
+      POSTGRES_DB: firewatch
+    ports:
+      - "55432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U firewatch -d firewatch"]
+      interval: 2s
+      timeout: 2s
+      retries: 15
