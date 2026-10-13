@@ -1,0 +1,78 @@
+@import "../../../docs/design/design-system/styles.css";
+
+/* Composition for the home page, as in docs/design/walking-skeleton/preview.html. Tokens and
+   primitives come from the design system; nothing here defines a colour or duration. */
+
+.app { height: 100vh; height: 100dvh; display: grid; grid-template-rows: auto minmax(0, 1fr); }
+.app-top {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--fw-space-4);
+  padding: var(--fw-space-3) var(--fw-space-6);
+  background: var(--fw-surface); border-bottom: var(--fw-border) solid var(--fw-line);
+}
+.app-name { font-weight: var(--fw-weight-semibold); }
+.app-top .fw-help { margin: 0; }
+.app-main { display: grid; grid-template-columns: minmax(360px, 440px) minmax(0, 1fr); min-height: 0; }
+
+.rec-col { padding: var(--fw-space-6); display: flex; flex-direction: column; gap: var(--fw-space-5); overflow-y: auto; }
+.intro { display: grid; gap: var(--fw-space-2); }
+.intro h1 { font-size: var(--fw-text-xl); font-weight: var(--fw-weight-semibold); }
+.intro p { margin: 0; }
+.slot { display: grid; gap: var(--fw-space-3); }
+
+/* Record panel, as on the record panel guideline */
+.rec-head { display: flex; justify-content: space-between; align-items: center; gap: var(--fw-space-2); flex-wrap: wrap; }
+.rec-head h2 { font-size: var(--fw-text-lg); font-weight: var(--fw-weight-semibold); }
+.rec-note { margin: 0; }
+.rec-act { display: grid; gap: var(--fw-space-3); justify-items: start; }
+.fw-kv a.fw-link { font-size: var(--fw-text-xs); }
+.fw-kv .none { color: var(--fw-muted); }
+.rec details { border-top: var(--fw-border) solid var(--fw-line); padding-top: var(--fw-space-3); font-size: var(--fw-text-sm); }
+.rec summary { cursor: pointer; color: var(--fw-accent); font-weight: var(--fw-weight-medium); min-height: var(--fw-space-5); }
+.rec summary:hover { color: var(--fw-accent-hover); }
+.rec pre {
+  margin: var(--fw-space-2) 0 0; padding: var(--fw-space-3); background: var(--fw-bg);
+  border-radius: var(--fw-radius-control); font: var(--fw-text-xs) / 1.55 var(--fw-font-mono); white-space: pre-wrap;
+}
+.rec details p { margin: var(--fw-space-2) 0 0; }
+.rec details .fw-mono { overflow-wrap: anywhere; }
+.rec details[open] > :not(summary) { animation: fw-enter var(--fw-dur) var(--fw-ease) both; }
+
+/* Loading: the skeleton keeps the record panel's shape so nothing jumps when it arrives */
+.sk-head { display: flex; justify-content: space-between; align-items: center; min-height: var(--fw-space-5); }
+.sk-rows { display: grid; grid-template-columns: 80px minmax(0, 1fr); gap: var(--fw-space-3) var(--fw-space-4); padding: var(--fw-space-1) 0; }
+.sk-rows .fw-skeleton:nth-child(odd) { background: var(--fw-skeleton-2); }
+
+.fw-empty h3 { font-size: var(--fw-text-lg); }
+.fw-empty p { margin: 0; }
+.fw-empty .icon { color: var(--fw-control); }
+
+/* Map */
+.map-col { position: relative; min-height: 320px; overflow: hidden; background: var(--fw-surface); border-left: var(--fw-border) solid var(--fw-line); }
+.map { position: absolute; inset: 0; }
+
+.hs { position: absolute; width: 0; height: 0; pointer-events: none; }
+.hs-dot, .hs-ring { position: absolute; border-radius: 50%; box-sizing: border-box; }
+.hs-dot { width: 9px; height: 9px; margin: -4.5px 0 0 -4.5px; background: var(--fw-fire); }
+.hs-ring { width: 14px; height: 14px; margin: -7px 0 0 -7px; border: 1.5px solid var(--fw-ink); }
+.hs.landing .hs-dot { animation: hs-dot var(--fw-dur-slow) var(--fw-ease) both; }
+.hs.landing .hs-ring { animation: hs-ring var(--fw-dur-slow) var(--fw-ease) var(--fw-dur-fast) both; }
+
+.zoom { position: absolute; top: var(--fw-space-4); right: var(--fw-space-4); display: grid; gap: var(--fw-space-1); }
+.zoom .fw-btn { width: var(--fw-control-height); padding: 0; }
+
+.enter { animation: fw-enter var(--fw-dur) var(--fw-ease) both; }
+@keyframes fw-enter { from { opacity: 0; transform: translateY(4px); } }
+@keyframes hs-dot { from { opacity: 0; transform: scale(0.4); } }
+@keyframes hs-ring { from { opacity: 0; transform: scale(1.6); } }
+
+@media (pointer: coarse) {
+  .zoom .fw-btn { width: var(--fw-touch-target); }
+}
+
+@media (max-width: 720px) {
+  .app { height: auto; }
+  .app-top { padding: var(--fw-space-3) var(--fw-space-4); flex-wrap: wrap; }
+  .app-main { grid-template-columns: minmax(0, 1fr); }
+  .rec-col { padding: var(--fw-space-5) var(--fw-space-4); overflow: visible; }
+  .map-col { height: 320px; border-left: 0; border-top: var(--fw-border) solid var(--fw-line); }
+}
