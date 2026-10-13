@@ -34,11 +34,12 @@ Needs Docker, uv, pnpm and Foundry (`forge`, `anvil` on the path).
 | API and recorder tests | `cd api && uv run pytest` |
 | Page tests | `cd web && pnpm install && pnpm test` |
 | End-to-end test | `cd web && pnpm exec playwright install chromium && pnpm e2e` |
-| Migrate | `cd api && uv run python -m firewatch.migrate up` (or `down`) |
-| Record the latest hotspot | `cd api && uv run record-latest` |
+| Migrate | `cd api && uv run --env-file ../.env python -m firewatch.migrate up` (or `down`) |
+| Record the latest hotspot | `cd api && uv run --env-file ../.env record-latest` |
 
 `record-latest` reads `DATABASE_URL`, `FIRMS_MAP_KEY`, `RPC_URL`, `CONTRACT_ADDRESS` and
-`RECORDER_PRIVATE_KEY` from the environment. Keep them in the untracked `.env`.
+`RECORDER_PRIVATE_KEY` from the environment. Keep them in the untracked `.env` at the repo
+root; `--env-file ../.env` loads it, since `uv run` doesn't on its own.
 
 ## First deploy
 
@@ -54,4 +55,4 @@ Needs Docker, uv, pnpm and Foundry (`forge`, `anvil` on the path).
 5. **Azure:** `GITHUB_REPO=<owner/name> ALERT_EMAIL=<you> READER_DATABASE_URL=<reader url> IMAGE=<that image> infra/setup.sh`.
    It creates everything with the cost guardrails and a $1 budget alert, then prints the GitHub
    variables to set. Set them and rerun Deploy.
-6. **Record:** `cd api && uv run record-latest`.
+6. **Record:** `cd api && uv run --env-file ../.env record-latest`.
