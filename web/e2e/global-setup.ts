@@ -1,4 +1,4 @@
-import { spawn, spawnSync, type ChildProcess } from "node:child_process";
+import { spawn, type ChildProcess } from "node:child_process";
 import { createReadStream, existsSync } from "node:fs";
 import { createServer } from "node:http";
 import { homedir } from "node:os";
@@ -32,13 +32,16 @@ const PATH = `${homedir()}/.foundry/bin:${process.env.PATH}`;
 
 const apiEnv = { DATABASE_URL: E2E_DATABASE_URL };
 
-function run(cmd: string, args: string[], cwd: string, env: Record<string, string> = {}) {
+// Async, so the FIRMS fixture server in this process can still answer while a command runs.
+function run(cmd: string, args: string[], cwd: string, env: Record<string, string> = {}): Promise<void> {
   if (!existsSync(cwd)) throw new Error(`${cwd} does not exist; the e2e needs contracts/ and api/ beside web/`);
-  const result = spawnSync(cmd, args, { cwd, env: { ...process.env, PATH, ...env }, stdio: "inherit" });
-  if (result.status !== 0) {
-    const why = result.error?.message ?? `exit ${result.status}`;
-    throw new Error(`\`${cmd} ${args.join(" ")}\` failed in ${cwd}: ${why}`);
-  }
+  return new Promise((done, fail) => {
+    const child = spawn(cmd, args, { cwd, env: { ...process.env, PATH, ...env }, stdio: "inherit" });
+    child.on("error", (err) => fail(new Error(`\`${cmd} ${args.join(" ")}\` failed in ${cwd}: ${err.message}`)));
+    child.on("exit", (code) =>
+      code === 0 ? done() : fail(new Error(`\`${cmd} ${args.join(" ")}\` failed in ${cwd}: exit ${code}`)),
+    );
+  });
 }
 
 // Each long-running process gets its own process group, so teardown also stops what `uv run` starts.
@@ -95,7 +98,7 @@ export default async function globalSetup() {
       body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "eth_chainId", params: [] }),
     }));
 
-    run(
+    await run(
       "forge",
       ["script", "script/Deploy.s.sol", "--rpc-url", RPC_URL, "--private-key", RECORDER_PRIVATE_KEY, "--broadcast"],
       CONTRACTS,
@@ -103,10 +106,10 @@ export default async function globalSetup() {
     );
 
     await resetDatabase();
-    run("uv", ["run", "python", "-m", "firewatch.migrate", "up"], API, apiEnv);
+    await run("uv", ["run", "python", "-m", "firewatch.migrate", "up"], API, apiEnv);
 
     await new Promise<void>((done) => firms.listen(FIRMS_PORT, "127.0.0.1", done));
-    run("uv", ["run", "record-latest"], API, {
+    await run("uv", ["run", "record-latest"], API, {
       ...apiEnv,
       FIRMS_MAP_KEY: "e2e",
       FIRMS_BASE_URL: FIRMS_URL,
@@ -124,7 +127,7 @@ export default async function globalSetup() {
     children.push(api);
     await waitFor("API", api, answers(`${API_URL}/api/health`));
 
-    run(VITE, ["build", "--outDir", "dist-e2e"], WEB, {
+    await run(VITE, ["build", "--outDir", "dist-e2e"], WEB, {
       VITE_API_URL: API_URL,
       VITE_RPC_URL: RPC_URL,
       VITE_CONTRACT_ADDRESS: CONTRACT_ADDRESS,
