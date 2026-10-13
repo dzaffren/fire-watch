@@ -3,12 +3,13 @@
 > The backend sleeps when no one is using it, so the first visit after a quiet spell can take up
 > to a minute.
 
-<!-- zuko:start — generated from OVERVIEW.md; edit that file, not this block -->
+<!-- zuko:start skip=install — generated from OVERVIEW.md; edit that file, not this block -->
 
 ## What it does
 
-An entry for the IEEE ClimateChain Global Hackathon (AI and blockchain for climate, deadline 2026-10-25).
-The product is not chosen yet; /shape picks it.
+Fire Watch, an entry for the IEEE ClimateChain Global Hackathon (deadline 2026-10-25). It shows
+satellite fire hotspots with on-chain proof that each record hasn't changed since it was written,
+for watchdog investigators who file grievances over fires on plantation land.
 
 ## Features
 
