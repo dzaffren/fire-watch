@@ -32,6 +32,17 @@ contract FireRecordsTest is Test {
         records.seal(RECORD_ID, FINGERPRINT);
     }
 
+    function test_RevertWhen_RecordAlreadySealed() public {
+        vm.startPrank(recorder);
+        records.seal(RECORD_ID, FINGERPRINT);
+        vm.expectRevert(abi.encodeWithSelector(FireRecords.AlreadySealed.selector, RECORD_ID));
+        records.seal(RECORD_ID, keccak256("other fingerprint"));
+        vm.stopPrank();
+
+        (bytes32 fingerprint,) = records.sealOf(RECORD_ID);
+        assertEq(fingerprint, FINGERPRINT);
+    }
+
     function test_UnsealedRecordReturnsZeros() public view {
         (bytes32 fingerprint, uint64 sealedAt) = records.sealOf(RECORD_ID);
         assertEq(fingerprint, bytes32(0));
