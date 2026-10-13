@@ -11,6 +11,7 @@ contract FireRecords {
 
     error NotRecorder();
     error AlreadySealed(bytes32 recordId);
+    error EmptyFingerprint();
 
     address public immutable recorder;
 
@@ -23,6 +24,8 @@ contract FireRecords {
     /// @notice Seals `fingerprint` under `recordId`.
     function seal(bytes32 recordId, bytes32 fingerprint) external {
         if (msg.sender != recorder) revert NotRecorder();
+        // A zero fingerprint would read as unsealed and could be sealed over.
+        if (fingerprint == 0) revert EmptyFingerprint();
         if (seals[recordId].fingerprint != 0) revert AlreadySealed(recordId);
         seals[recordId] = Seal(fingerprint, uint64(block.timestamp));
     }

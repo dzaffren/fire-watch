@@ -43,6 +43,12 @@ contract FireRecordsTest is Test {
         assertEq(fingerprint, FINGERPRINT);
     }
 
+    function test_RevertWhen_FingerprintIsEmpty() public {
+        vm.prank(recorder);
+        vm.expectRevert(FireRecords.EmptyFingerprint.selector);
+        records.seal(RECORD_ID, bytes32(0));
+    }
+
     function test_UnsealedRecordReturnsZeros() public view {
         (bytes32 fingerprint, uint64 sealedAt) = records.sealOf(RECORD_ID);
         assertEq(fingerprint, bytes32(0));
