@@ -9,16 +9,22 @@ on:
 
 permissions:
   contents: read
-  packages: write
-  id-token: write
 
 env:
   SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
 
 jobs:
   api:
-    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_repository.full_name == github.repository)
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
     steps:
       - uses: actions/checkout@v7
         with:
@@ -45,7 +51,11 @@ jobs:
         run: curl --fail --silent --show-error --retry 6 --retry-delay 10 --retry-all-errors --max-time 90 "${{ vars.API_URL }}/api/health"
 
   web:
-    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_repository.full_name == github.repository)
     runs-on: ubuntu-latest
     defaults:
       run:
