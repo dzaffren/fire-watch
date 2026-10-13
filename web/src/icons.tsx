@@ -1,0 +1,30 @@
+import type { ReactNode } from "react";
+
+function Icon({ size, width, className, children }: { size: number; width: number; className?: string; children: ReactNode }) {
+  return (
+    <svg
+      className={className}
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={width}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      {children}
+    </svg>
+  );
+}
+
+export const OkIcon = () => <Icon size={12} width={2.5}><path d="M20 6 9 17l-5-5" /></Icon>;
+export const BadIcon = () => <Icon size={12} width={2.5}><path d="M18 6 6 18" /><path d="m6 6 12 12" /></Icon>;
+export const PendingIcon = () => <Icon size={12} width={2.5}><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></Icon>;
+export const CheckingIcon = () => <Icon size={12} width={2.5}><path d="M21 12a9 9 0 1 1-6.22-8.56" /></Icon>;
+export const ExternalIcon = () => <Icon size={13} width={2}><path d="M15 3h6v6" /><path d="M10 14 21 3" /><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /></Icon>;
+export const PinIcon = () => <Icon className="icon" size={28} width={1.5}><path d="M12 22s7-6.1 7-12a7 7 0 0 0-14 0c0 5.9 7 12 7 12z" /><circle cx="12" cy="10" r="2.5" /></Icon>;
+export const AlertIcon = () => <Icon className="icon" size={28} width={1.5}><circle cx="12" cy="12" r="10" /><path d="M12 8v4" /><path d="M12 16h.01" /></Icon>;
+export const PlusIcon = () => <Icon size={16} width={2}><path d="M12 5v14" /><path d="M5 12h14" /></Icon>;
+export const MinusIcon = () => <Icon size={16} width={2}><path d="M5 12h14" /></Icon>;
