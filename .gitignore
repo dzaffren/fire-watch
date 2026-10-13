@@ -4,3 +4,4 @@ docs/specs/.pages/
 ds-bundle/
 .ds-sync/
 **/.design-sync/.cache/
+.claude/
