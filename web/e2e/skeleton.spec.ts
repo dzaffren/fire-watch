@@ -1,7 +1,7 @@
 import { fileURLToPath } from "node:url";
 import { expect, test } from "@playwright/test";
 import pg from "pg";
-import { E2E_DATABASE_URL } from "./env";
+import { E2E_DATABASE_URL, WEB_URL } from "./env";
 
 declare global {
   interface Window {
@@ -52,6 +52,32 @@ test("visitor sees the hotspot and its proof", async ({ page }) => {
   ).toBeVisible();
   await expect(page.locator(".hs")).toHaveCount(1);
   expect(await page.evaluate(() => window.__fakeMap.center)).toEqual({ lat: 0.4312, lng: 101.2154 });
+});
+
+test("every control is at least 44 px to tap on a touch screen", async ({ browser }) => {
+  const phone = await browser.newContext({ viewport: { width: 375, height: 800 }, hasTouch: true, isMobile: true });
+  const page = await phone.newPage();
+  await page.route("https://maps.googleapis.com/**", (route) =>
+    route.fulfill({ path: FAKE_GOOGLE_MAPS, contentType: "text/javascript" }),
+  );
+  await page.goto(WEB_URL);
+  await expect(page.getByText("Matches the chain")).toBeVisible();
+
+  const tooSmall = await page.evaluate(() =>
+    [...document.querySelectorAll<HTMLElement>("a[href], button, summary")]
+      .filter((el) => el.offsetParent)
+      .filter((el) => {
+        el.scrollIntoView({ block: "center" });
+        const r = el.getBoundingClientRect();
+        const x = r.left + r.width / 2;
+        const y = r.top + r.height / 2;
+        const hits = (dy: number) => document.elementFromPoint(x, y + dy)?.closest("a[href], button, summary") === el;
+        return r.width < 44 || !hits(-21) || !hits(21);
+      })
+      .map((el) => el.getAttribute("aria-label") ?? el.textContent?.trim()),
+  );
+  expect(tooSmall).toEqual([]);
+  await phone.close();
 });
 
 test("edited longitude reads Does not match", async ({ page }) => {
