@@ -1,6 +1,6 @@
 # Walking skeleton
 
-**Version:** v1 · **Status:** Refined · **Type:** Skeleton · **Project type:** Web UI
+**Version:** v1 · **Status:** Built · **Type:** Skeleton · **Project type:** Web UI
 
 **Shape doc:** docs/specs/fire-watch/shape.md
 **Depends on:** None
@@ -227,8 +227,9 @@ Server starting note above says so on the page, and the README and the Devpost e
 to a minute."
 
 **Map.** Google Maps JavaScript API with inline style rules: land `--fw-map`, water `--fw-surface`,
-following the page theme (O11). Centred on the record at about 150 px per degree, roughly 6° of longitude across a
-desktop map. One marker from the detections guideline: a 9 px fire dot (the 5–20 MW size) inside
+following the page theme (O11). Centred on the record at Google zoom 8, about 180 px per degree: the whole zoom nearest the
+150 first planned, since a map without a map ID can't zoom in fractions. That shows about 4.6° of
+longitude across an 840 px map. One marker from the detections guideline: a 9 px fire dot (the 5–20 MW size) inside
 the 14 px selected ring. Zoom in and out use the system's secondary button, 40 px square, 44 px on
 touch screens.
 
