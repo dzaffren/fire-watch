@@ -485,67 +485,7 @@ sits inside its chunk's directory.
 
 ### Decisions to record
 
-```
-## D6 · 2026-10-13 · Host at $0: Static Web Apps Free, Container Apps scaled to zero, Neon Free
-
-Why: the project must cost $0 a month (cost review 2026-10-13). Each piece fits a free
-allowance: Static Web Apps 100 GB, Container Apps 180,000 vCPU-s and 2 million requests, Neon
-100 CU-hours. The price is a cold start of about 21 s, told on the page and in the README.
-Rejected: Azure Database for PostgreSQL B1MS (about $23 a month), Azure SQL free tier (used up
-in about 2 days by a 15-minute poller), one always-on Container Apps copy ($5.60–7.80 a month),
-Azure Key Vault ($0.03 per 10,000 reads; Container Apps secrets are free), Azure Container
-Registry Basic ($0.17 a day; GitHub's registry is free for public images).
-Source: docs/specs/walking-skeleton.md
-Status: active
-
-## D7 · 2026-10-13 · Check the record in the visitor's browser, not on our server
-
-Why: sealing exists so nobody has to trust us. The page recomputes the fingerprint and reads
-Base Sepolia directly (its public RPC accepts browser calls, checked 2026-10-13), so our
-server can't report "Matches" for a changed record. The page's code is public in the repo.
-Rejected: checking on the server (visitors would trust our API's verdict, which is what the
-chain is there to replace).
-Source: docs/specs/walking-skeleton.md
-Status: active
-
-## D8 · 2026-10-13 · Fingerprint is keccak256 of ABI-encoded whole numbers, version 1
-
-Why: Python and TypeScript must produce identical bytes. FIRMS gives up to 5 decimals for
-latitude and longitude and 2 for FRP (30,013 rows checked 2026-10-13), so values are stored and
-hashed as whole numbers times 100,000 and times 100.
-Rejected: hashing JSON (key order and number formatting differ between Python and JavaScript),
-hashing the raw CSV line (the page holds the stored row, not the original line, so it couldn't
-re-check it).
-Source: docs/specs/walking-skeleton.md
-Status: active
-
-## D9 · 2026-10-13 · Only the recorder wallet can seal, once per random record ID
-
-Why: a seal must come from the recorder and never change. A random 32-byte record ID, stored
-with the row, keys each seal.
-Rejected: open sealing (anyone could seal a record ID first with a wrong fingerprint and make
-a true record read "Does not match"), a record ID worked out from the hotspot's values (an
-edited row would point at no seal and read wrongly instead of "Does not match").
-Source: docs/specs/walking-skeleton.md
-Status: active
-
-## D10 · 2026-10-13 · psycopg and plain SQL migration files, no ORM
-
-Why: the slice has one table and two queries. Numbered up and down SQL files with a short
-runner give the tested reverse path.
-Rejected: SQLAlchemy with Alembic (an ORM and a framework for one table), yoyo-migrations
-(a dependency for what about 30 lines do).
-Source: docs/specs/walking-skeleton.md
-Status: active
-
-## D11 · 2026-10-13 · React with Vite and TypeScript for the page
-
-Why: the map, the in-browser chain check (D7) and the later replay timeline keep state in the
-browser; TypeScript catches API shape mistakes.
-Rejected: server-rendered pages (the chain check has to run in the visitor's browser).
-Source: docs/specs/walking-skeleton.md
-Status: active
-```
+Recorded as D6, D7, D8, D9, D10, D11.
 
 ## Open items
 
