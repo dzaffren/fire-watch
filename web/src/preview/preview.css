@@ -1,0 +1,10 @@
+/* The preview route's state picker. Tokens and primitives come from the design system. */
+.preview { height: 100vh; height: 100dvh; display: grid; grid-template-rows: auto minmax(0, 1fr); }
+.preview > .app { height: 100%; }
+.preview-bar {
+  display: flex; flex-wrap: wrap; align-items: center; gap: var(--fw-space-3) var(--fw-space-5);
+  padding: var(--fw-space-2) var(--fw-space-6);
+  background: var(--fw-accent-tint); border-bottom: var(--fw-border) solid var(--fw-line);
+}
+.preview-bar .fw-help { margin: 0; flex: 1 1 320px; }
+.preview-pick { display: flex; align-items: center; gap: var(--fw-space-2); font-size: var(--fw-text-sm); font-weight: var(--fw-weight-semibold); }
