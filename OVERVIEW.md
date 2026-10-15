@@ -1,6 +1,6 @@
 # ClimateChain hackathon entry
 
-**Status:** Active · **Updated:** 2026-10-13 by /ship walking-skeleton
+**Status:** Active · **Updated:** 2026-10-15 by /ship walking-skeleton
 
 Fire Watch, an entry for the IEEE ClimateChain Global Hackathon (deadline 2026-10-25). It shows
 satellite fire hotspots with on-chain proof that each record hasn't changed since it was written,
@@ -29,7 +29,7 @@ for watchdog investigators who file grievances over fires on plantation land.
 
 | Slice            | Status | What it does                                                                                              | Page                              |
 | ---------------- | ------ | --------------------------------------------------------------------------------------------------------- | --------------------------------- |
-| walking-skeleton | Built  | See the latest fire hotspot on a map, with a check that its record still matches the seal on Base Sepolia. | docs/specs/walking-skeleton.md    |
+| walking-skeleton | Shipped | See the latest fire hotspot on a map, with a check that its record still matches the seal on Base Sepolia. | docs/specs/walking-skeleton.md    |
 
 ## More
 

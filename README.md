@@ -13,7 +13,7 @@ for watchdog investigators who file grievances over fires on plantation land.
 
 ## Features
 
-Nothing shipped yet
+- See the latest fire hotspot on a map, with a check that its record still matches the seal on Base Sepolia.
 
 ## Docs
 
