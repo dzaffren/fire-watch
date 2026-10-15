@@ -48,6 +48,8 @@ your own layout. Never hard-code a colour, size or font that has a token.
 - Working screens animate only transform and opacity with the tier 1 durations.
 - Map markers and the replay timeline have no classes. Copy their markup and styles from
   `guidelines/detections.html`.
+- Fire dots below zoom 12 are 3 px with no edge, and the legend reads "Fire detection. Zoom in for
+  fire power". From zoom 12 they are 6, 9 or 13 px by fire power with a 1px `--fw-surface` edge.
 
 Read `styles.css`, `tokens/*.css` and the cards in `guidelines/` before styling; they are the source.
 
