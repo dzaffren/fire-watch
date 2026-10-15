@@ -3,8 +3,10 @@ import { location } from "./format";
 import { MinusIcon, PlusIcon } from "./icons";
 
 const WATCH_AREA = { west: 95, south: -11, east: 141, north: 6 };
+const WATCH_PADDING = 24;
 // 2^8 * 256 px / 360° ≈ 182 px per degree, the whole zoom nearest the spec's 150.
 const RECORD_ZOOM = 8;
+const TILE = 256;
 const MAPS_CALLBACK = "__fireWatchMapsReady";
 
 let mapsLibrary: Promise<google.maps.MapsLibrary> | null = null;
@@ -52,6 +54,32 @@ function mapStyles(): google.maps.MapTypeStyle[] {
     { elementType: "labels.text.stroke", stylers: [{ color: land }] },
     { featureType: "poi.park", elementType: "labels.text.fill", stylers: [{ color: muted }] },
   ];
+}
+
+// Web Mercator y, in pixels at zoom 0.
+function mercatorY(lat: number): number {
+  const sin = Math.sin((lat * Math.PI) / 180);
+  return (0.5 - Math.log((1 + sin) / (1 - sin)) / (4 * Math.PI)) * TILE;
+}
+
+// The view fitBounds would pick, set at once. Google holds fitBounds until the map first draws,
+// which in a background tab is after the record has arrived and been centred.
+function watchAreaView(div: HTMLElement): { center: google.maps.LatLngLiteral; zoom: number } {
+  const top = mercatorY(WATCH_AREA.north);
+  const bottom = mercatorY(WATCH_AREA.south);
+  const width = ((WATCH_AREA.east - WATCH_AREA.west) / 360) * TILE;
+  const scale = Math.min(
+    (div.clientWidth - 2 * WATCH_PADDING) / width,
+    (div.clientHeight - 2 * WATCH_PADDING) / (bottom - top),
+  );
+  const middle = (top + bottom) / 2 / TILE;
+  return {
+    center: {
+      lat: (Math.atan(Math.sinh(Math.PI * (1 - 2 * middle))) * 180) / Math.PI,
+      lng: (WATCH_AREA.west + WATCH_AREA.east) / 2,
+    },
+    zoom: scale > 1 ? Math.floor(Math.log2(scale)) : 0,
+  };
 }
 
 interface Marker {
@@ -148,7 +176,9 @@ export function HotspotMap({ point }: Props) {
     if (!ready || !map.current || !marker.current) return;
     if (lat_e5 === undefined || lon_e5 === undefined) {
       marker.current.hide();
-      map.current.fitBounds(WATCH_AREA, 24);
+      const view = watchAreaView(map.current.getDiv());
+      map.current.setCenter(view.center);
+      map.current.setZoom(view.zoom);
       return;
     }
     const at = { lat: lat_e5 / 1e5, lng: lon_e5 / 1e5 };

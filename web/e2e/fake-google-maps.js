@@ -54,11 +54,6 @@
     getDiv() {
       return this.div;
     }
-    fitBounds(b) {
-      this.center = { lat: (b.south + b.north) / 2, lng: (b.west + b.east) / 2 };
-      this.zoom = 4;
-      this.changed();
-    }
     changed() {
       window.__fakeMap = { center: this.center, zoom: this.zoom, styles: this.options?.styles ?? [] };
       for (const o of this.overlays ?? []) o.draw();
