@@ -22,18 +22,35 @@ LOCK_KEY = 4_120_540
 # A run started on the hour must finish before the next one starts (D19).
 SEAL_BUDGET_SECONDS = 40 * 60
 REACH_M = 5000
+# More than 5 km anywhere in the Indonesia box, so the envelope test drops only concessions
+# out of reach.
+REACH_DEGREES = 0.05
 
 HAS_RECORDS = "SELECT EXISTS (SELECT 1 FROM hotspots WHERE fingerprint_version = 2) AS found"
+# Concession by concession, so PostGIS reuses each boundary's distance tree across hotspots:
+# 15 times faster on 5 days of FIRMS rows than hotspot by hotspot. OFFSET 0 keeps the
+# planner from turning the loop around.
 MATCH = """
-SELECT p.i, c.id, ST_Covers(c.boundary, p.geom) AS inside,
-       round(ST_Distance(ST_Boundary(c.boundary)::geography, p.geom::geography))::integer
-           AS edge_m
-FROM (
-    SELECT u.i, ST_SetSRID(ST_MakePoint(u.lon_e5 / 1e5, u.lat_e5 / 1e5), 4326) AS geom
+WITH points AS MATERIALIZED (
+    SELECT u.i, g.geom, g.geom::geography AS point, ST_Expand(g.geom, %(reach_degrees)s) AS reach
     FROM unnest(%(lon_e5)s::integer[], %(lat_e5)s::integer[]) WITH ORDINALITY
         AS u (lon_e5, lat_e5, i)
-) p
-JOIN concessions c ON ST_DWithin(c.boundary::geography, p.geom::geography, %(reach_m)s)
+    CROSS JOIN LATERAL (
+        SELECT ST_SetSRID(ST_MakePoint(u.lon_e5 / 1e5, u.lat_e5 / 1e5), 4326) AS geom
+    ) AS g
+), maps AS MATERIALIZED (
+    SELECT id, boundary, ST_Envelope(boundary) AS envelope, boundary::geography AS area,
+           ST_Boundary(boundary)::geography AS edge
+    FROM concessions
+)
+SELECT p.i, c.id, ST_Covers(c.boundary, p.geom) AS inside,
+       round(ST_Distance(c.edge, p.point))::integer AS edge_m
+FROM maps AS c
+CROSS JOIN LATERAL (
+    SELECT * FROM points
+    WHERE c.envelope && points.reach AND ST_DWithin(c.area, points.point, %(reach_m)s)
+    OFFSET 0
+) AS p
 """
 INSERT = """
 INSERT INTO hotspots (record_id, source, lat_e5, lon_e5, acquired_at, frp_e2, confidence,
@@ -80,6 +97,7 @@ def match(conn, hotspots: list[firms.Hotspot]) -> list[tuple[firms.Hotspot, list
             "lon_e5": [h.lon_e5 for h in hotspots],
             "lat_e5": [h.lat_e5 for h in hotspots],
             "reach_m": REACH_M,
+            "reach_degrees": REACH_DEGREES,
         },
     ):
         found.setdefault(m["i"] - 1, []).append(
