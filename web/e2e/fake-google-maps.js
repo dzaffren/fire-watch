@@ -55,7 +55,7 @@
       this.center = { lat: 0, lng: 0 };
       this.zoom = 0;
       this.overlays = new Set();
-      this.listeners = new Map();
+      this.listeners = new globalThis.Map();
       div.style.background = options.backgroundColor ?? "";
       const overlayLayer = document.createElement("div");
       overlayLayer.style.cssText = "position:absolute;left:50%;top:50%";
