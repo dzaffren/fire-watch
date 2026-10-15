@@ -26,7 +26,9 @@ const WEB = fileURLToPath(new URL("..", import.meta.url));
 const ROOT = resolve(WEB, "..");
 const CONTRACTS = resolve(ROOT, "contracts");
 const API = resolve(ROOT, "api");
-const FIRMS_CSV = resolve(ROOT, "fixtures/firms/riau-latest.csv");
+const FIRMS_CSV = resolve(ROOT, "fixtures/firms/fire-record.csv");
+// The real boundaries of ID-WOOD-CONCESSION-0540, 0377 and 0275, so matches come at real distances.
+const CONCESSIONS = resolve(ROOT, "fixtures/concessions/trase-cut.geojson");
 const VITE = resolve(WEB, "node_modules/.bin/vite");
 const PATH = `${homedir()}/.foundry/bin:${process.env.PATH}`;
 
@@ -107,9 +109,10 @@ export default async function globalSetup() {
 
     await resetDatabase();
     await run("uv", ["run", "python", "-m", "firewatch.migrate", "up"], API, apiEnv);
+    await run("uv", ["run", "load-concessions", CONCESSIONS], API, apiEnv);
 
     await new Promise<void>((done) => firms.listen(FIRMS_PORT, "127.0.0.1", done));
-    await run("uv", ["run", "record-latest"], API, {
+    await run("uv", ["run", "record-hotspots"], API, {
       ...apiEnv,
       FIRMS_MAP_KEY: "e2e",
       FIRMS_BASE_URL: FIRMS_URL,
