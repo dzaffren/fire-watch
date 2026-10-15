@@ -10,3 +10,6 @@
 - Get Base Sepolia ETH from the Google faucet plus the bridge — [base-sepolia-eth-via-bridge](base-sepolia-eth-via-bridge.md)
 - Run chain reads through the lagging, pruning `public_rpc` proxy, not bare anvil — [public-rpc-lag-and-pruning](public-rpc-lag-and-pruning.md)
 - Google holds `fitBounds` until the first draw; set the camera directly — [google-fitbounds-waits-for-first-draw](google-fitbounds-waits-for-first-draw.md)
+- Match points to big polygons by looping over the polygons in PostGIS — [postgis-loop-over-polygons](postgis-loop-over-polygons.md)
+- Chunk worktrees start at main; name the slice head in the brief — [chunk-worktrees-start-at-main](chunk-worktrees-start-at-main.md)
+- Use `globalThis.Map` inside the fake google.maps file — [fake-maps-shadows-map](fake-maps-shadows-map.md)
