@@ -156,6 +156,7 @@ Scenario: No hotspots in the chosen dates
 - A public page to check a record by its ID, and the pack for a buyer — complaint-pack.
 - Past seasons — season-backtest.
 - Company names — not planned (shape O10).
+- A link to each view, and Back stepping out of a record — complaint-pack (O10).
 
 ## Interface
 
@@ -295,6 +296,8 @@ Status: active
 | O6 | Neon free gives 1 GB (walking-skeleton O5). The Trase file is 25 MB as GeoJSON, plus about 1,600 records a day | unproven | spec p1 | spec p3 | Open | — |
 | O7 | Neon free gives 100 compute-hours a month (walking-skeleton O6). An hourly job wakes the database 720 times a month | unproven | spec p1 | spec p3 | Open | — |
 | O8 | About 1,600 seals a day (541 to 2,495) from a wallet that started with 0.05 Base Sepolia ETH. At 0.006 gwei (2026-10-16) and an assumed 60,000 gas each, that is about 0.0006 ETH a day; the gas price can rise | unproven | spec p1 | spec p3 | Open | — |
+| O9 | Big fires draw as a solid patch of fire colour: around hotspot A at zoom 11, hundreds of detections overlap. The design system says fire colour never fills large areas | question | spec p2 | user | Resolved | 2026-10-16: add a rule for crowded detections to the design system through `/design-system` before `/build` (for example smaller dots below zoom 12); `FireMap` follows it |
+| O10 | The browser's Back button leaves the page instead of stepping back from a record to its concession, and no view has its own link | flag | spec p2 | user | Resolved | 2026-10-16: leave for complaint-pack, which gives each record a public link; on-page back links cover moving around |
 
 _Never delete this section or its rows. See references/ledger.md._
 
