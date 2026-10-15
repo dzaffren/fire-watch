@@ -8,3 +8,4 @@
 - Integrate chunk worktrees by cherry-pick or fast-forward, not merge commits — [integrate-chunks-without-merge-commits](integrate-chunks-without-merge-commits.md)
 - Write formats in specs as `<name>`, not `{name}` — [spec-angle-brackets](spec-angle-brackets.md)
 - Get Base Sepolia ETH from the Google faucet plus the bridge — [base-sepolia-eth-via-bridge](base-sepolia-eth-via-bridge.md)
+- Run chain reads through the lagging, pruning `public_rpc` proxy, not bare anvil — [public-rpc-lag-and-pruning](public-rpc-lag-and-pruning.md)
