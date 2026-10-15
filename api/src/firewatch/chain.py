@@ -93,6 +93,9 @@ class Chain:
         block = self._block(receipt.blockNumber)
         return bytes(tx_hash), datetime.fromtimestamp(block.timestamp, timezone.utc)
 
+    def balance_eth(self) -> float:
+        return float(Web3.from_wei(self.w3.eth.get_balance(self.account.address), "ether"))
+
     def seal_tx_hash(self, record_id: bytes) -> bytes:
         """The hash of the transaction that sealed record_id."""
         sealed_at = self.sealed(record_id)

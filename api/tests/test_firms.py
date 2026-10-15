@@ -3,7 +3,7 @@ from pathlib import Path
 
 import httpx
 
-from firewatch.firms import Hotspot, fetch_latest, latest, parse
+from firewatch.firms import BACKFILL_DAYS, DAYS, Hotspot, fetch, parse
 
 FIRMS_FIXTURES = Path(__file__).parents[2] / "fixtures" / "firms"
 HEADER = (
@@ -20,20 +20,17 @@ def row(lat="0.4312", lon="101.2154", date="2026-10-12", time="618", conf="n", f
     return f"{lat},{lon},345.06,0.52,0.5,{date},{time},N20,VIIRS,{conf},2.0NRT,298.4,{frp},D\n"
 
 
-def test_latest_time_wins_and_frp_breaks_the_tie():
-    assert latest(parse(fixture("riau-latest.csv"))) == Hotspot(
+def test_parse_keeps_every_row():
+    hotspots = parse(fixture("fire-record.csv"))
+    assert len(hotspots) == 25
+    assert hotspots[0] == Hotspot(
         source="VIIRS_NOAA20_NRT",
-        lat_e5=43120,
-        lon_e5=10121540,
-        acquired_at=datetime(2026, 10, 12, 6, 18, tzinfo=timezone.utc),
-        frp_e2=1420,
+        lat_e5=-358175,
+        lon_e5=10571567,
+        acquired_at=datetime(2026, 10, 14, 6, 18, tzinfo=timezone.utc),
+        frp_e2=520,
         confidence="n",
     )
-
-
-def test_lowest_latitude_then_longitude_breaks_an_frp_tie():
-    picked = latest(parse(fixture("ties.csv")))
-    assert (picked.lat_e5, picked.lon_e5, picked.confidence) == (-120410, 10399020, "h")
 
 
 def test_short_acq_time_is_zero_padded():
@@ -65,18 +62,22 @@ def test_bad_rows_are_skipped():
     assert len(parse(HEADER + good)) == 1
 
 
-def test_empty_csv_has_no_latest():
-    assert latest(parse(fixture("empty.csv"))) is None
+def test_empty_csv_has_no_hotspots():
+    assert parse(fixture("empty.csv")) == []
 
 
-def test_fetch_latest_requests_the_indonesia_box():
+def test_fetch_requests_the_indonesia_box_for_the_given_days():
     seen = []
 
     def handler(request):
         seen.append(str(request.url))
-        return httpx.Response(200, text=fixture("riau-latest.csv"))
+        return httpx.Response(200, text=fixture("fire-record.csv"))
 
     client = httpx.Client(transport=httpx.MockTransport(handler))
-    picked = fetch_latest("http://firms.test", "KEY", client=client)
-    assert seen == ["http://firms.test/api/area/csv/KEY/VIIRS_NOAA20_NRT/95,-11,141,6/5"]
-    assert picked.lat_e5 == 43120
+    hotspots = fetch("http://firms.test", "KEY", BACKFILL_DAYS, client=client)
+    fetch("http://firms.test", "KEY", DAYS, client=client)
+    assert seen == [
+        "http://firms.test/api/area/csv/KEY/VIIRS_NOAA20_NRT/95,-11,141,6/5",
+        "http://firms.test/api/area/csv/KEY/VIIRS_NOAA20_NRT/95,-11,141,6/2",
+    ]
+    assert hotspots == parse(fixture("fire-record.csv"))

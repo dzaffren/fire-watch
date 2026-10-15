@@ -12,7 +12,7 @@ dependencies = [
 ]
 
 [project.scripts]
-record-latest = "firewatch.record_latest:main"
+record-hotspots = "firewatch.record_hotspots:main"
 load-concessions = "firewatch.concessions:main"
 
 [dependency-groups]
