@@ -5,6 +5,7 @@ import subprocess
 import sys
 import threading
 import time
+import urllib.request
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -78,6 +79,52 @@ class _FirmsHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
+
+    def log_message(self, *args):
+        pass
+
+
+@pytest.fixture
+def public_rpc(anvil):
+    """anvil behind a proxy that acts like a public RPC: blocks below pruned_below are gone,
+    and when lagging, each block number is unknown the first time it is asked for."""
+    server = ThreadingHTTPServer(("127.0.0.1", 0), _PublicRpcHandler)
+    server.upstream = anvil.provider.endpoint_uri
+    server.pruned_below = 0
+    server.lagging = False
+    server.asked = set()
+    server.url = f"http://127.0.0.1:{server.server_port}"
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    yield server
+    server.shutdown()
+    server.server_close()
+
+
+class _PublicRpcHandler(BaseHTTPRequestHandler):
+    def do_POST(self):
+        request = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
+        body = json.dumps(self._answer(request)).encode()
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def _answer(self, request):
+        server = self.server
+        if request["method"] == "eth_getBlockByNumber" and request["params"][0].startswith("0x"):
+            number = int(request["params"][0], 16)
+            if number < server.pruned_below:
+                error = {"code": 4444, "message": "pruned history unavailable"}
+                return {"jsonrpc": "2.0", "id": request["id"], "error": error}
+            if server.lagging and number not in server.asked:
+                server.asked.add(number)
+                return {"jsonrpc": "2.0", "id": request["id"], "result": None}
+        upstream = urllib.request.Request(
+            server.upstream, json.dumps(request).encode(), {"Content-Type": "application/json"}
+        )
+        with urllib.request.urlopen(upstream) as response:
+            return json.loads(response.read())
 
     def log_message(self, *args):
         pass
@@ -201,6 +248,35 @@ def test_already_sealed_on_chain_takes_tx_hash_from_event(funded):
     assert result.returncode == 0, result.stderr
     assert rows(env["DATABASE_URL"]) == [sealed]
     assert contract.w3.eth.block_number == block
+
+
+def test_seal_waits_for_an_rpc_node_that_has_not_seen_the_block(funded, public_rpc):
+    _, env = funded
+    public_rpc.lagging = True
+
+    result = run_recorder({**env, "RPC_URL": public_rpc.url})
+
+    assert result.returncode == 0, result.stderr
+    (row,) = rows(env["DATABASE_URL"])
+    assert row["tx_hash"] is not None and row["sealed_at"] is not None
+
+
+def test_already_sealed_is_found_on_an_rpc_that_pruned_old_blocks(funded, public_rpc):
+    contract, env = funded
+    # Two seconds apart, as on Base. Without an interval anvil stamps every block the same.
+    contract.w3.provider.make_request("anvil_mine", [100, 2])
+    assert run_recorder(env).returncode == 0
+    (sealed,) = rows(env["DATABASE_URL"])
+    seal_block = contract.w3.eth.get_transaction_receipt(sealed["tx_hash"]).blockNumber
+    with psycopg.connect(env["DATABASE_URL"]) as conn:
+        conn.execute("UPDATE hotspots SET tx_hash = NULL, sealed_at = NULL")
+    contract.w3.provider.make_request("anvil_mine", [5, 2])
+    public_rpc.pruned_below = seal_block - 20
+
+    result = run_recorder({**env, "RPC_URL": public_rpc.url})
+
+    assert result.returncode == 0, result.stderr
+    assert rows(env["DATABASE_URL"]) == [sealed]
 
 
 def test_no_hotspots_stores_nothing(funded, firms):

@@ -1,12 +1,16 @@
 """The recorder's side of the FireRecords contract (contracts/src/FireRecords.sol)."""
 
+import time
 from datetime import datetime, timezone
 
 from eth_account import Account
 from web3 import Web3
-from web3.exceptions import Web3RPCError
+from web3.exceptions import BlockNotFound, Web3RPCError
 
 RECEIPT_TIMEOUT = 120
+# A public RPC is several nodes behind one URL; the one asked may not have a new block yet.
+BLOCK_TRIES = 10
+BLOCK_RETRY_SECONDS = 1
 ZERO = b"\x00" * 32
 
 # Hand-written so the API does not depend on a contracts build.
@@ -86,7 +90,7 @@ class Chain:
         receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash, timeout=RECEIPT_TIMEOUT)
         if receipt.status != 1:
             raise ChainError(f"seal transaction 0x{bytes(tx_hash).hex()} reverted")
-        block = self.w3.eth.get_block(receipt.blockNumber)
+        block = self._block(receipt.blockNumber)
         return bytes(tx_hash), datetime.fromtimestamp(block.timestamp, timezone.utc)
 
     def seal_tx_hash(self, record_id: bytes) -> bytes:
@@ -107,11 +111,26 @@ class Chain:
 
     def _first_block_after(self, ts: int) -> int:
         """Lowest block number whose timestamp is after ts, or latest + 1 if none is."""
-        low, high = 0, self.w3.eth.block_number + 1
+        # Step back from the head in doubling strides, not up from block 0: public RPCs prune
+        # old blocks, and the seal is recent.
+        latest = self.w3.eth.block_number
+        low, high, stride = latest, latest + 1, 1
+        while low > 0 and self._block(low).timestamp > ts:
+            low, high, stride = max(0, low - stride), low, stride * 2
         while low < high:
             mid = (low + high) // 2
-            if self.w3.eth.get_block(mid).timestamp > ts:
+            if self._block(mid).timestamp > ts:
                 high = mid
             else:
                 low = mid + 1
         return low
+
+    def _block(self, number: int):
+        """Block `number`, giving a lagging RPC node a few seconds to catch up."""
+        for attempt in range(BLOCK_TRIES):
+            try:
+                return self.w3.eth.get_block(number)
+            except BlockNotFound:
+                if attempt == BLOCK_TRIES - 1:
+                    raise
+                time.sleep(BLOCK_RETRY_SECONDS)
