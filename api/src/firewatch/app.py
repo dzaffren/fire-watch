@@ -1,18 +1,72 @@
-"""Read-only API: the newest stored hotspot and a health check."""
+"""Read-only API: pulpwood concessions with their hotspot records, and a health check."""
 
 import logging
 import os
-from datetime import datetime, timezone
+from datetime import date, datetime, time, timedelta, timezone
+from typing import Annotated
 
 import psycopg
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
 
+from firewatch.concessions import MAP_VERSION
 from firewatch.db import connect
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s:     %(message)s")
 log = logging.getLogger("firewatch.app")
+
+MAX_DAYS = 31
+# About 50 m: enough to draw the boundary, a fraction of the full file's points.
+SIMPLIFY_DEGREES = 0.0005
+
+RECORDING_STARTED = """
+SELECT min(acquired_at) AS started FROM hotspots WHERE fingerprint_version = 2
+"""
+CONCESSION_COUNTS = """
+SELECT c.id, c.province, c.area_ha,
+       count(*) FILTER (WHERE m.inside) AS inside,
+       count(*) FILTER (WHERE NOT m.inside) AS near
+FROM hotspots h
+JOIN hotspot_concessions m ON m.hotspot_id = h.id
+JOIN concessions c ON c.id = m.concession_id
+WHERE h.fingerprint_version = 2 AND h.acquired_at >= %(start)s AND h.acquired_at < %(end)s
+GROUP BY c.id
+ORDER BY inside DESC, near DESC, c.id
+"""
+CONCESSION = """
+SELECT id, province, area_ha,
+       ST_AsGeoJSON(ST_Multi(ST_SimplifyPreserveTopology(boundary, %(simplify)s)), 5)::json
+           AS boundary
+FROM concessions WHERE id = %(id)s
+"""
+CONCESSION_HOTSPOTS = """
+SELECT h.*, m.inside AS inside_here,
+       (SELECT json_agg(json_build_object('id', a.concession_id, 'inside', a.inside,
+                                          'edge_m', a.edge_m)
+                        ORDER BY a.inside DESC, a.edge_m, a.concession_id)
+        FROM hotspot_concessions a WHERE a.hotspot_id = h.id) AS concessions
+FROM hotspots h
+JOIN hotspot_concessions m ON m.hotspot_id = h.id AND m.concession_id = %(id)s
+WHERE h.fingerprint_version = 2 AND h.acquired_at >= %(start)s AND h.acquired_at < %(end)s
+ORDER BY h.acquired_at DESC, h.frp_e2 DESC, h.lat_e5, h.lon_e5
+"""
+RECORDER = """
+SELECT n.finished_at AS last_run_at,
+       CASE WHEN n.id IS NOT NULL THEN n.error IS NULL END AS last_run_ok,
+       (SELECT max(finished_at) FROM recorder_runs WHERE error IS NULL) AS last_ok_at,
+       n.sealed AS last_sealed,
+       (SELECT count(*) FROM hotspots WHERE fingerprint_version = 2 AND tx_hash IS NULL)
+           AS unsealed
+FROM (SELECT) AS one
+LEFT JOIN LATERAL (
+    SELECT * FROM recorder_runs ORDER BY finished_at DESC, id DESC LIMIT 1
+) AS n ON true
+"""
+
+From = Annotated[date, Query(alias="from")]
+To = Annotated[date, Query(alias="to")]
 
 
 def _iso(at: datetime | None) -> str | None:
@@ -23,6 +77,36 @@ def _hex(value: bytes | None) -> str | None:
     return "0x" + bytes(value).hex() if value is not None else None
 
 
+def _range(start: date, end: date) -> dict:
+    """From start 00:00 UTC up to the end of end, as query parameters."""
+    if end < start:
+        raise HTTPException(status_code=422, detail="to is before from")
+    if (end - start).days + 1 > MAX_DAYS:
+        raise HTTPException(status_code=422, detail=f"Pick {MAX_DAYS} days or fewer")
+    return {
+        "start": datetime.combine(start, time.min, timezone.utc),
+        "end": datetime.combine(end + timedelta(days=1), time.min, timezone.utc),
+    }
+
+
+def _record(row) -> dict:
+    return {
+        "record_id": _hex(row["record_id"]),
+        "source": row["source"],
+        "lat_e5": row["lat_e5"],
+        "lon_e5": row["lon_e5"],
+        "acquired_at": _iso(row["acquired_at"]),
+        "acquired_unix": int(row["acquired_at"].timestamp()),
+        "frp_e2": row["frp_e2"],
+        "confidence": row["confidence"],
+        "tx_hash": _hex(row["tx_hash"]),
+        "sealed_at": _iso(row["sealed_at"]),
+        "fingerprint_version": row["fingerprint_version"],
+        "map_version": row["map_version"],
+        "concessions": row["concessions"],
+    }
+
+
 def create_app(allowed_origin: str) -> FastAPI:
     app = FastAPI(title="Fire Watch API")
     app.add_middleware(
@@ -30,42 +114,59 @@ def create_app(allowed_origin: str) -> FastAPI:
         allow_origins=[allowed_origin] if allowed_origin else [],
         allow_methods=["GET"],
     )
+    app.add_middleware(GZipMiddleware)
 
-    @app.get("/api/hotspots/latest")
-    def latest_hotspot():
+    @app.get("/api/concessions")
+    def list_concessions(start: From, end: To):
+        params = _range(start, end)
         with connect() as conn:
-            row = conn.execute(
-                "SELECT * FROM hotspots ORDER BY acquired_at DESC, id DESC LIMIT 1"
-            ).fetchone()
-        if row is None:
-            raise HTTPException(status_code=404, detail="No hotspot recorded yet")
-        record_id = _hex(row["record_id"])
-        log.info(
-            "served hotspot record_id=%s sealed=%s",
-            record_id,
-            "yes" if row["tx_hash"] is not None else "no",
-        )
+            started = conn.execute(RECORDING_STARTED).fetchone()["started"]
+            rows = conn.execute(CONCESSION_COUNTS, params).fetchall()
+        log.info("served concessions from=%s to=%s count=%d", start, end, len(rows))
         return {
-            "record_id": record_id,
-            "source": row["source"],
-            "lat_e5": row["lat_e5"],
-            "lon_e5": row["lon_e5"],
-            "acquired_at": _iso(row["acquired_at"]),
-            "acquired_unix": int(row["acquired_at"].timestamp()),
-            "frp_e2": row["frp_e2"],
-            "confidence": row["confidence"],
-            "tx_hash": _hex(row["tx_hash"]),
-            "sealed_at": _iso(row["sealed_at"]),
+            "recording_started": started.astimezone(timezone.utc).date().isoformat()
+            if started
+            else None,
+            "map_version": MAP_VERSION,
+            "concessions": rows,
+        }
+
+    @app.get("/api/concessions/{concession_id}")
+    def concession(concession_id: str, start: From, end: To):
+        params = {**_range(start, end), "id": concession_id, "simplify": SIMPLIFY_DEGREES}
+        with connect() as conn:
+            found = conn.execute(CONCESSION, params).fetchone()
+            if found is None:
+                raise HTTPException(status_code=404, detail="No such concession")
+            rows = conn.execute(CONCESSION_HOTSPOTS, params).fetchall()
+        inside = sum(1 for row in rows if row["inside_here"])
+        log.info("served concession id=%s hotspots=%d", concession_id, len(rows))
+        return {
+            "id": found["id"],
+            "province": found["province"],
+            "area_ha": found["area_ha"],
+            "inside": inside,
+            "near": len(rows) - inside,
+            "boundary": [polygon[0] for polygon in found["boundary"]["coordinates"]],
+            "hotspots": [_record(row) for row in rows],
         }
 
     @app.get("/api/health")
     def health():
         try:
             with connect() as conn:
-                conn.execute("SELECT 1")
+                recorder = conn.execute(RECORDER).fetchone()
         except psycopg.Error:
             return JSONResponse({"status": "error", "database": "down"}, status_code=503)
-        return {"status": "ok", "database": "ok"}
+        return {
+            "status": "ok",
+            "database": "ok",
+            "recorder": {
+                **recorder,
+                "last_run_at": _iso(recorder["last_run_at"]),
+                "last_ok_at": _iso(recorder["last_ok_at"]),
+            },
+        }
 
     return app
 
