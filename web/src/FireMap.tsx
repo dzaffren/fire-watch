@@ -11,6 +11,9 @@ export interface Dot {
 
 // Fire power under 5, 5–20 and over 20 MW: 6, 9 and 13 px across, as on the detections guideline.
 const radius = (frp_e2: number) => (frp_e2 < 500 ? 3 : frp_e2 <= 2000 ? 4.5 : 6.5);
+// Below zoom 12 a 375 m pixel is under 10 px wide, so every detection is a 3 px dot (D22).
+const FIRE_POWER_ZOOM = 12;
+const CROWDED_RADIUS = 1.5;
 const RING_RADIUS = 7;
 const HIT_PX = 10;
 // About 5 km, so hotspots just outside the edge stay in view.
@@ -111,8 +114,9 @@ function createLayer(OverlayView: typeof google.maps.OverlayView): Layer {
       }
       ctx.setLineDash([]);
 
-      // Smallest first so the strongest fires sit on top; a surface-coloured edge keeps
-      // neighbouring detections apart instead of merging into one patch of fire colour.
+      // From zoom 12, smallest first so the strongest fires sit on top; a surface-coloured edge
+      // keeps neighbouring detections apart instead of merging into one patch of fire colour.
+      const firePower = (map.getZoom() ?? 0) >= FIRE_POWER_ZOOM;
       ctx.fillStyle = themeColour("--fw-fire");
       ctx.strokeStyle = themeColour("--fw-surface");
       ctx.lineWidth = 1;
@@ -122,9 +126,9 @@ function createLayer(OverlayView: typeof google.maps.OverlayView): Layer {
         const p = this.pixel(dot.lon_e5 / 1e5, dot.lat_e5 / 1e5);
         if (!p || p[0] < -RING_RADIUS || p[1] < -RING_RADIUS || p[0] > w + RING_RADIUS || p[1] > h + RING_RADIUS) continue;
         ctx.beginPath();
-        ctx.arc(p[0], p[1], radius(dot.frp_e2), 0, 2 * Math.PI);
+        ctx.arc(p[0], p[1], firePower ? radius(dot.frp_e2) : CROWDED_RADIUS, 0, 2 * Math.PI);
         ctx.fill();
-        ctx.stroke();
+        if (firePower) ctx.stroke();
       }
       if (this.data.selected !== null) {
         const dot = this.data.dots[this.data.selected];
@@ -172,6 +176,7 @@ export function FireMap({ label, boundary, dots, selected = null, onSelect }: Pr
   const layer = useRef<Layer | null>(null);
   const select = useRef(onSelect);
   const [ready, setReady] = useState(false);
+  const [zoom, setZoom] = useState(0);
 
   useEffect(() => {
     select.current = onSelect;
@@ -196,6 +201,7 @@ export function FireMap({ label, boundary, dots, selected = null, onSelect }: Pr
           cancelAnimationFrame(frame);
           frame = requestAnimationFrame(() => l.draw());
         });
+        m.addListener("zoom_changed", () => setZoom(m.getZoom() ?? 0));
         m.addListener("click", (e: google.maps.MapMouseEvent) => {
           const i = e.latLng && l.hit(e.latLng);
           if (i !== null && i !== undefined) select.current?.(i);
@@ -262,14 +268,23 @@ export function FireMap({ label, boundary, dots, selected = null, onSelect }: Pr
       </div>
       {boundary && (
         <div className="fw-panel map-legend" aria-hidden="true">
-          <div className="legend-row">
-            <span className="legend-key">
-              <span className="legend-dot sm" />
-              <span className="legend-dot md" />
-              <span className="legend-dot lg" />
-            </span>
-            Fire power: under 5, 5–20, over 20 MW
-          </div>
+          {zoom >= FIRE_POWER_ZOOM ? (
+            <div className="legend-row">
+              <span className="legend-key">
+                <span className="legend-dot sm" />
+                <span className="legend-dot md" />
+                <span className="legend-dot lg" />
+              </span>
+              Fire power: under 5, 5–20, over 20 MW
+            </div>
+          ) : (
+            <div className="legend-row">
+              <span className="legend-key">
+                <span className="legend-dot xs" />
+              </span>
+              Fire detection. Zoom in for fire power
+            </div>
+          )}
           <div className="legend-row">
             <span className="legend-key legend-dash" />
             Concession boundary
