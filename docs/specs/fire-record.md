@@ -233,7 +233,7 @@ version (D17). The read-only API serves the concession list and one concession w
 boundary and records. The page checks each record against the chain in the browser, as before
 (D7). The contract doesn't change.
 
-Relies on: D2, D4, D5, D6, D7, D9, D10, D11, and D12–D21 drafted below. D17 supersedes D8.
+Relies on: D2, D4, D5, D6, D7, D9, D10, D11, and D12–D22 drafted below. D17 supersedes D8.
 
 ```mermaid
 flowchart TB
@@ -344,7 +344,7 @@ changes, so GitHub can never reach the job or its secrets (D21).
 | `web/src/api.ts` | `concessions()` and `concession()` fetchers and `apiSource: FireRecordSource` (fetchers, `sealOf` from `chain.ts`, fingerprint); `latestHotspot()` goes | Scenarios 2, 3, 5 |
 | `web/src/main.tsx` | The home page is `FireRecordPage` on `apiSource`, today's UTC date, and the list's `recording_started` and `map_version`. The preview route loads only when `import.meta.env.DEV`, so its made-up hashes never reach the public site | Scope |
 | `web/src/maps.ts` (new) | `loadMaps`, `themeColour`, `mapStyles`, `fitView` and `WATCH_AREA` move here from `HotspotMap.tsx:5-74`; `HotspotMap.tsx`, `HomePage.tsx` and their tests go | Scope: the latest-hotspot screen goes |
-| `web/src/FireMap.tsx` | Draws crowded detections by the rule `/design-system` adds (O9) | O9 |
+| `web/src/FireMap.tsx` | Below zoom 12 every detection is a 3 px dot with no edge and the legend reads "Fire detection. Zoom in for fire power"; from zoom 12 the fire-power sizes and legend row as today (`guidelines/detections.html`) | O9; D22 |
 | `web/src/*.test.ts(x)` | `FireRecordPage.test.tsx` (default dates, list, empty, couldn't load, slow note, date errors), `ConcessionView.test.tsx`, `RecordPanel.test.tsx` (new rows, the one-pixel note), `fingerprint.test.ts` (version 2 vectors), `format.test.ts` | Test plan |
 | `web/e2e/fire-record.spec.ts` (replaces `skeleton.spec.ts`), `global-setup.ts:29,109-112`, `fake-google-maps.js` | The setup loads `trase-cut.geojson` and runs `record-hotspots` against `fire-record.csv` on anvil; the fake map gains `getBounds`, `addListener` and `LatLngBounds.contains`. Keeps the 44 px touch test | Scenarios 2–4 |
 | `.github/workflows/ci.yml:30`, `:80` | Postgres service image becomes `postgis/postgis:17-3.5` | D18 |
@@ -485,7 +485,7 @@ three fixture concessions, records the fixture CSV on anvil, opens the page, set
 | C | Deploy, job, alert | `.github/`, `infra/`, `README.md` |
 
 A, B and C run in parallel. B builds against the API shapes above and the vectors A writes; the e2e
-passes only once A is in. `/design-system` adds the crowded-detections rule (O9) before B starts.
+passes only once A is in. The crowded-detections rule (O9) is in the design system (D22).
 Each lockfile sits inside its chunk's directory.
 
 ### Risks
@@ -501,7 +501,8 @@ Each lockfile sits inside its chunk's directory.
 
 ### Decisions to record
 
-D12 to D16 were approved at pauses 1 and 2. D17 to D21 are drafted here. `/build` appends them all
+D12 to D16 were approved at pauses 1 and 2. D17 to D21 are drafted here. D22 was approved in
+`/design-system` on 2026-10-16 and waits here so the numbers stay in order. `/build` appends them all
 to DECISIONS.md and changes D8's status to `superseded by D17`.
 
 ```markdown
@@ -623,6 +624,18 @@ Rejected: Contributor on the whole resource group (a compromised deploy could sw
 and read the key), a custom role without secret reads (the same image swap still reads the key).
 Source: docs/specs/fire-record.md
 Status: active
+
+## D22 · 2026-10-16 · Crowded fire detections draw as 3 px dots below zoom 12
+
+Why: at zoom 9 a 375 m VIIRS pixel is 1.2 px wide, so 6–13 px dots merge into solid
+patches of fire colour (296 detections within 40 px of hotspot A at zoom 11,
+ID-WOOD-CONCESSION-0540, 2026-10-11 to 14). 3 px dots keep every detection at its true
+position; fire-power sizes return at zoom 12, where a pixel is 10 px wide.
+Rejected: pooling into an 8 px grid (83 of 1,264 detections drawn on the wrong side of
+the boundary at zoom 9), open rings sized by fire power (still close into one patch
+around hotspot A), fire-power sizes at every zoom (the patches O9 raised).
+Source: docs/design/system-brief.md
+Status: active
 ```
 
 ## Open items
@@ -637,7 +650,7 @@ Status: active
 | O6 | Neon free gives 1 GB (walking-skeleton O5). The Trase file is 25 MB as GeoJSON, plus about 1,600 records a day | unproven | spec p1 | spec p3 | Accepted risk | 2026-10-16: estimated under 100 MB for 30 days (records about 150 bytes, about 1.25 matches each, boundaries about 25 MB). `api/scripts/measure_match.py` measures it in chunk A and the number goes here |
 | O7 | Neon free gives 100 compute-hours a month (walking-skeleton O6). An hourly job wakes the database 720 times a month | unproven | spec p1 | spec p3 | Accepted risk | 2026-10-16: estimated about 27 CU-hours a month from the job (about 9 minutes awake an hour) plus API visits. Check Neon's usage page a day after deploy; run every 2 hours if it runs high |
 | O8 | About 1,600 seals a day (541 to 2,495) from a wallet that started with 0.05 Base Sepolia ETH. At 0.006 gwei (2026-10-16) and an assumed 60,000 gas each, that is about 0.0006 ETH a day; the gas price can rise | unproven | spec p1 | spec p3 | Resolved | 2026-10-16: the real seal used 68,329 gas at 0.006 gwei, 0.00000041 ETH, with a negligible L1 fee (tx 0x9c2a0edb…f665e3ab). The wallet holds 0.039998 ETH: about 40 days at 2,495 seals a day, about 60 at 1,600 (D19) |
-| O9 | Big fires draw as a solid patch of fire colour: around hotspot A at zoom 11, hundreds of detections overlap. The design system says fire colour never fills large areas | question | spec p2 | user | Resolved | 2026-10-16: add a rule for crowded detections to the design system through `/design-system` before `/build` (for example smaller dots below zoom 12); `FireMap` follows it |
+| O9 | Big fires draw as a solid patch of fire colour: around hotspot A at zoom 11, hundreds of detections overlap. The design system says fire colour never fills large areas | question | spec p2 | user | Resolved | 2026-10-16: add a rule for crowded detections to the design system through `/design-system` before `/build` (for example smaller dots below zoom 12); `FireMap` follows it. 2026-10-16, `/design-system`: 3 px dots below zoom 12, fire-power sizes from zoom 12 (D22) |
 | O10 | The browser's Back button leaves the page instead of stepping back from a record to its concession, and no view has its own link | flag | spec p2 | user | Resolved | 2026-10-16: leave for complaint-pack, which gives each record a public link; on-page back links cover moving around |
 | O11 | PostGIS matches about 8,600 hotspots a run against 294 concessions within seconds on Neon's smallest compute | unproven | spec p3 | user | Accepted risk | 2026-10-16: measured in chunk A by `api/scripts/measure_match.py`; if slow, match only the hotspots not already stored |
 | O12 | With the wallet key in Azure (D15), GitHub's deploy identity has Contributor on the resource group, so a compromised deploy could reach the job's secrets | flag | spec p3 | user | Resolved | 2026-10-16: GitHub gets Contributor on firewatch-api only, plus Reader on the group; the operator updates the job image by hand (D21). Blocking secret reads alone wouldn't help: an identity that can swap the job's image can read the key |
