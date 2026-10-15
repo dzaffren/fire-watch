@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Hex } from "viem";
-import type { ConcessionDetail, ConcessionSummary, HotspotRecord } from "./api";
+import type { ConcessionDetail, ConcessionListing, HotspotRecord } from "./api";
 import { ConcessionList, type ListLoad } from "./ConcessionList";
 import { ConcessionView, type DetailLoad } from "./ConcessionView";
 import { DateRange, daysBefore } from "./DateRange";
@@ -11,7 +11,7 @@ import { LoadErrorPanel, LoadingPanel, RecordPanel, type Check } from "./RecordP
 
 /** Where the page gets its data; the preview passes fixtures, the app passes the API and the chain. */
 export interface FireRecordSource {
-  concessions(from: string, to: string): Promise<ConcessionSummary[]>;
+  concessions(from: string, to: string): Promise<ConcessionListing>;
   concession(id: string, from: string, to: string): Promise<ConcessionDetail>;
   sealOf(record: HotspotRecord): Promise<Hex>;
   fingerprint(record: HotspotRecord): Hex;
@@ -29,18 +29,18 @@ const TRASE_DATASET = "https://trase.earth/open-data/datasets/indonesia-wood-pul
 interface Props {
   source: FireRecordSource;
   today: string;
-  recordingStarted: string;
-  mapVersion: string;
   initialView?: View;
   initialDates?: { from: string; to: string };
 }
 
-export function FireRecordPage({ source, today, recordingStarted, mapVersion, initialView, initialDates }: Props) {
+export function FireRecordPage({ source, today, initialView, initialDates }: Props) {
   const [dates, setDates] = useState(initialDates ?? { from: daysBefore(today, DEFAULT_DAYS - 1), to: today });
   const [view, setView] = useState<View>(initialView ?? { kind: "list" });
   const [list, setList] = useState<ListLoad>({ kind: "loading" });
   const [listAttempt, setListAttempt] = useState(0);
   const [slow, setSlow] = useState(false);
+  // Kept from the last list, so the concession view still names the map while a new list loads.
+  const [mapVersion, setMapVersion] = useState("");
   const [detail, setDetail] = useState<DetailLoad>({ kind: "loading" });
   const [detailAttempt, setDetailAttempt] = useState(0);
   const [check, setCheck] = useState<Check>({ state: "checking" });
@@ -55,7 +55,11 @@ export function FireRecordPage({ source, today, recordingStarted, mapVersion, in
     source
       .concessions(dates.from, dates.to)
       .then(
-        (concessions) => live && setList({ kind: "ready", concessions }),
+        (listing) => {
+          if (!live) return;
+          setList({ kind: "ready", ...listing });
+          setMapVersion(listing.map_version);
+        },
         () => live && setList({ kind: "error" }),
       )
       .finally(() => clearTimeout(timer));
@@ -131,7 +135,6 @@ export function FireRecordPage({ source, today, recordingStarted, mapVersion, in
                 slow={slow}
                 from={dates.from}
                 to={dates.to}
-                recordingStarted={recordingStarted}
                 onOpen={(id) => setView({ kind: "concession", id })}
                 onRetry={() => setListAttempt((n) => n + 1)}
               />
@@ -168,7 +171,7 @@ export function FireRecordPage({ source, today, recordingStarted, mapVersion, in
                 ) : detail.kind === "error" ? (
                   <LoadErrorPanel onRetry={() => setDetailAttempt((n) => n + 1)} />
                 ) : (
-                  <LoadingPanel slow={false} />
+                  <LoadingPanel />
                 )}
               </div>
             )}

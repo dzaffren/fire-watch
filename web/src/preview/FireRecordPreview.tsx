@@ -60,6 +60,7 @@ function enrich(h: FixtureHotspot, state: State): HotspotRecord {
     record_id,
     source: "VIIRS_NOAA20_NRT",
     acquired_at: iso(h.acquired_unix),
+    fingerprint_version: 2,
     tx_hash: unsealed ? null : keccak256(record_id),
     sealed_at: unsealed ? null : iso(h.acquired_unix + SEAL_AFTER_S),
     map_version: fixture.map_version,
@@ -88,7 +89,11 @@ function makeSource(state: State): FireRecordSource {
       if (state === "loading") return never();
       await wait(WAIT_MS);
       if (state === "error") throw new Error("preview: server down");
-      return overlaps(from, to) ? fixture.concessions.map(({ outline: _, ...c }) => c) : [];
+      return {
+        recording_started: fixture.recording_started,
+        map_version: fixture.map_version,
+        concessions: overlaps(from, to) ? fixture.concessions.map(({ outline: _, ...c }) => c) : [],
+      };
     },
     async concession(id) {
       await wait(WAIT_MS);
@@ -164,8 +169,6 @@ export default function FireRecordPreview() {
         key={`${state}-${theme}`}
         source={source}
         today={fixture.today}
-        recordingStarted={fixture.recording_started}
-        mapVersion={fixture.map_version}
         initialView={initialView(state, fixture.detail)}
         initialDates={state === "empty" ? { from: "2026-10-01", to: "2026-10-07" } : undefined}
       />
