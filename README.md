@@ -36,16 +36,23 @@ Needs Docker, uv, pnpm and Foundry (`forge`, `anvil` on the path).
 | Page tests | `cd web && pnpm install && pnpm test` |
 | End-to-end test | `cd web && pnpm exec playwright install chromium && pnpm e2e` |
 | Migrate | `cd api && uv run --env-file ../.env python -m firewatch.migrate up` (or `down`) |
-| Record the latest hotspot | `cd api && uv run --env-file ../.env record-latest` |
+| Load the concession map | `cd api && uv run --env-file ../.env load-concessions` |
+| Record hotspots | `cd api && uv run --env-file ../.env record-hotspots` |
 
-`record-latest` reads `DATABASE_URL`, `FIRMS_MAP_KEY`, `RPC_URL`, `CONTRACT_ADDRESS` and
-`RECORDER_PRIVATE_KEY` from the environment. Keep them in the untracked `.env` at the repo
-root; `--env-file ../.env` loads it, since `uv run` doesn't on its own.
+The database runs PostGIS. A container made before that is plain Postgres; recreate it once
+with `docker compose up -d --wait --force-recreate db`.
+
+`load-concessions` downloads the pinned Trase file and refuses it if its checksum differs; give
+it a path and it loads that file as is. `record-hotspots` reads `DATABASE_URL`,
+`FIRMS_MAP_KEY`, `RPC_URL`, `CONTRACT_ADDRESS` and `RECORDER_PRIVATE_KEY` from the
+environment; `load-concessions` needs only `DATABASE_URL`. Keep them in the untracked `.env` at
+the repo root; `--env-file ../.env` loads it, since `uv run` doesn't on its own.
 
 ## First deploy
 
 1. **Neon:** create a free project. Put its owner URL in `.env` as `DATABASE_URL`, run the
-   migration, then create the API's read-only login with `infra/neon-reader.sql`.
+   migration and `load-concessions`, then create the API's read-only login with
+   `infra/neon-reader.sql`.
 2. **Base Sepolia:** fund the recorder wallet from a faucet, then deploy the contract:
    `cd contracts && RECORDER_ADDRESS=<recorder> forge script script/Deploy.s.sol --rpc-url https://sepolia.base.org --private-key <deployer key> --broadcast`.
 3. **Google Maps:** two keys. Production is locked to the site's address and to the Maps
@@ -53,7 +60,25 @@ root; `--env-file ../.env` loads it, since `uv run` doesn't on its own.
    day and set a $1 budget alert in the Cloud console.
 4. **GitHub:** push the repo. CI runs; Deploy pushes `ghcr.io/<owner>/firewatch-api:<sha>` and
    then fails at the Azure login, which is expected the first time. Make that package public.
-5. **Azure:** `GITHUB_REPO=<owner/name> ALERT_EMAIL=<you> READER_DATABASE_URL=<reader url> IMAGE=<that image> infra/setup.sh`.
-   It creates everything with the cost guardrails and a $1 budget alert, then prints the GitHub
-   variables to set. Set them and rerun Deploy.
-6. **Record:** `cd api && uv run --env-file ../.env record-latest`.
+5. **Azure:** `GITHUB_REPO=<owner/name> ALERT_EMAIL=<you> READER_DATABASE_URL=<reader url> IMAGE=<that image> OWNER_DATABASE_URL=<owner url> RECORDER_PRIVATE_KEY=<key> FIRMS_MAP_KEY=<key> RPC_URL=https://sepolia.base.org CONTRACT_ADDRESS=<address> infra/setup.sh`.
+   It creates everything with the cost guardrails and a $1 budget alert, including the
+   `firewatch-recorder` job that runs `record-hotspots` on the hour with the recorder's
+   settings as secrets, then prints the GitHub variables to set. Set them and rerun Deploy.
+6. **Record:** the job's first run takes the 5 days FIRMS offers. To start it now rather
+   than on the hour: `az containerapp job start -g firewatch -n firewatch-recorder`. The
+   Recorder check workflow fails, so GitHub emails you, after 2 hours without a good run or
+   when a run seals nothing while records wait.
+
+## Updating
+
+Deploy ships the API and the page on every push to main. GitHub can't reach the recorder job,
+which holds the wallet key, so after a recorder change point it at the new image by hand:
+`az containerapp job update -g firewatch -n firewatch-recorder --image ghcr.io/<owner>/firewatch-api:<sha>`.
+
+Moving a walking-skeleton deploy to the fire record, in order: `migrate up`,
+`load-concessions`, merge to main (Deploy ships the API and the page), then rerun
+`infra/setup.sh` as in step 5 with `IMAGE` at the merged sha. That creates the job, whose
+first run backfills, and narrows GitHub's Azure role to the API app. The Recorder check is red
+until that first run finishes. If Deploy's `az containerapp update` is then refused, also give
+GitHub Contributor on `firewatch-env`. To stop recording,
+`az containerapp job delete -g firewatch -n firewatch-recorder`; `setup.sh` recreates it.
