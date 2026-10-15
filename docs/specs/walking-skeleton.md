@@ -1,6 +1,6 @@
 # Walking skeleton
 
-**Version:** v1 · **Status:** Built · **Type:** Skeleton · **Project type:** Web UI
+**Version:** v1 · **Status:** Shipped · **Type:** Skeleton · **Project type:** Web UI
 
 **Shape doc:** docs/specs/fire-watch/shape.md
 **Depends on:** None
@@ -493,7 +493,7 @@ Recorded as D6, D7, D8, D9, D10, D11.
 | ID | What | Type | Raised at | Owner | Status | Answer |
 | -- | ---- | ---- | --------- | ----- | ------ | ------ |
 | O1 | NASA FIRMS free key and archive cover the region and seasons needed (from shape O6). Docs checked 2026-10-13: area endpoint `/api/area/csv/<MAP_KEY>/<SOURCE>/<west,south,east,north>/<1..5>/<date>`, VIIRS near-real-time and archive sources, 5,000 calls per 10 minutes. Not yet called with a real key | unproven | shape | user | Resolved | Called with the real key 2026-10-13: `VIIRS_NOAA20_NRT`, box 95,-11,141,6, 1 day → 4,135 hotspots (2026-10-12); `VIIRS_NOAA20_SP` for 2023-09-15 → 1,930 hotspots, with a `type` column the live feed lacks |
-| O2 | Base Sepolia test ETH is available from a faucet without holding mainnet ETH; Alchemy's rule is unclear | unproven | spec p1 | user | Accepted risk | Alchemy refused ("insufficient balance") and the Coinbase faucet sign-in code didn't arrive; wallet balance is 0. Proceeding: code, tests and CI use anvil, and test ETH is only needed for the Base Sepolia deploy at the end of build. Retry Coinbase, then QuickNode, before that deploy. 2026-10-13 |
+| O2 | Base Sepolia test ETH is available from a faucet without holding mainnet ETH; Alchemy's rule is unclear | unproven | spec p1 | user | Accepted risk | Alchemy refused ("insufficient balance") and the Coinbase faucet sign-in code didn't arrive; wallet balance is 0. Proceeding: code, tests and CI use anvil, and test ETH is only needed for the Base Sepolia deploy at the end of build. Retry Coinbase, then QuickNode, before that deploy. 2026-10-13. Funded 2026-10-15: Google Cloud faucet (0.05 Sepolia ETH), then Base's bridge; FireRecords at `0x6A55489A05a9C79D2cd35212878d113557dcEb2a` |
 | O9 | The skeleton shows whatever hotspot is latest in the box, which also covers Malaysia and Singapore. On 2026-10-13 the latest was at 1.348, 104.176, east of Singapore, possibly an industrial flare (unchecked). Filtering false alarms and using real boundaries is fire-record's job | flag | spec p1 | user | Accepted risk | 2026-10-13: accepted for the skeleton; a demo may open on a non-Indonesian point until fire-record adds real borders and false-alarm filtering |
 | O3 | Assuming the React app is built with Vite and TypeScript | assumption | spec p1 | user | Resolved | Vite + TypeScript. 2026-10-13 |
 | O4 | Assuming container images go to GitHub Container Registry, public | assumption | spec p1 | user | Resolved | GitHub Container Registry, public; Azure Container Registry rejected at about $5 a month. 2026-10-13 |
