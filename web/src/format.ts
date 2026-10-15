@@ -25,13 +25,13 @@ export const shortHash = (hash: string, head: number, tail: number) => `${hash.s
 
 const ONE_PIXEL_M = 375;
 
-/** "370 m" under a kilometre, "3.1 km" from there. */
-export const distance = (m: number) => (m < 1000 ? `${Math.round(m / 10) * 10} m` : `${(m / 1000).toFixed(1)} km`);
+/** "370 m" while it rounds to under a kilometre, "1.0 km" and "3.1 km" from there. */
+export const distance = (m: number) => (m < 995 ? `${Math.round(m / 10) * 10} m` : `${(m / 1000).toFixed(1)} km`);
 
 /** "Inside, 3.1 km from the edge"; within one VIIRS pixel of the edge it says so. */
 export function whereFromEdge(match: { inside: boolean; edge_m: number }): string {
   const side = `${match.inside ? "Inside" : "Outside"}, ${distance(match.edge_m)} from the edge`;
-  return match.edge_m < ONE_PIXEL_M ? `${side}, within one satellite pixel of it` : side;
+  return match.edge_m <= ONE_PIXEL_M ? `${side}, within one satellite pixel of it` : side;
 }
 
 export const count = (n: number) => n.toLocaleString("en-GB");
