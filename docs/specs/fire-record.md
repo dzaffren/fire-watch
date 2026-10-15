@@ -377,7 +377,7 @@ uint32[] edge_m))`, with the concessions sorted by ID. Hotspot B gives
 | ----- | ------- |
 | `GET /api/concessions?from=<date>&to=<date>` | 200 with `recording_started`, `map_version` and `concessions`, each with `id`, `province`, `area_ha`, `inside` and `near`, ranked by inside, then near, then ID. Counts cover version 2 records acquired from `from` 00:00 UTC up to the end of `to`. 422 when a date is missing or malformed, `to` is before `from`, or the range is over 31 days |
 | `GET /api/concessions/<id>?from=<date>&to=<date>` | 200 with `id`, `province`, `area_ha`, `inside`, `near`, `boundary` and `hotspots`. `boundary` is the outer rings as longitude and latitude pairs, simplified at 0.0005° (about 50 m) by `ST_SimplifyPreserveTopology`. `hotspots` are records newest first, each with `concessions`, `map_version` and `fingerprint_version`. 404 for an unknown ID, 422 as above |
-| `GET /api/health` | Adds `recorder` with `last_run_at`, `last_run_ok` and `unsealed` |
+| `GET /api/health` | Adds `recorder` with `last_run_at`, `last_run_ok`, `last_ok_at`, `last_sealed` and `unsealed` (O14) |
 
 ### Data
 
@@ -520,6 +520,7 @@ Recorded as D12 to D22.
 | O11 | PostGIS matches about 8,600 hotspots a run against 294 concessions within seconds on Neon's smallest compute | unproven | spec p3 | user | Accepted risk | 2026-10-16: measured in chunk A by `api/scripts/measure_match.py`; if slow, match only the hotspots not already stored |
 | O12 | With the wallet key in Azure (D15), GitHub's deploy identity has Contributor on the resource group, so a compromised deploy could reach the job's secrets | flag | spec p3 | user | Resolved | 2026-10-16: GitHub gets Contributor on firewatch-api only, plus Reader on the group; the operator updates the job image by hand (D21). Blocking secret reads alone wouldn't help: an identity that can swap the job's image can read the key |
 | O13 | Whether `az containerapp update --image` works with Contributor on the app plus Reader on the group | unproven | spec p3 | chunk C | Accepted risk | 2026-10-16: tested on the first deploy; fallback is Contributor on `firewatch-env` too, still nothing on the job |
+| O14 | `/api/health`'s `recorder` as planned (`last_run_at`, `last_run_ok`, `unsealed`) can't tell `recorder-check` when the last good run was, or whether the last run sealed anything, so D20's rule can't be checked | assumption | build | user | Resolved | 2026-10-16, /build: `recorder` also carries `last_ok_at` (when the newest run without an error finished) and `last_sealed` (seals in the newest run). `recorder-check` fails when `last_ok_at` is missing or over 2 hours old, or when `last_sealed` is 0 while `unsealed` is above 0 |
 
 _Never delete this section or its rows. See references/ledger.md._
 
