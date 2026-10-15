@@ -4,6 +4,7 @@
 
 **Shape doc:** docs/specs/fire-watch/shape.md
 **Depends on:** walking-skeleton
+**Page:** https://claude.ai/artifact/9pxgRqTB2T1YYnMgak2rPr
 
 Every hour, each hotspot that falls inside or within 5 km of an Indonesian pulpwood
 concession is stored with the concessions it touches and sealed on Base Sepolia. The
