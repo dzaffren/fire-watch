@@ -1,4 +1,4 @@
-"""Fetch the NASA FIRMS area CSV and pick the latest hotspot."""
+"""Fetch and parse the NASA FIRMS area CSV."""
 
 import csv
 import io
@@ -10,7 +10,9 @@ import httpx
 
 SOURCE = "VIIRS_NOAA20_NRT"
 INDONESIA_BOX = "95,-11,141,6"
-DAYS = 5
+DAYS = 2
+# The most FIRMS gives; taken on the first run, before any record exists.
+BACKFILL_DAYS = 5
 CONFIDENCES = {"n", "l", "h"}
 
 
@@ -60,18 +62,11 @@ def parse(text: str) -> list[Hotspot]:
     return hotspots
 
 
-def latest(hotspots: list[Hotspot]) -> Hotspot | None:
-    # Newest first, then highest FRP, then lowest lat, lon, so reruns pick the same one (O13).
-    return min(
-        hotspots,
-        key=lambda h: (-h.acquired_at.timestamp(), -h.frp_e2, h.lat_e5, h.lon_e5),
-        default=None,
-    )
-
-
-def fetch_latest(base_url: str, map_key: str, client: httpx.Client | None = None) -> Hotspot | None:
+def fetch(
+    base_url: str, map_key: str, days: int, client: httpx.Client | None = None
+) -> list[Hotspot]:
     client = client or httpx.Client(timeout=60)
-    url = f"{base_url}/api/area/csv/{map_key}/{SOURCE}/{INDONESIA_BOX}/{DAYS}"
+    url = f"{base_url}/api/area/csv/{map_key}/{SOURCE}/{INDONESIA_BOX}/{days}"
     response = client.get(url)
     response.raise_for_status()
-    return latest(parse(response.text))
+    return parse(response.text)
