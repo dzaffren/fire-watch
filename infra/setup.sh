@@ -7,9 +7,12 @@
 #   ALERT_EMAIL          where budget alerts go
 #   READER_DATABASE_URL  Neon URL for the firewatch_reader role (infra/neon-reader.sql)
 #   IMAGE                ghcr.io/<owner>/firewatch-api:<sha>, pushed and public
+#   OWNER_DATABASE_URL   Neon owner URL, for the recorder job
+#   RECORDER_PRIVATE_KEY, FIRMS_MAP_KEY, RPC_URL, CONTRACT_ADDRESS   the recorder's, as in .env
 set -euo pipefail
 
-: "${GITHUB_REPO:?}" "${ALERT_EMAIL:?}" "${READER_DATABASE_URL:?}" "${IMAGE:?}"
+: "${GITHUB_REPO:?}" "${ALERT_EMAIL:?}" "${READER_DATABASE_URL:?}" "${IMAGE:?}" "${OWNER_DATABASE_URL:?}"
+: "${RECORDER_PRIVATE_KEY:?}" "${FIRMS_MAP_KEY:?}" "${RPC_URL:?}" "${CONTRACT_ADDRESS:?}"
 
 RG=firewatch
 LOCATION=southeastasia
@@ -44,6 +47,17 @@ if ! az containerapp show -g "$RG" -n firewatch-api -o none 2>/dev/null; then
 fi
 API="https://$(az containerapp show -g "$RG" -n firewatch-api --query properties.configuration.ingress.fqdn -o tsv)"
 
+if ! az containerapp job show -g "$RG" -n firewatch-recorder -o none 2>/dev/null; then
+  az containerapp job create -g "$RG" -n firewatch-recorder --environment firewatch-env \
+    --trigger-type Schedule --cron-expression "0 * * * *" \
+    --parallelism 1 --replica-completion-count 1 --replica-retry-limit 0 --replica-timeout 3000 \
+    --image "$IMAGE" --command record-hotspots --cpu 0.25 --memory 0.5Gi \
+    --secrets "database-url=$OWNER_DATABASE_URL" "recorder-private-key=$RECORDER_PRIVATE_KEY" \
+      "firms-map-key=$FIRMS_MAP_KEY" \
+    --env-vars DATABASE_URL=secretref:database-url RECORDER_PRIVATE_KEY=secretref:recorder-private-key \
+      FIRMS_MAP_KEY=secretref:firms-map-key "RPC_URL=$RPC_URL" "CONTRACT_ADDRESS=$CONTRACT_ADDRESS" -o none
+fi
+
 az rest --method put \
   --url "https://management.azure.com/subscriptions/$SUB/providers/Microsoft.Consumption/budgets/firewatch-monthly?api-version=2024-08-01" \
   --body "$(cat <<JSON
@@ -73,10 +87,18 @@ elif [ "$CURRENT" != "$SUBJECT" ]; then
   az ad app federated-credential update --id "$APP_ID" --federated-credential-id main --parameters "$CRED" -o none
 fi
 RG_SCOPE="/subscriptions/$SUB/resourceGroups/$RG"
-if [ -z "$(az role assignment list --assignee "$SP_ID" --role Contributor --scope "$RG_SCOPE" --query "[0].id" -o tsv)" ]; then
-  az role assignment create --assignee-object-id "$SP_ID" --assignee-principal-type ServicePrincipal \
-    --role Contributor --scope "$RG_SCOPE" -o none
-fi
+grant() {
+  if [ -z "$(az role assignment list --assignee "$SP_ID" --role "$1" --scope "$2" --query "[0].id" -o tsv)" ]; then
+    az role assignment create --assignee-object-id "$SP_ID" --assignee-principal-type ServicePrincipal \
+      --role "$1" --scope "$2" -o none
+  fi
+}
+# GitHub can change the API but not the recorder job, which holds the wallet key (D21).
+# If Deploy's `az containerapp update` is refused (O13), also grant Contributor on firewatch-env.
+grant Contributor "$RG_SCOPE/providers/Microsoft.App/containerApps/firewatch-api"
+grant Reader "$RG_SCOPE"
+GROUP_CONTRIBUTOR=$(az role assignment list --assignee "$SP_ID" --role Contributor --scope "$RG_SCOPE" --query "[0].id" -o tsv)
+[ -z "$GROUP_CONTRIBUTOR" ] || az role assignment delete --ids "$GROUP_CONTRIBUTOR" -o none
 
 TOKEN_NOTE="az staticwebapp secrets list -g $RG -n firewatch-web --query properties.apiKey -o tsv | gh secret set AZURE_STATIC_WEB_APPS_API_TOKEN -R $GITHUB_REPO"
 cat <<DONE
