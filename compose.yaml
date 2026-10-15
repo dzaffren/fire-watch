@@ -3,7 +3,7 @@ name: firewatch
 
 services:
   db:
-    image: postgres:17
+    image: postgis/postgis:17-3.5
     environment:
       POSTGRES_USER: firewatch
       POSTGRES_PASSWORD: firewatch
