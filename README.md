@@ -40,7 +40,7 @@ Needs Docker, uv, pnpm and Foundry (`forge`, `anvil` on the path).
 | Record hotspots | `cd api && uv run --env-file ../.env record-hotspots` |
 
 The database runs PostGIS. A container made before that is plain Postgres; recreate it once
-with `docker compose up -d --wait --force-recreate db`.
+with `docker compose up -d --wait --force-recreate --renew-anon-volumes db`.
 
 `load-concessions` downloads the pinned Trase file and refuses it if its checksum differs; give
 it a path and it loads that file as is. `record-hotspots` reads `DATABASE_URL`,
