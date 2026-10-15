@@ -70,7 +70,7 @@ export function ConcessionView({ id, load, mapVersion, picked, onBack, onPick, o
               </thead>
               <tbody>
                 {load.detail.hotspots.slice(0, shown).map((h, i) => {
-                  const match = h.concessions?.find((m) => m.id === id);
+                  const match = h.concessions.find((m) => m.id === id);
                   return (
                     <tr key={h.record_id} className="row-open" aria-selected={i === picked ? true : undefined}>
                       <td>
