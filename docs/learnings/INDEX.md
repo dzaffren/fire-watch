@@ -9,3 +9,4 @@
 - Write formats in specs as `<name>`, not `{name}` — [spec-angle-brackets](spec-angle-brackets.md)
 - Get Base Sepolia ETH from the Google faucet plus the bridge — [base-sepolia-eth-via-bridge](base-sepolia-eth-via-bridge.md)
 - Run chain reads through the lagging, pruning `public_rpc` proxy, not bare anvil — [public-rpc-lag-and-pruning](public-rpc-lag-and-pruning.md)
+- Google holds `fitBounds` until the first draw; set the camera directly — [google-fitbounds-waits-for-first-draw](google-fitbounds-waits-for-first-draw.md)
