@@ -7,3 +7,4 @@
 - Check every workflow `uses:` tag exists before the first push — [actions-refs-must-exist](actions-refs-must-exist.md)
 - Integrate chunk worktrees by cherry-pick or fast-forward, not merge commits — [integrate-chunks-without-merge-commits](integrate-chunks-without-merge-commits.md)
 - Write formats in specs as `<name>`, not `{name}` — [spec-angle-brackets](spec-angle-brackets.md)
+- Get Base Sepolia ETH from the Google faucet plus the bridge — [base-sepolia-eth-via-bridge](base-sepolia-eth-via-bridge.md)
