@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import type { Hex } from "viem";
 import type { HotspotRecord } from "./api";
 import { confidence, detected, firePower, gap, location, satellite, shortHash, whereFromEdge } from "./format";
-import { AlertIcon, BadIcon, CheckingIcon, ExternalIcon, OkIcon, PendingIcon, PinIcon } from "./icons";
+import { AlertIcon, BadIcon, CheckingIcon, ExternalIcon, OkIcon, PendingIcon } from "./icons";
 
 export type Check =
   | { state: "pending" }
@@ -73,7 +73,7 @@ export function RecordPanel({ record, fingerprint, check, onCheckAgain }: Props)
       <dl className="fw-kv">
         <dt>Detected</dt>
         <dd>{detected(record.acquired_unix)}</dd>
-        {record.concessions && record.sealed_at && (
+        {record.sealed_at && (
           <>
             <dt>Sealed</dt>
             <dd>
@@ -90,23 +90,19 @@ export function RecordPanel({ record, fingerprint, check, onCheckAgain }: Props)
         <dd>{firePower(record.frp_e2)}</dd>
         <dt>Confidence</dt>
         <dd>{confidence(record.confidence)}</dd>
-        {record.concessions && (
-          <>
-            <dt>{record.concessions.length > 1 ? "Concessions" : "Concession"}</dt>
-            <dd>
-              <ul className="matches">
-                {record.concessions.map((m) => (
-                  <li key={m.id}>
-                    {m.id}
-                    <span className="sub">{whereFromEdge(m)}</span>
-                  </li>
-                ))}
-              </ul>
-            </dd>
-            <dt>Boundaries</dt>
-            <dd>{record.map_version}</dd>
-          </>
-        )}
+        <dt>{record.concessions.length > 1 ? "Concessions" : "Concession"}</dt>
+        <dd>
+          <ul className="matches">
+            {record.concessions.map((m) => (
+              <li key={m.id}>
+                {m.id}
+                <span className="sub">{whereFromEdge(m)}</span>
+              </li>
+            ))}
+          </ul>
+        </dd>
+        <dt>Boundaries</dt>
+        <dd>{record.map_version}</dd>
         {check.state === "mismatch" ? (
           <>
             <dt>Sealed fingerprint</dt>
@@ -151,26 +147,19 @@ export function RecordPanel({ record, fingerprint, check, onCheckAgain }: Props)
 
 const SKELETON_WIDTHS = [70, 55, 80, 40, 45, 85, 75];
 
-export function LoadingPanel({ slow }: { slow: boolean }) {
+export function LoadingPanel() {
   return (
-    <>
-      <div className="fw-panel" aria-busy="true" aria-label="Loading the record">
-        <div className="sk-head">
-          <div className="fw-skeleton" style={{ width: "45%" }} />
-        </div>
-        <div className="fw-skeleton" style={{ width: "85%" }} />
-        <div className="sk-rows">
-          {SKELETON_WIDTHS.map((w, i) => (
-            <SkeletonRow key={i} width={w} />
-          ))}
-        </div>
+    <div className="fw-panel" aria-busy="true" aria-label="Loading the record">
+      <div className="sk-head">
+        <div className="fw-skeleton" style={{ width: "45%" }} />
       </div>
-      {slow && (
-        <p className="fw-help rec-note" role="status">
-          Starting the server after a quiet spell. This can take up to a minute; the record loads on its own.
-        </p>
-      )}
-    </>
+      <div className="fw-skeleton" style={{ width: "85%" }} />
+      <div className="sk-rows">
+        {SKELETON_WIDTHS.map((w, i) => (
+          <SkeletonRow key={i} width={w} />
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -180,16 +169,6 @@ function SkeletonRow({ width }: { width: number }) {
       <div className="fw-skeleton" />
       <div className="fw-skeleton" style={{ width: `${width}%` }} />
     </>
-  );
-}
-
-export function EmptyPanel() {
-  return (
-    <div className="fw-panel fw-empty enter">
-      <PinIcon />
-      <h3>No hotspot recorded yet</h3>
-      <p className="fw-help">The newest hotspot appears here once it is recorded and sealed.</p>
-    </div>
   );
 }
 

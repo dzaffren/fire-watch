@@ -1,22 +1,21 @@
-import type { ConcessionSummary } from "./api";
+import type { ConcessionListing } from "./api";
 import { count } from "./format";
 import { AlertIcon, CalendarIcon } from "./icons";
 
-export type ListLoad = { kind: "loading" } | { kind: "error" } | { kind: "ready"; concessions: ConcessionSummary[] };
+export type ListLoad = { kind: "loading" } | { kind: "error" } | ({ kind: "ready" } & ConcessionListing);
 
 interface Props {
   load: ListLoad;
   slow: boolean;
   from: string;
   to: string;
-  recordingStarted: string;
   onOpen: (id: string) => void;
   onRetry: () => void;
 }
 
 const SKELETON_ROWS = [62, 48, 70, 55, 66, 44];
 
-export function ConcessionList({ load, slow, from, to, recordingStarted, onOpen, onRetry }: Props) {
+export function ConcessionList({ load, slow, from, to, onOpen, onRetry }: Props) {
   if (load.kind === "error") {
     return (
       <div className="fw-panel fw-empty enter">
@@ -62,7 +61,7 @@ export function ConcessionList({ load, slow, from, to, recordingStarted, onOpen,
         <CalendarIcon />
         <h3>No hotspots in these dates</h3>
         <p className="fw-help">No hotspots on or near a pulpwood concession between {from} and {to}.</p>
-        <p className="fw-help">Recording started {recordingStarted}.</p>
+        {load.recording_started && <p className="fw-help">Recording started {load.recording_started}.</p>}
       </div>
     );
   }

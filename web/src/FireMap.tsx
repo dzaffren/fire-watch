@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { Ring } from "./api";
-import { fitView, loadMaps, mapStyles, themeColour, WATCH_AREA, type Area } from "./HotspotMap";
+import { fitView, loadMaps, mapStyles, themeColour, WATCH_AREA, type Area } from "./maps";
 import { MinusIcon, PlusIcon } from "./icons";
 
 export interface Dot {

@@ -50,20 +50,11 @@
 .map-col { position: relative; min-height: 320px; overflow: hidden; background: var(--fw-surface); border-left: var(--fw-border) solid var(--fw-line); }
 .map { position: absolute; inset: 0; }
 
-.hs { position: absolute; width: 0; height: 0; pointer-events: none; }
-.hs-dot, .hs-ring { position: absolute; border-radius: 50%; box-sizing: border-box; }
-.hs-dot { width: 9px; height: 9px; margin: -4.5px 0 0 -4.5px; background: var(--fw-fire); }
-.hs-ring { width: 14px; height: 14px; margin: -7px 0 0 -7px; border: 1.5px solid var(--fw-ink); }
-.hs.landing .hs-dot { animation: hs-dot var(--fw-dur-slow) var(--fw-ease) both; }
-.hs.landing .hs-ring { animation: hs-ring var(--fw-dur-slow) var(--fw-ease) var(--fw-dur-fast) both; }
-
 .zoom { position: absolute; top: var(--fw-space-4); right: var(--fw-space-4); display: grid; gap: var(--fw-space-1); }
 .zoom .fw-btn { width: var(--fw-control-height); padding: 0; }
 
 .enter { animation: fw-enter var(--fw-dur) var(--fw-ease) both; }
 @keyframes fw-enter { from { opacity: 0; transform: translateY(4px); } }
-@keyframes hs-dot { from { opacity: 0; transform: scale(0.4); } }
-@keyframes hs-ring { from { opacity: 0; transform: scale(1.6); } }
 
 /* Fire record: dates, the concession list, one concession and its hotspots (docs/specs/fire-record.md) */
 .app-main--wide { grid-template-columns: minmax(400px, 480px) minmax(0, 1fr); }
