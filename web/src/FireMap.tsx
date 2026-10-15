@@ -1,0 +1,281 @@
+import { useEffect, useRef, useState } from "react";
+import type { Ring } from "./api";
+import { fitView, loadMaps, mapStyles, themeColour, WATCH_AREA, type Area } from "./HotspotMap";
+import { MinusIcon, PlusIcon } from "./icons";
+
+export interface Dot {
+  lat_e5: number;
+  lon_e5: number;
+  frp_e2: number;
+}
+
+// Fire power under 5, 5–20 and over 20 MW: 6, 9 and 13 px across, as on the detections guideline.
+const radius = (frp_e2: number) => (frp_e2 < 500 ? 3 : frp_e2 <= 2000 ? 4.5 : 6.5);
+const RING_RADIUS = 7;
+const HIT_PX = 10;
+// About 5 km, so hotspots just outside the edge stay in view.
+const EDGE_PAD_DEG = 0.05;
+// About 1,450 px per degree: a hotspot 3 km from the edge sits about 40 px from it, and
+// neighbouring 375 m detections are about 5 px apart instead of overlapping.
+const HOTSPOT_ZOOM = 11;
+
+function areaOf(rings: Ring[]): Area {
+  const area = { west: 180, south: 90, east: -180, north: -90 };
+  for (const ring of rings) {
+    for (const [lng, lat] of ring) {
+      area.west = Math.min(area.west, lng - EDGE_PAD_DEG);
+      area.east = Math.max(area.east, lng + EDGE_PAD_DEG);
+      area.south = Math.min(area.south, lat - EDGE_PAD_DEG);
+      area.north = Math.max(area.north, lat + EDGE_PAD_DEG);
+    }
+  }
+  return area;
+}
+
+interface LayerData {
+  boundary: Ring[];
+  dots: Dot[];
+  selected: number | null;
+}
+
+interface Layer {
+  setMap(map: google.maps.Map): void;
+  setData(data: LayerData): void;
+  draw(): void;
+  hit(at: google.maps.LatLng): number | null;
+}
+
+// One canvas over the map for every boundary and hotspot: a concession can hold over a thousand
+// hotspots in a week, too many for one element each.
+function createLayer(OverlayView: typeof google.maps.OverlayView): Layer {
+  class FireLayer extends OverlayView implements Layer {
+    private canvas = document.createElement("canvas");
+    private data: LayerData = { boundary: [], dots: [], selected: null };
+    private origin = { x: 0, y: 0 };
+
+    constructor() {
+      super();
+      this.canvas.className = "fire-layer";
+      this.canvas.setAttribute("aria-hidden", "true");
+    }
+
+    onAdd() {
+      this.getPanes()?.overlayLayer.append(this.canvas);
+    }
+
+    onRemove() {
+      this.canvas.remove();
+    }
+
+    setData(data: LayerData) {
+      this.data = data;
+      this.draw();
+    }
+
+    private pixel(lng: number, lat: number): [number, number] | null {
+      const p = this.getProjection()?.fromLatLngToDivPixel({ lat, lng });
+      return p ? [p.x - this.origin.x, p.y - this.origin.y] : null;
+    }
+
+    draw() {
+      const map = this.getMap();
+      const bounds = map instanceof google.maps.Map ? map.getBounds() : undefined;
+      const corner = bounds && this.getProjection()?.fromLatLngToDivPixel({
+        lat: bounds.getNorthEast().lat(),
+        lng: bounds.getSouthWest().lng(),
+      });
+      if (!(map instanceof google.maps.Map) || !corner) return;
+      const { clientWidth: w, clientHeight: h } = map.getDiv();
+      const dpr = window.devicePixelRatio || 1;
+      this.origin = { x: corner.x, y: corner.y };
+      Object.assign(this.canvas.style, { left: `${corner.x}px`, top: `${corner.y}px`, width: `${w}px`, height: `${h}px` });
+      this.canvas.width = Math.round(w * dpr);
+      this.canvas.height = Math.round(h * dpr);
+      const ctx = this.canvas.getContext("2d");
+      if (!ctx) return;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, w, h);
+
+      const ink = themeColour("--fw-ink");
+      ctx.strokeStyle = ink;
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([5, 4]);
+      for (const ring of this.data.boundary) {
+        ctx.beginPath();
+        ring.forEach(([lng, lat], i) => {
+          const p = this.pixel(lng, lat);
+          if (p) (i ? ctx.lineTo : ctx.moveTo).call(ctx, p[0], p[1]);
+        });
+        ctx.closePath();
+        ctx.stroke();
+      }
+      ctx.setLineDash([]);
+
+      // Smallest first so the strongest fires sit on top; a surface-coloured edge keeps
+      // neighbouring detections apart instead of merging into one patch of fire colour.
+      ctx.fillStyle = themeColour("--fw-fire");
+      ctx.strokeStyle = themeColour("--fw-surface");
+      ctx.lineWidth = 1;
+      const order = this.data.dots.map((_, i) => i).sort((a, b) => this.data.dots[a].frp_e2 - this.data.dots[b].frp_e2);
+      for (const i of [...order.filter((i) => i !== this.data.selected), ...(this.data.selected === null ? [] : [this.data.selected])]) {
+        const dot = this.data.dots[i];
+        const p = this.pixel(dot.lon_e5 / 1e5, dot.lat_e5 / 1e5);
+        if (!p || p[0] < -RING_RADIUS || p[1] < -RING_RADIUS || p[0] > w + RING_RADIUS || p[1] > h + RING_RADIUS) continue;
+        ctx.beginPath();
+        ctx.arc(p[0], p[1], radius(dot.frp_e2), 0, 2 * Math.PI);
+        ctx.fill();
+        ctx.stroke();
+      }
+      if (this.data.selected !== null) {
+        const dot = this.data.dots[this.data.selected];
+        const p = dot && this.pixel(dot.lon_e5 / 1e5, dot.lat_e5 / 1e5);
+        if (p) {
+          ctx.strokeStyle = ink;
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.arc(p[0], p[1], RING_RADIUS, 0, 2 * Math.PI);
+          ctx.stroke();
+        }
+      }
+    }
+
+    hit(at: google.maps.LatLng): number | null {
+      const target = this.pixel(at.lng(), at.lat());
+      if (!target) return null;
+      let best: number | null = null;
+      let bestDistance = HIT_PX;
+      this.data.dots.forEach((dot, i) => {
+        const p = this.pixel(dot.lon_e5 / 1e5, dot.lat_e5 / 1e5);
+        const d = p ? Math.hypot(p[0] - target[0], p[1] - target[1]) : Infinity;
+        if (d <= bestDistance) {
+          best = i;
+          bestDistance = d;
+        }
+      });
+      return best;
+    }
+  }
+  return new FireLayer();
+}
+
+interface Props {
+  label: string;
+  boundary?: Ring[];
+  dots?: Dot[];
+  selected?: number | null;
+  onSelect?: (index: number) => void;
+}
+
+export function FireMap({ label, boundary, dots, selected = null, onSelect }: Props) {
+  const container = useRef<HTMLDivElement>(null);
+  const map = useRef<google.maps.Map | null>(null);
+  const layer = useRef<Layer | null>(null);
+  const select = useRef(onSelect);
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    select.current = onSelect;
+  }, [onSelect]);
+
+  useEffect(() => {
+    let live = true;
+    // Without the map the record column still works, so a failed load leaves the frame empty.
+    loadMaps().then(
+      ({ Map, OverlayView }) => {
+        if (!live || !container.current) return;
+        const m = new Map(container.current, {
+          backgroundColor: themeColour("--fw-map"),
+          styles: mapStyles(),
+          disableDefaultUI: true,
+          clickableIcons: false,
+        });
+        const l = createLayer(OverlayView);
+        l.setMap(m);
+        let frame = 0;
+        m.addListener("bounds_changed", () => {
+          cancelAnimationFrame(frame);
+          frame = requestAnimationFrame(() => l.draw());
+        });
+        m.addListener("click", (e: google.maps.MapMouseEvent) => {
+          const i = e.latLng && l.hit(e.latLng);
+          if (i !== null && i !== undefined) select.current?.(i);
+        });
+        m.addListener("mousemove", (e: google.maps.MapMouseEvent) => {
+          const over = select.current && e.latLng && l.hit(e.latLng) !== null;
+          m.setOptions({ draggableCursor: over ? "pointer" : null });
+        });
+        map.current = m;
+        layer.current = l;
+        setReady(true);
+      },
+      () => {},
+    );
+    return () => {
+      live = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!ready) return;
+    const scheme = matchMedia("(prefers-color-scheme: dark)");
+    const restyle = () => {
+      map.current?.setOptions({ styles: mapStyles(), backgroundColor: themeColour("--fw-map") });
+      layer.current?.draw();
+    };
+    scheme.addEventListener("change", restyle);
+    return () => scheme.removeEventListener("change", restyle);
+  }, [ready]);
+
+  const focus = selected === null ? undefined : dots?.[selected];
+
+  useEffect(() => {
+    if (!ready || !map.current) return;
+    if (focus) {
+      map.current.setCenter({ lat: focus.lat_e5 / 1e5, lng: focus.lon_e5 / 1e5 });
+      map.current.setZoom(HOTSPOT_ZOOM);
+      return;
+    }
+    const view = fitView(map.current.getDiv(), boundary?.length ? areaOf(boundary) : WATCH_AREA);
+    map.current.setCenter(view.center);
+    map.current.setZoom(view.zoom);
+  }, [ready, boundary, focus]);
+
+  useEffect(() => {
+    layer.current?.setData({ boundary: boundary ?? [], dots: dots ?? [], selected });
+  }, [ready, boundary, dots, selected]);
+
+  function zoomBy(step: number) {
+    const zoom = map.current?.getZoom();
+    if (zoom !== undefined) map.current?.setZoom(zoom + step);
+  }
+
+  return (
+    <section className="map-col" aria-label={label}>
+      <div ref={container} className="map" />
+      <div className="zoom">
+        <button className="fw-btn fw-btn--secondary" type="button" aria-label="Zoom in" onClick={() => zoomBy(1)}>
+          <PlusIcon />
+        </button>
+        <button className="fw-btn fw-btn--secondary" type="button" aria-label="Zoom out" onClick={() => zoomBy(-1)}>
+          <MinusIcon />
+        </button>
+      </div>
+      {boundary && (
+        <div className="fw-panel map-legend" aria-hidden="true">
+          <div className="legend-row">
+            <span className="legend-key">
+              <span className="legend-dot sm" />
+              <span className="legend-dot md" />
+              <span className="legend-dot lg" />
+            </span>
+            Fire power: under 5, 5–20, over 20 MW
+          </div>
+          <div className="legend-row">
+            <span className="legend-key legend-dash" />
+            Concession boundary
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}

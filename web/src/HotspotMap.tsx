@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { location } from "./format";
 import { MinusIcon, PlusIcon } from "./icons";
 
-const WATCH_AREA = { west: 95, south: -11, east: 141, north: 6 };
+export const WATCH_AREA = { west: 95, south: -11, east: 141, north: 6 };
 const WATCH_PADDING = 24;
 // 2^8 * 256 px / 360° ≈ 182 px per degree, the whole zoom nearest the spec's 150.
 const RECORD_ZOOM = 8;
@@ -11,7 +11,7 @@ const MAPS_CALLBACK = "__fireWatchMapsReady";
 
 let mapsLibrary: Promise<google.maps.MapsLibrary> | null = null;
 
-function loadMaps(): Promise<google.maps.MapsLibrary> {
+export function loadMaps(): Promise<google.maps.MapsLibrary> {
   mapsLibrary ??= new Promise((resolve, reject) => {
     Object.assign(window, { [MAPS_CALLBACK]: () => resolve(google.maps.importLibrary("maps")) });
     const params = new URLSearchParams({
@@ -29,8 +29,8 @@ function loadMaps(): Promise<google.maps.MapsLibrary> {
   return mapsLibrary;
 }
 
-// Google's stylers take #rrggbb only; the built CSS may shorten tokens to #fff, so read the resolved colour.
-function themeColour(name: string): string {
+// Google's stylers take six-digit hex only; the built CSS may shorten tokens to three digits, so read the resolved colour.
+export function themeColour(name: string): string {
   const probe = document.createElement("span");
   probe.style.color = `var(${name})`;
   document.body.append(probe);
@@ -40,7 +40,7 @@ function themeColour(name: string): string {
 }
 
 // The catch-all geometry rule paints roads the land colour too, so roads get their own rules after it.
-function mapStyles(): google.maps.MapTypeStyle[] {
+export function mapStyles(): google.maps.MapTypeStyle[] {
   const land = themeColour("--fw-map");
   const water = themeColour("--fw-surface");
   const line = themeColour("--fw-line");
@@ -62,21 +62,28 @@ function mercatorY(lat: number): number {
   return (0.5 - Math.log((1 + sin) / (1 - sin)) / (4 * Math.PI)) * TILE;
 }
 
+export interface Area {
+  west: number;
+  south: number;
+  east: number;
+  north: number;
+}
+
 // The view fitBounds would pick, set at once. Google holds fitBounds until the map first draws,
 // which in a background tab is after the record has arrived and been centred.
-function watchAreaView(div: HTMLElement): { center: google.maps.LatLngLiteral; zoom: number } {
-  const top = mercatorY(WATCH_AREA.north);
-  const bottom = mercatorY(WATCH_AREA.south);
-  const width = ((WATCH_AREA.east - WATCH_AREA.west) / 360) * TILE;
+export function fitView(div: HTMLElement, area: Area, padding = WATCH_PADDING): { center: google.maps.LatLngLiteral; zoom: number } {
+  const top = mercatorY(area.north);
+  const bottom = mercatorY(area.south);
+  const width = ((area.east - area.west) / 360) * TILE;
   const scale = Math.min(
-    (div.clientWidth - 2 * WATCH_PADDING) / width,
-    (div.clientHeight - 2 * WATCH_PADDING) / (bottom - top),
+    (div.clientWidth - 2 * padding) / width,
+    (div.clientHeight - 2 * padding) / (bottom - top),
   );
   const middle = (top + bottom) / 2 / TILE;
   return {
     center: {
       lat: (Math.atan(Math.sinh(Math.PI * (1 - 2 * middle))) * 180) / Math.PI,
-      lng: (WATCH_AREA.west + WATCH_AREA.east) / 2,
+      lng: (area.west + area.east) / 2,
     },
     zoom: scale > 1 ? Math.floor(Math.log2(scale)) : 0,
   };
@@ -176,7 +183,7 @@ export function HotspotMap({ point }: Props) {
     if (!ready || !map.current || !marker.current) return;
     if (lat_e5 === undefined || lon_e5 === undefined) {
       marker.current.hide();
-      const view = watchAreaView(map.current.getDiv());
+      const view = fitView(map.current.getDiv(), WATCH_AREA);
       map.current.setCenter(view.center);
       map.current.setZoom(view.zoom);
       return;

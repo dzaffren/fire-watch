@@ -28,3 +28,5 @@ export const PinIcon = () => <Icon className="icon" size={28} width={1.5}><path 
 export const AlertIcon = () => <Icon className="icon" size={28} width={1.5}><circle cx="12" cy="12" r="10" /><path d="M12 8v4" /><path d="M12 16h.01" /></Icon>;
 export const PlusIcon = () => <Icon size={16} width={2}><path d="M12 5v14" /><path d="M5 12h14" /></Icon>;
 export const MinusIcon = () => <Icon size={16} width={2}><path d="M5 12h14" /></Icon>;
+export const ChevronLeftIcon = () => <Icon size={16} width={2}><path d="m15 18-6-6 6-6" /></Icon>;
+export const CalendarIcon = () => <Icon className="icon" size={28} width={1.5}><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4" /><path d="M8 2v4" /><path d="M3 10h18" /></Icon>;

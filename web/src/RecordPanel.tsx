@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import type { Hex } from "viem";
 import type { HotspotRecord } from "./api";
-import { confidence, detected, firePower, location, satellite, shortHash } from "./format";
+import { confidence, detected, firePower, gap, location, satellite, shortHash, whereFromEdge } from "./format";
 import { AlertIcon, BadIcon, CheckingIcon, ExternalIcon, OkIcon, PendingIcon, PinIcon } from "./icons";
 
 export type Check =
@@ -73,6 +73,15 @@ export function RecordPanel({ record, fingerprint, check, onCheckAgain }: Props)
       <dl className="fw-kv">
         <dt>Detected</dt>
         <dd>{detected(record.acquired_unix)}</dd>
+        {record.concessions && record.sealed_at && (
+          <>
+            <dt>Sealed</dt>
+            <dd>
+              {detected(Date.parse(record.sealed_at) / 1000)}
+              <span className="sub">{gap(record.acquired_unix, record.sealed_at)} after detection</span>
+            </dd>
+          </>
+        )}
         <dt>Satellite</dt>
         <dd>{satellite(record.source)}</dd>
         <dt>Location</dt>
@@ -81,6 +90,23 @@ export function RecordPanel({ record, fingerprint, check, onCheckAgain }: Props)
         <dd>{firePower(record.frp_e2)}</dd>
         <dt>Confidence</dt>
         <dd>{confidence(record.confidence)}</dd>
+        {record.concessions && (
+          <>
+            <dt>{record.concessions.length > 1 ? "Concessions" : "Concession"}</dt>
+            <dd>
+              <ul className="matches">
+                {record.concessions.map((m) => (
+                  <li key={m.id}>
+                    {m.id}
+                    <span className="sub">{whereFromEdge(m)}</span>
+                  </li>
+                ))}
+              </ul>
+            </dd>
+            <dt>Boundaries</dt>
+            <dd>{record.map_version}</dd>
+          </>
+        )}
         {check.state === "mismatch" ? (
           <>
             <dt>Sealed fingerprint</dt>
