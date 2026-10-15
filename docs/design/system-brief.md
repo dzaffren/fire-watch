@@ -1,6 +1,6 @@
 # Fire watch · design system brief
 
-**Status:** Approved · **Updated:** 2026-10-13 by /design-system
+**Status:** Approved · **Updated:** 2026-10-16 by /design-system
 
 The look of the one product in `docs/specs/fire-watch/shape.md`. Watchdog investigators use
 it at a desk to build a case: a map of fires next to a record panel. What they produce is
@@ -26,6 +26,7 @@ Choices were made on the directions page
 | Scripts | English, Latin script only; no right-to-left or CJK | user, confirmed 2026-10-13 |
 | Themes | Light and dark, both designed | user, confirmed 2026-10-13 (craft floor requires both) |
 | Oldest target | Current desktop and phone browsers, last two versions | user, confirmed 2026-10-13 |
+| Crowded detections | 3 px dots below zoom 12, fire-power sizes from zoom 12 | user, crowded detections page (https://claude.ai/artifact/DUQSyn4LBJeX9iPCi2fWpe), 2026-10-16 |
 
 ## Token trace
 
@@ -44,6 +45,8 @@ desk use, map + panel density      → 15px base; scale 12 / 13 / 15 / 18 / 24 /
                                      (4, 8, 12, 16, 24, 32, 48)
 Stripe-like, never "rounded-2xl"   → radius 6px on controls, 8px on panels
 "never alarmist"                   → no red banners for routine states; fire colour never fills large areas
+375 m VIIRS pixels, crowded        → below zoom 12 (a pixel under 10 px) every detection is a 3 px dot, no edge;
+                                     from zoom 12 dots size by fire power, 6 / 9 / 13 px, 1px surface edge
 detail on request                  → raw record behind a disclosure, not on screen by default
 motion ceiling tier 3              → tier 1: 120–240 ms, cubic-bezier(.2,.8,.2,1)
                                      tier 2: pass-by-pass replay, 240 ms a step
