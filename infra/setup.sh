@@ -61,10 +61,16 @@ JSON
 APP_ID=$(az ad app list --display-name firewatch-github --query "[0].appId" -o tsv)
 [ -n "$APP_ID" ] || APP_ID=$(az ad app create --display-name firewatch-github --query appId -o tsv)
 SP_ID=$(az ad sp show --id "$APP_ID" --query id -o tsv 2>/dev/null || az ad sp create --id "$APP_ID" --query id -o tsv)
-if [ -z "$(az ad app federated-credential list --id "$APP_ID" --query "[?name=='main'].name" -o tsv)" ]; then
-  az ad app federated-credential create --id "$APP_ID" --parameters "{
-    \"name\": \"main\", \"issuer\": \"https://token.actions.githubusercontent.com\",
-    \"subject\": \"repo:$GITHUB_REPO:ref:refs/heads/main\", \"audiences\": [\"api://AzureADTokenExchange\"]}" -o none
+# New repos sign with owner and repo IDs in the subject (repo:owner@123/name@456), so ask GitHub.
+PREFIX=$(gh api "repos/$GITHUB_REPO/actions/oidc/customization/sub" --jq '.sub_claim_prefix // empty')
+SUBJECT="${PREFIX:-repo:$GITHUB_REPO}:ref:refs/heads/main"
+CRED="{\"name\": \"main\", \"issuer\": \"https://token.actions.githubusercontent.com\",
+  \"subject\": \"$SUBJECT\", \"audiences\": [\"api://AzureADTokenExchange\"]}"
+CURRENT=$(az ad app federated-credential list --id "$APP_ID" --query "[?name=='main'].subject" -o tsv)
+if [ -z "$CURRENT" ]; then
+  az ad app federated-credential create --id "$APP_ID" --parameters "$CRED" -o none
+elif [ "$CURRENT" != "$SUBJECT" ]; then
+  az ad app federated-credential update --id "$APP_ID" --federated-credential-id main --parameters "$CRED" -o none
 fi
 RG_SCOPE="/subscriptions/$SUB/resourceGroups/$RG"
 if [ -z "$(az role assignment list --assignee "$SP_ID" --role Contributor --scope "$RG_SCOPE" --query "[0].id" -o tsv)" ]; then
