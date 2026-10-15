@@ -19,9 +19,9 @@ answer that the complaint names no specific site, date or basis, or that the fir
 outside their concession (shape O3). Fire Watch today shows one hotspot, tied to no
 concession, so it can't answer either point.
 
-The fires are there to record. On 2026-10-14, 1,108 VIIRS NOAA-20 hotspots fell inside
-Indonesia's 298 mapped pulpwood concessions, and another 1,040 fell within 5 km of one.
-Between 2026-10-11 and 2026-10-14, 178 concessions had a hotspot inside or within 5 km.
+The fires are there to record. On 2026-10-14, 1,104 VIIRS NOAA-20 hotspots fell inside
+Indonesia's 294 mapped, licensed pulpwood concessions, and another 1,040 fell within 5 km of
+one. Between 2026-10-11 and 2026-10-14, 174 concessions had a hotspot inside or within 5 km.
 
 ## Slice test
 
@@ -94,7 +94,7 @@ Scenario: Investigator lists the concessions that burned in a date range
   When the investigator opens the home page
   Then the dates read 2026-10-09 to 2026-10-15
   When they change the dates to 2026-10-11 to 2026-10-14
-  Then 178 concessions are listed, ranked by hotspots inside
+  Then 174 concessions are listed, ranked by hotspots inside
   And the first row reads "ID-WOOD-CONCESSION-0345", "Kalimantan Barat", "1,015 inside", "254 within 5 km"
 
 Scenario: Investigator opens a concession and checks a hotspot
@@ -124,7 +124,9 @@ Scenario: No hotspots in the chosen dates
 
 **In:**
 - One map: Trase's Indonesia wood pulp concessions 2023–2024 (model 3.2, file v2026-02-20),
-  298 concessions from Ministry of Forestry licence maps, CC BY 4.0, credited on the page.
+  from Ministry of Forestry licence maps, CC BY 4.0, credited on the page. 294 of its 298
+  concessions: the 4 with permit year 2024 are left out as likely proposed (O3).
+- The page says the boundaries come from Trase's 2023–2024 map and may be incomplete (O5).
 - One source: VIIRS NOAA-20 near real-time, the Indonesia box from walking-skeleton.
 - Keep each hotspot inside or within 5 km of a concession. Its record lists every concession
   within 5 km, inside or outside, with the distance to that concession's edge, plus the map
@@ -149,7 +151,8 @@ Scenario: No hotspots in the chosen dates
 - Other satellites (VIIRS S-NPP, NOAA-21, MODIS) — fire-origin, where more passes sharpen the
   first-detection time (shape O13).
 - Grouping hotspots into fires, first detection, spread — fire-origin.
-- Filtering fixed heat sources such as mill boilers — see O4.
+- Filtering fixed heat sources such as mill boilers — fire-origin, which groups hotspots into
+  fires and can flag one that never spreads (O4).
 - A public page to check a record by its ID, and the pack for a buyer — complaint-pack.
 - Past seasons — season-backtest.
 - Company names — not planned (shape O10).
@@ -176,7 +179,7 @@ Status: active
 
 Why: fire-origin argues "started outside, spread in", so detections outside the boundary must
 be sealed when they happen; a seal added later can't show they weren't made up after a
-dispute. 1,722 of 8,301 kept hotspots (2026-10-11 to 15) were within 5 km of two or more
+dispute. 1,805 of 7,972 kept hotspots (2026-10-11 to 15) were within 5 km of two or more
 concessions, so naming only one would hide them from the neighbour's page.
 Rejected: inside only (no sealed outside detections before fire-origin ships), every hotspot in
 the Indonesia box (about 8,600 a day, 5 times the seals, mostly nowhere near a concession),
@@ -188,7 +191,7 @@ Status: active
 ## D14 · 2026-10-16 · The home page is dates, then a concession list
 
 Why: a grievance names one supplier's land, so the investigator looks up a concession, not a
-patch of map. 178 concessions had hotspots on 2026-10-11 to 14; a ranked list puts the worst
+patch of map. 174 concessions had hotspots on 2026-10-11 to 14; a ranked list puts the worst
 first.
 Rejected: map view as the area (thousands of dots when zoomed out, needs clustering), province
 picker (up to 50 concessions in one province), keeping the latest-hotspot screen beside it (two
@@ -205,6 +208,17 @@ Rejected: running the recorder by hand on the operator's machine (gaps, and seal
 after detection).
 Source: docs/specs/fire-record.md
 Status: active
+
+## D16 · 2026-10-16 · Leave Trase's four permit-2024 concessions out of matching
+
+Why: Trase's 2023–2024 map includes 4 proposed, not yet licensed, concessions with no field
+marking them; the 4 with permit year 2024 (ID-WOOD-CONCESSION-0666 to 0669) are the likely
+ones. A record must not name land nobody holds yet. They held 11 hotspots on 2026-10-11 to 15.
+Rejected: keeping them with a "may still be proposed" label (a guess printed on a public
+record), Trase's 2020–2022 map (no proposed concessions, but boundaries from older Ministry
+data).
+Source: docs/specs/fire-record.md
+Status: active
 ```
 
 ## Open items
@@ -213,9 +227,9 @@ Status: active
 | -- | ---- | ---- | --------- | ----- | ------ | ------ |
 | O1 | GFW concession maps are good enough to match fires to companies; GFW warns some are missing or misplaced (from shape O5) | unproven | shape | user | Resolved | 2026-10-16: GFW's Indonesia oil palm and pulpwood layers are view only, can't be downloaded, and its CC BY licence excludes Indonesia; the oil palm data is from 2012 (GFW Data API metadata). Switched to Trase's pulpwood map, CC BY 4.0 per its methods note, 298 concessions (D12). Pulpwood only |
 | O2 | Region: assuming Indonesia, where public concession maps look densest (from shape O7) | assumption | shape | user | Resolved | 2026-10-16: Indonesia. The chosen map covers Indonesia only (D12) |
-| O3 | Trase's 2023–2024 map includes 4 proposed, not yet licensed, concessions, with no field marking them. The 4 with permit year 2024 (ID-WOOD-CONCESSION-0666 to 0669, Kalimantan Timur and Gorontalo) are the likely ones; unconfirmed. A hotspot "on" a proposed concession names land nobody holds yet. 11 hotspots fell inside them on 2026-10-11 to 15 | question | spec p1 | user | Open | — |
-| O4 | A fixed heat source inside a concession, such as a mill's boilers, shows up on every pass and would read as fires on that concession. VIIRS near-real-time has no type column to filter it (walking-skeleton O1). The two busiest concessions on 2026-10-11 to 14 spread over 100+ separate 1 km cells each, so those are real fires | flag | spec p1 | user | Open | — |
-| O5 | Trase's boundaries come from Ministry of Forestry licence maps published 2022 to 2025. A concession licensed or redrawn since is missing or wrong (carries on walking-skeleton O9, "real boundaries") | flag | spec p1 | user | Open | — |
+| O3 | Trase's 2023–2024 map includes 4 proposed, not yet licensed, concessions, with no field marking them. The 4 with permit year 2024 (ID-WOOD-CONCESSION-0666 to 0669, Kalimantan Timur and Gorontalo) are the likely ones; unconfirmed. A hotspot "on" a proposed concession names land nobody holds yet. 11 hotspots fell inside them on 2026-10-11 to 15 | question | spec p1 | user | Resolved | 2026-10-16: leave out ID-WOOD-CONCESSION-0666 to 0669; match against the other 294 (D16) |
+| O4 | A fixed heat source inside a concession, such as a mill's boilers, shows up on every pass and would read as fires on that concession. VIIRS near-real-time has no type column to filter it (walking-skeleton O1). The two busiest concessions on 2026-10-11 to 14 spread over 100+ separate 1 km cells each, so those are real fires | flag | spec p1 | user | Accepted risk | 2026-10-16: record them like any hotspot; every record says it is a satellite heat detection. fire-origin groups hotspots into fires and flags one that never spreads. A repeat filter now could also hide a long-burning peat fire |
+| O5 | Trase's boundaries come from Ministry of Forestry licence maps published 2022 to 2025. A concession licensed or redrawn since is missing or wrong (carries on walking-skeleton O9, "real boundaries") | flag | spec p1 | user | Accepted risk | 2026-10-16: every record names the map and its version, and the page says the boundaries may be incomplete. Nothing newer and downloadable turned up |
 | O6 | Neon free gives 1 GB (walking-skeleton O5). The Trase file is 25 MB as GeoJSON, plus about 1,600 records a day | unproven | spec p1 | spec p3 | Open | — |
 | O7 | Neon free gives 100 compute-hours a month (walking-skeleton O6). An hourly job wakes the database 720 times a month | unproven | spec p1 | spec p3 | Open | — |
 | O8 | About 1,600 seals a day (541 to 2,495) from a wallet that started with 0.05 Base Sepolia ETH. At 0.006 gwei (2026-10-16) and an assumed 60,000 gas each, that is about 0.0006 ETH a day; the gas price can rise | unproven | spec p1 | spec p3 | Open | — |
