@@ -157,6 +157,68 @@ Scenario: No hotspots in the chosen dates
 - Past seasons — season-backtest.
 - Company names — not planned (shape O10).
 
+## Interface
+
+One screen, the home page. The left column steps from the list to a concession to one hotspot's
+record; the map sits on the right. Record first, map second, in reading and focus order (D2).
+The column is 400–480 px wide, wider than walking-skeleton's 360–440, so a concession ID stays on
+one line. Under 720 px wide the map moves below the column, as before.
+
+```mermaid
+flowchart LR
+    D[Dates] -- "a valid range" --> L[Concession list]
+    L -- "opens a row" --> C[Concession and its hotspots]
+    C -- "picks a row or a dot" --> R[Hotspot record]
+    R -- "Hotspots in ID-WOOD-CONCESSION-0540" --> C
+    C -- "All concessions" --> L
+    R -- "dates changed" --> C
+```
+
+The investigator sets dates, opens a concession from the ranked list, then picks one of its
+hotspots by row or by dot; back links step out one level at a time.
+
+| Step       | Left column | Map |
+| ---------- | ----------- | --- |
+| List       | Title, intro, dates, "174 concessions, ranked by hotspots inside.", then a table: Concession (ID, province under it), Inside, Within 5 km. The whole row opens it; the ID button is the one keyboard stop | The watch area, nothing drawn. 174 dashed outlines at that zoom merge into dark clumps, so the list carries this step |
+| Concession | "All concessions", the ID, then Province, Area ("251,385 ha"), Hotspots ("930 inside, 334 within 5 km"), Boundaries (the map version). A table: Detected (UTC), Fire power, Where ("Inside, 3.1 km"), newest first, 100 rows at a time with "Show 100 more" | Fitted to the boundary plus 5 km. The dashed boundary, every hotspot as a fire dot sized by fire power with a surface-coloured edge, and the legend |
+| Record     | "Hotspots in ID-WOOD-CONCESSION-0540", then the record panel: status, Detected, Sealed (with "2 h 47 min after detection"), Satellite, Location, Fire power, Confidence, Concession or Concessions (each ID with "Inside, 3.1 km from the edge"), Boundaries, Fingerprint, Transaction, the raw record | Zoom 11 on the hotspot, about 1,450 px per degree, with the selected ring: 3 km from the edge is about 40 px |
+
+| State | What shows |
+| ----- | ---------- |
+| Loading the list | Skeleton rows in the table's shape; after 3 s the walking-skeleton note "Starting the server after a quiet spell…", ending "the list loads on its own." |
+| Couldn't load the list | "Couldn't load the concessions", "The server didn't answer. Try again in a moment." and Try again |
+| No hotspots in the dates | "No hotspots in these dates", then scenario 5's two lines |
+| Dates not valid | Both inputs outlined in the error colour with one of "Pick both dates.", "The end date is before the start date.", "Pick 31 days or fewer. This range is 76 days." The last valid list stays |
+| Loading or couldn't load a concession | A skeleton of the detail rows; or "Couldn't load this concession" with Try again |
+| Record states | As walking-skeleton: Checking, Matches the chain, Does not match the chain (with Sealed fingerprint and Fingerprint now), Not on chain yet, Couldn't check the chain with Check again |
+| Within 375 m of an edge | "Outside, 370 m from the edge, within one satellite pixel of it" |
+
+**Fixed copy.** Title "Pulpwood concessions with hotspots". Intro: "NASA FIRMS fire detections on or
+within 5 km of Indonesia's licensed pulpwood concessions. Each is sealed on a public blockchain
+so anyone can check it hasn't changed since." Under the column: "Concession boundaries from Trase,
+Indonesia wood pulp concessions 2023–2024, CC BY 4.0. They may miss concessions licensed or
+redrawn since." with the Trase name linking to its dataset page (O5).
+
+**Motion tier:** 1. Panels and tables enter with the existing 4 px rise over `--fw-dur`; nothing
+new moves. The map changes view at once, and the selected ring is drawn, not animated. Reduced
+motion sets every duration to 0.
+
+**Components used:** `fw-panel`, `fw-kv`, `fw-table` (with the selected row), `fw-chip`,
+`fw-help`, `fw-error`, `fw-field`, `fw-input` (dates), `fw-btn` (primary and secondary), `fw-link`,
+`fw-mono`, `fw-empty`, `fw-skeleton`, and the detections guideline's fire dots, selected ring and
+concession boundary. No new components or tokens; layout lives in `web/src/styles/app.css`.
+
+**Design system:** Fire Watch, `docs/design/design-system/` (D2, D4).
+
+**Preview:** real components in `web/src`: `FireRecordPage`, `ConcessionList`, `ConcessionView`,
+`DateRange`, `FireMap`, and `RecordPanel` with the new rows. Run `cd web && pnpm dev` and open
+`http://localhost:5173/?preview=fire-record`; pickers at the top switch state and theme, and
+`&state=mismatch` or `&theme=dark` link straight to one. The data is real VIIRS NOAA-20 detections
+from 2026-10-11 to 14 matched to the Trase map (`web/src/preview/fire-record.fixture.json`, no
+company names); seal times, fingerprints and transactions are made up. It needs the development
+Maps key in `web/.env.local`. Drift check passed over the 14 files written; all 36 tokens used
+exist in `docs/design/design-system/tokens/`.
+
 ## Decisions to record
 
 Drafted at pause 1. They move under Technical plan at pause 3, and `/build` appends them to
