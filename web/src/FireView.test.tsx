@@ -45,12 +45,12 @@ function fire({ id, key }: { id: string; key: string }): FireDetail {
         map_version: fixture.map_version,
       }),
     );
-  return { ...summary, hotspots };
+  return { ...summary, hotspots, as_of_unix: 1792227600 };
 }
 
 function show(id: string, load: FireLoad, props: Partial<Parameters<typeof FireView>[0]> = {}) {
   const handlers = { onBack: vi.fn(), onPick: vi.fn(), onRetry: vi.fn() };
-  render(<FireView id={id} load={load} picked={null} {...handlers} {...props} />);
+  render(<FireView id={id} load={load} packHref={null} picked={null} {...handlers} {...props} />);
   return handlers;
 }
 

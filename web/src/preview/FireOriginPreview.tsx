@@ -1,45 +1,24 @@
 import { useEffect, useMemo, useState } from "react";
-import { keccak256, toHex, type Hex } from "viem";
-import type { ConcessionSummary, FireSummary, HotspotRecord, Ring } from "../api";
+import type { Hex } from "viem";
+import type { HotspotRecord } from "../api";
 import { FireRecordPage, type FireRecordSource, type View } from "../FireRecordPage";
-import raw from "./fire-origin.fixture.json";
+import {
+  enrich,
+  fingerprintOf,
+  FIRES,
+  fireHotspots,
+  fixture,
+  never,
+  param,
+  syncPreview,
+  THEMES,
+  wait,
+  WAIT_MS,
+  type FixtureHotspot,
+  type Theme,
+} from "./fixture";
 import "./preview.css";
 
-// Real VIIRS NOAA-20 detections from 2026-10-12 to 15 near four concessions, grouped into fires by
-// the fire-origin spec's rule (D25, D26, D27) from the live read-only database. Seal times,
-// fingerprints and transactions are made up here, as in the fire-record preview.
-
-type FixtureHotspot = Pick<
-  HotspotRecord,
-  "lat_e5" | "lon_e5" | "acquired_unix" | "frp_e2" | "confidence" | "concessions" | "fire_key" | "pass"
->;
-interface FixtureDetail extends ConcessionSummary {
-  boundary: Ring[];
-  hotspots: FixtureHotspot[];
-  fires: FireSummary[];
-}
-interface Fixture {
-  map_version: string;
-  from: string;
-  to: string;
-  today: string;
-  recording_started: string;
-  concessions: ConcessionSummary[];
-  detail: Record<string, FixtureDetail>;
-}
-
-const fixture = raw as unknown as Fixture;
-
-// The spec's scenario fires, by the record ID of each fire's first detection.
-const FIRES = {
-  outside: { id: "ID-WOOD-CONCESSION-0332", key: "0x48f25fe185b0402018dc6cd3fab3930a760bc0c47bed4d163aa67f678000fbc1" },
-  inside: { id: "ID-WOOD-CONCESSION-0356", key: "0x9b5e7cf66d458017f0d0e7e9fad7dcb2e0ae3e3309ef04e6e5b848be5a7a5547" },
-  neighbour: { id: "ID-WOOD-CONCESSION-0372", key: "0x9b5e7cf66d458017f0d0e7e9fad7dcb2e0ae3e3309ef04e6e5b848be5a7a5547" },
-  edge: { id: "ID-WOOD-CONCESSION-0540", key: "0x3f9765e240f39e98d13e8fe523a4ace4b730b361d34c2d5bda1d00f72e81301f" },
-  still: { id: "ID-WOOD-CONCESSION-0540", key: "0xceb010accad1087b319b17528fcdf3cfd6d4285a099a88671ae1e9ea9d86fe18" },
-} as const satisfies Record<string, { id: string; key: Hex }>;
-const SEAL_AFTER_S = 2 * 3600 + 47 * 60;
-const WAIT_MS = 350;
 const DAY_S = 86400;
 
 const STATES = {
@@ -64,32 +43,9 @@ const STATES = {
 } as const;
 type State = keyof typeof STATES;
 
-const THEMES = { system: "System", light: "Light", dark: "Dark" } as const;
-type Theme = keyof typeof THEMES;
-
-const iso = (unix: number) => new Date(unix * 1000).toISOString().replace(".000", "");
 const day = (date: string) => Date.parse(`${date}T00:00:00Z`) / 1000;
-const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-const never = () => new Promise<never>(() => {});
-
-const fingerprintOf = (r: HotspotRecord): Hex =>
-  keccak256(toHex(JSON.stringify([r.source, r.lat_e5, r.lon_e5, r.acquired_unix, r.frp_e2, r.confidence, r.concessions, r.map_version])));
 
 const RECORD_STATES: State[] = ["matches", "mismatch", "pending", "checking", "chainError"];
-
-function enrich(h: FixtureHotspot, unsealed: boolean): HotspotRecord {
-  const record_id = keccak256(toHex(`${h.lat_e5},${h.lon_e5},${h.acquired_unix}`));
-  return {
-    ...h,
-    record_id,
-    source: "VIIRS_NOAA20_NRT",
-    acquired_at: iso(h.acquired_unix),
-    fingerprint_version: 2,
-    tx_hash: unsealed ? null : keccak256(record_id),
-    sealed_at: unsealed ? null : iso(h.acquired_unix + SEAL_AFTER_S),
-    map_version: fixture.map_version,
-  };
-}
 
 function makeSource(state: State): FireRecordSource {
   const target = FIRES.outside;
@@ -143,12 +99,10 @@ function makeSource(state: State): FireRecordSource {
       if (state === "fireError") throw new Error("preview: server down");
       const summary = fixture.detail[id]?.fires.find((f) => f.key === key);
       if (!summary) throw new Error(`preview: no fire ${key}`);
-      const hotspots = records
-        .get(id)!
-        .filter((h) => h.fire_key === key)
-        .sort((a, b) => a.acquired_unix - b.acquired_unix || a.lat_e5 - b.lat_e5);
-      return { ...summary, hotspots };
+      return { ...summary, hotspots: fireHotspots(records.get(id)!, key), as_of_unix: Date.now() / 1000 };
     },
+    // The complaint-pack preview, as of now, for this fire.
+    packHref: (id, f) => `/?${new URLSearchParams({ preview: "complaint-pack", state: "matches", pack: id, fire: f.key })}`,
     async sealOf(record) {
       if (state === "checking") return never();
       await wait(WAIT_MS * 2);
@@ -173,24 +127,12 @@ function initialDates(state: State) {
   return { from: fixture.from, to: fixture.to };
 }
 
-function param<T extends string>(name: string, options: Record<T, string>, fallback: T): T {
-  const value = new URLSearchParams(location.search).get(name);
-  return value && value in options ? (value as T) : fallback;
-}
-
 export default function FireOriginPreview() {
   const [state, setState] = useState<State>(() => param("state", STATES, "flow"));
   const [theme, setTheme] = useState<Theme>(() => param("theme", THEMES, "system"));
   const source = useMemo(() => makeSource(state), [state]);
 
-  useEffect(() => {
-    const url = new URL(location.href);
-    url.searchParams.set("state", state);
-    url.searchParams.set("theme", theme);
-    history.replaceState(null, "", url);
-    if (theme === "system") delete document.documentElement.dataset.theme;
-    else document.documentElement.dataset.theme = theme;
-  }, [state, theme]);
+  useEffect(() => syncPreview(state, theme), [state, theme]);
 
   return (
     <div className="preview">

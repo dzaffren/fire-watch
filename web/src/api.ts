@@ -1,6 +1,7 @@
 import type { Hex } from "viem";
 import { sealOf } from "./chain";
 import { fingerprint, type MatchedDetection } from "./fingerprint";
+import type { PackSource } from "./ComplaintPack";
 import type { FireRecordSource } from "./FireRecordPage";
 
 export type { ConcessionMatch } from "./fingerprint";
@@ -63,6 +64,24 @@ export interface FireSummary {
 /** One fire with every detection in it, oldest first, whatever the chosen dates. */
 export interface FireDetail extends FireSummary {
   hotspots: HotspotRecord[];
+  /** When the API answered: a pack made from this view holds the detections stored by then (D33). */
+  as_of_unix: number;
+}
+
+/** Which fire a pack holds, and as of when; the pack's link carries all three (D33, D34). */
+export interface PackRef {
+  id: string;
+  key: Hex;
+  asOf: number;
+}
+
+/** One fire as it stood at `as_of_unix`, with its concession, for a complaint pack. */
+export interface PackDetail extends FireDetail {
+  concession_id: string;
+  province: string;
+  boundary: Ring[];
+  map_version: string;
+  rule_version: number;
 }
 
 export interface ConcessionDetail extends ConcessionSummary {
@@ -88,10 +107,39 @@ export const concession = (id: string, from: string, to: string) =>
 export const fire = (id: string, key: Hex) =>
   get<FireDetail>(`/api/concessions/${encodeURIComponent(id)}/fires/${key}`);
 
+/** The pack, or null when the API knows no such fire as of then. */
+export async function pack({ id, key, asOf }: PackRef): Promise<PackDetail | null> {
+  const res = await fetch(`${import.meta.env.VITE_API_URL}/api/concessions/${encodeURIComponent(id)}/fires/${key}?as_of=${asOf}`);
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`API answered ${res.status}`);
+  return res.json();
+}
+
+/** The pack's public link: the site root with the concession, the fire key and the as-of time. */
+export const packHref = (id: string, f: FireDetail) =>
+  `/?${new URLSearchParams({ pack: id, fire: f.key, as_of: String(f.as_of_unix) })}`;
+
+/** The pack a link names, or null when part of it is missing or malformed. */
+export function packRef(params: URLSearchParams): PackRef | null {
+  const id = params.get("pack");
+  const key = params.get("fire");
+  const asOf = Number(params.get("as_of"));
+  if (!id || !key || !/^0x[0-9a-f]{64}$/.test(key) || !Number.isInteger(asOf) || asOf <= 0) return null;
+  return { id, key: key as Hex, asOf };
+}
+
 export const apiSource: FireRecordSource = {
   concessions,
   concession,
   fire,
+  packHref,
   sealOf: async (record) => (await sealOf(record.record_id)).fingerprint,
+  fingerprint,
+};
+
+export const packSource: PackSource = {
+  pack,
+  contract: import.meta.env.VITE_CONTRACT_ADDRESS,
+  sealOf: apiSource.sealOf,
   fingerprint,
 };

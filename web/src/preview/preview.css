@@ -8,3 +8,7 @@
 }
 .preview-bar .fw-help { margin: 0; flex: 1 1 320px; }
 .preview-pick { display: flex; align-items: center; gap: var(--fw-space-2); font-size: var(--fw-text-sm); font-weight: var(--fw-weight-semibold); }
+@media print {
+  .preview { display: block; height: auto; }
+  .preview-bar { display: none; }
+}

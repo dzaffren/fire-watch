@@ -1,8 +1,9 @@
 import { Fragment, useEffect, useState, type CSSProperties } from "react";
 import type { FireDetail, HotspotRecord } from "./api";
 import type { Dot } from "./FireMap";
+import type { Area } from "./maps";
 import { count, detected, detectedShort, distance, firePower, firstSeenLine, plural } from "./format";
-import { AlertIcon, ChevronLeftIcon, PauseIcon, PlayIcon } from "./icons";
+import { AlertIcon, ChevronLeftIcon, ExternalIcon, PauseIcon, PlayIcon } from "./icons";
 
 export type FireLoad = { kind: "loading" } | { kind: "error" } | { kind: "ready"; fire: FireDetail };
 
@@ -30,7 +31,23 @@ export const passTimes = (hotspots: HotspotRecord[]) => {
   return times;
 };
 
-function where(h: HotspotRecord, id: string): string {
+// About 1 km around a fire's detections, so the nearby edge shows.
+const FIRE_PAD_DEG = 0.01;
+
+/** The map area that frames a fire's detections. */
+export function fireArea(hotspots: HotspotRecord[]): Area {
+  const lats = hotspots.map((h) => h.lat_e5 / 1e5);
+  const lons = hotspots.map((h) => h.lon_e5 / 1e5);
+  return {
+    west: Math.min(...lons) - FIRE_PAD_DEG,
+    east: Math.max(...lons) + FIRE_PAD_DEG,
+    south: Math.min(...lats) - FIRE_PAD_DEG,
+    north: Math.max(...lats) + FIRE_PAD_DEG,
+  };
+}
+
+/** "Outside, 950 m": where one detection sits against the concession's edge. */
+export function where(h: HotspotRecord, id: string): string {
   const m = h.concessions.find((c) => c.id === id);
   return m ? `${m.inside ? "Inside" : "Outside"}, ${distance(m.edge_m)}` : "";
 }
@@ -38,13 +55,14 @@ function where(h: HotspotRecord, id: string): string {
 interface Props {
   id: string;
   load: FireLoad;
+  packHref: string | null;
   picked: number | null;
   onBack: () => void;
   onPick: (index: number) => void;
   onRetry: () => void;
 }
 
-export function FireView({ id, load, picked, onBack, onPick, onRetry }: Props) {
+export function FireView({ id, load, packHref, picked, onBack, onPick, onRetry }: Props) {
   const [shown, setShown] = useState(() => (picked === null ? PAGE : Math.ceil((picked + 1) / PAGE) * PAGE));
 
   return (
@@ -77,7 +95,7 @@ export function FireView({ id, load, picked, onBack, onPick, onRetry }: Props) {
         </div>
       )}
 
-      {load.kind === "ready" && <Reading id={id} fire={load.fire} />}
+      {load.kind === "ready" && <Reading id={id} fire={load.fire} packHref={packHref} />}
 
       {load.kind === "ready" && (
         <>
@@ -117,7 +135,7 @@ export function FireView({ id, load, picked, onBack, onPick, onRetry }: Props) {
   );
 }
 
-function Reading({ id, fire }: { id: string; fire: FireDetail }) {
+function Reading({ id, fire, packHref }: { id: string; fire: FireDetail; packHref: string | null }) {
   const { reading } = fire.first_seen;
   const unclear = reading === "edge" || reading === "both";
   const showInside = fire.inside_from_unix !== null && (reading === "outside" || unclear);
@@ -178,6 +196,18 @@ function Reading({ id, fire }: { id: string; fire: FireDetail }) {
           seen. Each detection is sealed, so anyone can redo this from the chain and NASA FIRMS's public archive.
         </p>
       </details>
+      {packHref && (
+        <div className="pack-make">
+          <a className="fw-btn" href={packHref} target="_blank" rel="noopener" aria-describedby="pack-make-help">
+            Make complaint pack
+            <ExternalIcon />
+          </a>
+          <p id="pack-make-help" className="fw-help">
+            Opens this fire as it stands now on a page with its own link, to put in a grievance. The pack never
+            changes, and anyone with the link can check it against the chain.
+          </p>
+        </div>
+      )}
     </article>
   );
 }

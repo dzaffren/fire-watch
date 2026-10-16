@@ -266,7 +266,14 @@ export function FireMap({ label, boundary, dots, selected = null, onSelect, area
       layer.current?.draw();
     };
     scheme.addEventListener("change", restyle);
-    return () => scheme.removeEventListener("change", restyle);
+    // A complaint pack prints light whatever the screen's theme.
+    addEventListener("beforeprint", restyle);
+    addEventListener("afterprint", restyle);
+    return () => {
+      scheme.removeEventListener("change", restyle);
+      removeEventListener("beforeprint", restyle);
+      removeEventListener("afterprint", restyle);
+    };
   }, [ready]);
 
   const focus = selected === null ? undefined : dots?.[selected];
