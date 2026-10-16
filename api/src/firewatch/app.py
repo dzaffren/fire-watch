@@ -8,7 +8,7 @@ from time import perf_counter
 from typing import Annotated
 
 import psycopg
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Path, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
@@ -61,6 +61,15 @@ FROM hotspots h
 JOIN hotspot_concessions m ON m.hotspot_id = h.id AND m.concession_id = %(id)s
 WHERE h.fingerprint_version = 2
 """
+FIRE_HOTSPOTS = """
+SELECT h.*,
+       (SELECT json_agg(json_build_object('id', a.concession_id, 'inside', a.inside,
+                                          'edge_m', a.edge_m)
+                        ORDER BY a.inside DESC, a.edge_m, a.concession_id)
+        FROM hotspot_concessions a WHERE a.hotspot_id = h.id) AS concessions
+FROM hotspots h
+WHERE h.record_id = ANY(%(record_ids)s)
+"""
 RECORDER = """
 SELECT n.finished_at AS last_run_at,
        CASE WHEN n.id IS NOT NULL THEN n.error IS NULL END AS last_run_ok,
@@ -76,6 +85,7 @@ LEFT JOIN LATERAL (
 
 From = Annotated[date, Query(alias="from")]
 To = Annotated[date, Query(alias="to")]
+FireKey = Annotated[str, Path(pattern=r"^0x[0-9a-f]{64}$")]
 
 
 def _iso(at: datetime | None) -> str | None:
@@ -200,6 +210,30 @@ def create_app(allowed_origin: str) -> FastAPI:
                 {**_record(row), "fire_key": _hex(fire_of[row["record_id"]].key)} for row in rows
             ],
             "fires": [_fire(fire) for fire in listed],
+        }
+
+    @app.get("/api/concessions/{concession_id}/fires/{key}")
+    def fire(concession_id: str, key: FireKey):
+        wanted = bytes.fromhex(key[2:])
+        with connect() as conn:
+            # An unknown concession has no detections, so no fire.
+            grouped, group_ms = _group(conn, concession_id)
+            found = next((fire for fire in grouped if fire.key == wanted), None)
+            if found is None:
+                raise HTTPException(status_code=404, detail="No such fire")
+            ids = [d.record_id for d in found.detections]
+            rows = conn.execute(FIRE_HOTSPOTS, {"record_ids": ids}).fetchall()
+        by_id = {row["record_id"]: row for row in rows}
+        log.info(
+            "served fire id=%s key=%s detections=%d passes=%d group_ms=%d",
+            concession_id, key, len(ids), found.passes, group_ms,
+        )
+        return {
+            **_fire(found),
+            "hotspots": [
+                {**_record(by_id[record_id]), "pass": number}
+                for record_id, number in zip(ids, found.pass_numbers)
+            ],
         }
 
     @app.get("/api/health")
