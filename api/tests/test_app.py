@@ -1,5 +1,5 @@
 import itertools
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 import psycopg
@@ -421,6 +421,46 @@ def test_pack_keeps_its_key_after_a_join_to_an_older_fire(client, db):
     assert live.status_code == 404
     assert pack.status_code == 200
     assert {k: pack.json()[k] for k in made} == made
+
+
+def test_pack_has_its_concession_map_and_rule(client, db):
+    first = record(db, "2026-10-13T17:37Z", [(C0332, False, 954)], created_at="2026-10-14T09:00Z")
+    as_of = unix("2026-10-14T09:00Z")
+
+    pack = client.get(f"/api/concessions/{C0332}/fires/{first}", params={"as_of": as_of}).json()
+    concession = client.get(f"/api/concessions/{C0332}", params=RANGE).json()
+
+    assert {k: pack[k] for k in ("concession_id", "province", "map_version", "rule_version")} == {
+        "concession_id": C0332,
+        "province": "Kalimantan Tengah",
+        "map_version": MAP_VERSION,
+        "rule_version": 1,
+    }
+    assert pack["boundary"] == concession["boundary"] and len(pack["boundary"]) > 0
+    assert (pack["key"], pack["as_of_unix"], pack["detections"]) == (first, as_of, 1)
+
+
+def test_future_as_of_is_422(client, db):
+    first = record(db, "2026-10-13T17:37Z", [(C0332, False, 954)], created_at="2026-10-14T09:00Z")
+    url = f"/api/concessions/{C0332}/fires/{first}"
+    now = int(datetime.now(timezone.utc).timestamp())
+
+    assert client.get(url, params={"as_of": now}).status_code == 200
+    for as_of in (now + 60, 0, "1792227602.5"):
+        assert client.get(url, params={"as_of": as_of}).status_code == 422
+
+
+def test_as_of_before_any_record_is_404(client, db):
+    key = "0x" + "ab" * 32
+    assert client.get(f"/api/concessions/{C0332}/fires/{key}").status_code == 404
+
+    first = record(db, "2026-10-13T17:37Z", [(C0332, False, 954)], created_at="2026-10-14T09:00Z")
+    url = f"/api/concessions/{C0332}/fires/{first}"
+
+    assert client.get(url, params={"as_of": unix("2026-10-14T08:59:59Z")}).status_code == 404
+    assert client.get(url, params={"as_of": unix("2026-10-14T09:00Z")}).status_code == 200
+    unknown = f"/api/concessions/ID-WOOD-CONCESSION-9999/fires/{first}"
+    assert client.get(unknown, params={"as_of": unix("2026-10-14T09:00Z")}).status_code == 404
 
 
 @pytest.mark.parametrize(
