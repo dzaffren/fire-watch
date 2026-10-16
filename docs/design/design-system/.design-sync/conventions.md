@@ -33,12 +33,12 @@ your own layout. Never hard-code a colour, size or font that has a token.
 
 - Colour: `--fw-bg`, `--fw-surface`, `--fw-ink`, `--fw-muted`, `--fw-faint`, `--fw-line`,
   `--fw-control`, `--fw-accent`, `--fw-accent-hover`, `--fw-accent-fg`, `--fw-accent-tint`,
-  `--fw-fire`, `--fw-ok`, `--fw-bad`, `--fw-map`.
+  `--fw-fire`, `--fw-ok`, `--fw-bad`, `--fw-map`, `--fw-concession` (inside a concession, with alpha).
 - Space: `--fw-space-1`…`--fw-space-7` (4, 8, 12, 16, 24, 32, 48px). Radius: `--fw-radius-chip`,
   `--fw-radius-control`, `--fw-radius-panel`.
 - Type: `--fw-font-sans`, `--fw-font-mono`, `--fw-text-xs`…`--fw-text-2xl` (12–32px),
   `--fw-weight-regular|medium|semibold`.
-- Motion: `--fw-dur-fast`, `--fw-dur`, `--fw-dur-slow`, `--fw-ease`, `--fw-replay-step`.
+- Motion: `--fw-dur-fast`, `--fw-dur`, `--fw-dur-slow`, `--fw-ease`, `--fw-replay-step` (600ms, one pass).
 
 ## Rules
 
@@ -50,6 +50,8 @@ your own layout. Never hard-code a colour, size or font that has a token.
   `guidelines/detections.html`.
 - Fire dots below zoom 12 are 3 px with no edge, and the legend reads "Fire detection. Zoom in for
   fire power". From zoom 12 they are 6, 9 or 13 px by fire power with a 1px `--fw-surface` edge.
+- A concession on the map is filled with `--fw-concession` and edged with a 1.5px dashed
+  `--fw-ink` line, so the inside reads at a glance.
 
 Read `styles.css`, `tokens/*.css` and the cards in `guidelines/` before styling; they are the source.
 

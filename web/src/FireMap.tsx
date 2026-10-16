@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { Ring } from "./api";
-import { fitView, loadMaps, mapStyles, themeColour, WATCH_AREA, type Area } from "./maps";
+import { fitView, loadMaps, mapStyles, themeColour, themeFill, WATCH_AREA, type Area } from "./maps";
 import { MinusIcon, PlusIcon } from "./icons";
 
 export interface Dot {
@@ -108,18 +108,21 @@ function createLayer(OverlayView: typeof google.maps.OverlayView): Layer {
       ctx.clearRect(0, 0, w, h);
 
       const ink = themeColour("--fw-ink");
-      ctx.strokeStyle = ink;
-      ctx.lineWidth = 1.5;
-      ctx.setLineDash([5, 4]);
+      // The inside tint shows which side of the dashed edge is the concession.
+      ctx.beginPath();
       for (const ring of this.data.boundary) {
-        ctx.beginPath();
         ring.forEach(([lng, lat], i) => {
           const p = this.pixel(lng, lat);
           if (p) (i ? ctx.lineTo : ctx.moveTo).call(ctx, p[0], p[1]);
         });
         ctx.closePath();
-        ctx.stroke();
       }
+      ctx.fillStyle = themeFill("--fw-concession");
+      ctx.fill();
+      ctx.strokeStyle = ink;
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([5, 4]);
+      ctx.stroke();
       ctx.setLineDash([]);
 
       // From zoom 12, smallest first so the strongest fires sit on top; a surface-coloured edge
@@ -338,8 +341,8 @@ export function FireMap({ label, boundary, dots, selected = null, onSelect, area
             </>
           )}
           <div className="legend-row">
-            <span className="legend-key legend-dash" />
-            Concession boundary
+            <span className="legend-key legend-area" />
+            Concession: dashed edge, tint inside
           </div>
         </div>
       )}

@@ -100,7 +100,7 @@ button.fw-link { margin: 0; padding: 0; border: 0; background: none; font: inher
 .legend-dot.sm { width: 6px; height: 6px; }
 .legend-dot.md { width: 9px; height: 9px; }
 .legend-dot.lg { width: 13px; height: 13px; }
-.legend-dash { border-top: 1.5px dashed var(--fw-ink); }
+.legend-area { height: 14px; box-sizing: border-box; border: 1.5px dashed var(--fw-ink); background: var(--fw-concession); }
 .legend-diamond {
   width: 8px; height: 8px; margin-left: 2px; box-sizing: border-box;
   border: 1.5px solid var(--fw-ink); background: var(--fw-surface); transform: rotate(45deg);

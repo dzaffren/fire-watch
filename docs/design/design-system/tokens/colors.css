@@ -23,6 +23,7 @@
   --fw-bad: #b42318;
 
   --fw-map: #e7ebe4;
+  --fw-concession: #1f242110; /* ink at 6%: inside a concession, under its dashed edge */
   --fw-skeleton: #e8e8e3;
   --fw-skeleton-2: #ededea;
   --fw-tick-off: #a3a99f;
@@ -53,6 +54,7 @@
     --fw-bad: #ff7b6e;
 
     --fw-map: #161a16;
+    --fw-concession: #e8e9e412; /* ink at 7% */
     --fw-skeleton: #262b26;
     --fw-skeleton-2: #202420;
     --fw-tick-off: #4d554b;
@@ -83,6 +85,7 @@
   --fw-bad: #ff7b6e;
 
   --fw-map: #161a16;
+  --fw-concession: #e8e9e412;
   --fw-skeleton: #262b26;
   --fw-skeleton-2: #202420;
   --fw-tick-off: #4d554b;
