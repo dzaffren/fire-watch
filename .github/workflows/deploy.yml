@@ -68,7 +68,7 @@ jobs:
         run: curl --fail --silent --show-error --retry 6 --retry-delay 10 --retry-all-errors --max-time 90 "${{ vars.API_URL }}/api/health"
 
   web:
-    needs: guard
+    needs: [guard, api]
     if: needs.guard.outputs.latest == 'true'
     runs-on: ubuntu-latest
     defaults:
