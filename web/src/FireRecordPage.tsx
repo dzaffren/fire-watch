@@ -125,7 +125,7 @@ export function FireRecordPage({ source, today, initialView, initialDates }: Pro
             today={today}
             onChange={(from, to) => {
               setDates({ from, to });
-              if (view.kind === "hotspot") setView({ kind: "concession", id: view.id });
+              if (view.kind !== "list") setView({ kind: "concession", id: view.id });
             }}
           />
           <div className="slot" aria-live="polite">
