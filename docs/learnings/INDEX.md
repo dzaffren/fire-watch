@@ -16,3 +16,4 @@
 - Test `infra/setup.sh` with a fake `az` first on PATH, never by running it — [setup-sh-reaches-real-azure](setup-sh-reaches-real-azure.md)
 - Hand over `!` commands with real values and an absolute `cd`, no `<placeholder>` — [no-placeholders-in-runnable-commands](no-placeholders-in-runnable-commands.md)
 - Run one API test suite at a time; every worktree shares `firewatch_test` — [one-api-suite-at-a-time](one-api-suite-at-a-time.md)
+- Ask before committing a fixture read from the live database — [live-db-fixtures-need-approval](live-db-fixtures-need-approval.md)
