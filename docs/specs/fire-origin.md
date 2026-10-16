@@ -423,12 +423,12 @@ Recorded as D31, D32.
 
 2026-10-16 · 10 raw findings, 6 survived, 6 fixed.
 
-- correctness · `web/src/FireMap.tsx:112` · the API sends each polygon's holes and the inside tint fills even-odd, so holes stay untinted · `b7f905e`
-- correctness · `web/src/FireRecordPage.tsx:186` · a date change from the concession view keeps its marked fire · `7179fac`
-- correctness · `web/src/FireMap.tsx:349` · the replay comes before the zoom buttons, so tab order runs left to right · `09beabe`
-- correctness · `web/src/FireRecordPage.tsx:263` · the legend shows Older to newer only while a detection is faded · `91c5275`
-- correctness · `web/src/styles/app.css:127` · the replay label reserves its widest pass's width, so the track holds still · `96c2e7c`
-- coverage · `web/src/FireView.tsx:48` · tests page a 188-detection fire and open it on the picked page · `5654aea`
+- correctness · `web/src/FireMap.tsx:112` · the API sends each polygon's holes and the inside tint fills even-odd, so holes stay untinted · `e4cb275`
+- correctness · `web/src/FireRecordPage.tsx:186` · a date change from the concession view keeps its marked fire · `8ef389c`
+- correctness · `web/src/FireMap.tsx:349` · the replay comes before the zoom buttons, so tab order runs left to right · `80aab75`
+- correctness · `web/src/FireRecordPage.tsx:263` · the legend shows Older to newer only while a detection is faded · `ab731e6`
+- correctness · `web/src/styles/app.css:127` · the replay label reserves its widest pass's width, so the track holds still · `eb4ea14`
+- coverage · `web/src/FireView.tsx:48` · tests page a 188-detection fire and open it on the picked page · `4d70fd9`
 
 ## Open items
 
@@ -447,9 +447,9 @@ Recorded as D31, D32.
 | O11 | A fire's key is its first detection's record ID (D32). When a later pass links it to an older fire, the joined fire takes the older key, so a fire view left open answers 404, and complaint-pack can't link to a key and expect it to last | flag | spec p3 | user | Accepted risk | 2026-10-16: the page shows "Couldn't load this fire" with Try again, and Back reloads the fires; joins mid-look are rare. complaint-pack keeps its own copy of a fire rather than linking to the key |
 | O12 | Grouping on every request stays under about 1 s on the 0.25-vCPU container through judging. Measured on a laptop: 24 ms at 1,083 detections, 270 ms at 10,830 | unproven | spec p3 | user | Accepted risk | 2026-10-16: ship as planned and read `group_ms` in the API log after deploy; past about 1 s, the recorder stores each detection's fire key as its own change |
 | O13 | The spec does not say which detection is "first" when a pass has several at the same minute. That choice sets a fire's key (D32) and the distance that scenario 4 measures from ("none more than 483 m from the first") | flag | build | user | Decided alone | Chose: order by time, then lowest latitude, then lowest longitude, as walking-skeleton O13 picks the latest hotspot. It gives the pause 2 preview's key for all 171 fires and the 483 m. Other: highest fire power first, which gives 683 m on scenario 4. Undo: change the sort key in `api/src/firewatch/fires.py` and the rule's step 1. 2026-10-16 |
-| O14 | Adding ID-WOOD-CONCESSION-0332, 0356 and 0372 to `fixtures/concessions/trase-cut.geojson` breaks two loader tests in `api/tests/test_concessions.py`, a file the plan did not name | flag | build | user | Decided alone | Chose: those tests now expect 6 concessions (5 with the 2024 permit skipped). Other: a separate cut file for fire-origin. Undo: revert commit aafae31 and give the e2e and API tests their own cut. 2026-10-16 |
+| O14 | Adding ID-WOOD-CONCESSION-0332, 0356 and 0372 to `fixtures/concessions/trase-cut.geojson` breaks two loader tests in `api/tests/test_concessions.py`, a file the plan did not name | flag | build | user | Decided alone | Chose: those tests now expect 6 concessions (5 with the 2024 permit skipped). Other: a separate cut file for fire-origin. Undo: revert commit c9ab74c and give the e2e and API tests their own cut. 2026-10-16 |
 | O15 | `GET /api/concessions/<id>` sent each polygon's outer ring only, so the new inside tint covered a concession's holes, land the record calls outside. ID-WOOD-CONCESSION-0377 has 6 holes, one of 37.8 km² | flag | review | user | Decided alone | Chose: `boundary` lists every ring, holes included, and `FireMap` fills the tint even-odd so holes stay clear. Other: send polygons as nested rings and change the `Ring[]` type. Undo: revert the review fix commit for O15. 2026-10-16 |
-| O16 | Seven `fix` commits on this branch get no CHANGELOG line: 9e3145a, 3339d4b, b7f905e, 7179fac, 09beabe, 91c5275 and 96c2e7c. Each fixes code this branch added, or the deploy order, before any user saw it | flag | ship | user | Decided alone | Chose: no Fixed lines; the one Added line for fire-origin covers them. Other: a Fixed line for each. Undo: add the lines under `### Fixed` in `CHANGELOG.md`. 2026-10-17 |
+| O16 | Seven `fix` commits on this branch get no CHANGELOG line: a7efaa9, 4518ef2, e4cb275, 8ef389c, 80aab75, ab731e6 and eb4ea14. Each fixes code this branch added, or the deploy order, before any user saw it | flag | ship | user | Decided alone | Chose: no Fixed lines; the one Added line for fire-origin covers them. Other: a Fixed line for each. Undo: add the lines under `### Fixed` in `CHANGELOG.md`. 2026-10-17 |
 
 _Never delete this section or its rows. See references/ledger.md._
 
