@@ -300,3 +300,32 @@ fires also stay put.
 Rejected: no flag (the risk stays open, and a mill could end up in a complaint).
 Source: docs/specs/fire-origin.md
 Status: active
+
+## D28 · 2026-10-16 · Rank a concession's fires largest first
+
+Why: on ID-WOOD-CONCESSION-0332, newest first put one-pass fires (18 of 34) on top and the 188- and
+90-detection fires that crossed the edge lower. Largest first matches the concession list's
+worst-first ranking (D14).
+Rejected: newest first (one-pass fires fill the top rows), boundary-crossing fires first (a two-part
+order that is harder to explain in one line).
+Source: docs/specs/fire-origin.md
+Status: active
+
+## D29 · 2026-10-16 · Tint the inside of a concession with --fw-concession on every map
+
+Why: a dashed edge alone doesn't show which side is inside; ID-WOOD-CONCESSION-0356 has several close
+outlines, and "inside, 410 m" couldn't be read off the map. Ink at 6% (light) and 7% (dark) reads as
+an area and keeps fire dots at 3.8:1 and 6.3:1 against it.
+Rejected: the dashed edge alone (the map can't back up an inside or outside reading), a teal accent
+wash (the accent means "you can act", D4).
+Source: docs/design/system-brief.md
+Status: active
+
+## D30 · 2026-10-16 · Replay one satellite pass every 600 ms
+
+Why: at 240 ms a 4-pass fire played in under a second, too fast to follow on screen or in the demo
+video; at 600 ms it takes about 2 s, and a 28-pass fire about 17 s.
+Rejected: 240 ms (too fast to see each pass land), no play button (motion tier 1; loses the moving
+spread in the demo).
+Source: docs/design/system-brief.md
+Status: active

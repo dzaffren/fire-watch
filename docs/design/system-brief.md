@@ -27,6 +27,8 @@ Choices were made on the directions page
 | Themes | Light and dark, both designed | user, confirmed 2026-10-13 (craft floor requires both) |
 | Oldest target | Current desktop and phone browsers, last two versions | user, confirmed 2026-10-13 |
 | Crowded detections | 3 px dots below zoom 12, fire-power sizes from zoom 12 | user, crowded detections page (https://claude.ai/artifact/DUQSyn4LBJeX9iPCi2fWpe), 2026-10-16 |
+| Which side is inside | A faint ink tint inside the concession, under the dashed edge | user, fire-origin spec pause 2 (O9), 2026-10-16 |
+| Replay speed | 600 ms a pass | user, fire-origin spec pause 2 (O10), 2026-10-16 |
 
 ## Token trace
 
@@ -45,11 +47,13 @@ desk use, map + panel density      → 15px base; scale 12 / 13 / 15 / 18 / 24 /
                                      (4, 8, 12, 16, 24, 32, 48)
 Stripe-like, never "rounded-2xl"   → radius 6px on controls, 8px on panels
 "never alarmist"                   → no red banners for routine states; fire colour never fills large areas
+"which side is inside"             → --fw-concession: ink at 6% (light, #1f242110) and 7% (dark, #e8e9e412) inside
+                                     the dashed edge; fire dots keep 3.8:1 (light) and 6.3:1 (dark) on it
 375 m VIIRS pixels, crowded        → below zoom 12 (a pixel under 10 px) every detection is a 3 px dot, no edge;
                                      from zoom 12 dots size by fire power, 6 / 9 / 13 px, 1px surface edge
 detail on request                  → raw record behind a disclosure, not on screen by default
 motion ceiling tier 3              → tier 1: 120–240 ms, cubic-bezier(.2,.8,.2,1)
-                                     tier 2: pass-by-pass replay, 240 ms a step
+                                     tier 2: pass-by-pass replay, 600 ms a step (a 4-pass fire in about 2 s)
                                      tier 3: the globe only, inside the budget below
 ```
 

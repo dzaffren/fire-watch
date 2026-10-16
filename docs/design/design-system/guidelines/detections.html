@@ -16,6 +16,7 @@
 .ring { width: 14px; height: 14px; border: 1.5px solid var(--fw-ink); border-radius: 50%; }
 .diamond { width: 8px; height: 8px; border: 1.5px solid var(--fw-ink); background: var(--fw-surface); transform: rotate(45deg); margin-left: 2px; }
 .dash { width: 40px; border-top: 1.5px dashed var(--fw-ink); }
+.area { width: 40px; height: 14px; box-sizing: border-box; border: 1.5px dashed var(--fw-ink); background: var(--fw-concession); }
 .dash.forecast { border-top-color: var(--fw-accent); }
 .timeline { display: flex; align-items: center; gap: 14px; }
 .track { position: relative; flex: 1; height: 16px; }
@@ -47,7 +48,7 @@
 <div><span class="key"><span class="dot" style="width: 9px; height: 9px; opacity: 0.3"></span><span class="dot" style="width: 9px; height: 9px; opacity: 0.65"></span><span class="dot" style="width: 9px; height: 9px"></span></span>Older to newer</div>
 <div><span class="key"><span class="ring"></span></span>Selected record</div>
 <div><span class="key"><span class="diamond"></span></span>First seen</div>
-<div><span class="dash"></span>Concession boundary</div>
+<div><span class="area"></span>Concession: dashed edge, faint tint inside</div>
 <div><span class="dash forecast"></span>Spread forecast</div>
 <p class="fw-help" style="margin: 0">Below zoom 12 a 375 m satellite pixel is under 10 px wide, so bigger dots merge into solid fire colour; the map legend reads "Fire detection. Zoom in for fire power". From zoom 12 dots get a 1px surface-coloured edge, strongest fire on top.</p>
 </div>
@@ -56,6 +57,7 @@
 <div class="track" role="img" aria-label="Replay at pass 14 of 28"><span class="base"></span><span class="fill"></span><span class="thumb"></span></div>
 <div class="fw-mono" style="font-size: var(--fw-text-sm)">Pass 14 of 28 · 10 Oct 05:53 UTC</div>
 </div>
+<p class="fw-help" style="margin: 0">Play steps one satellite pass every 600 ms (<span class="fw-mono">--fw-replay-step</span>), so a 4-pass fire plays in about 2 s and a 28-pass fire in about 17 s. Dragging or the arrow keys move it and stop play.</p>
 </div>
 </div>
 <script>

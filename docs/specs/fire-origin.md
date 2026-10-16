@@ -223,6 +223,10 @@ VIIRS pixel; nearer than that, the fire could be on either side." and "NOAA-20 p
 a day and cloud can hide a fire, so it may burn for hours before it is first seen. Each detection
 is sealed, so anyone can redo this from the chain and NASA FIRMS's public archive."
 
+**Inside tint.** Every map view fills the open concession with `--fw-concession` under its dashed
+edge, so the map shows which side is inside (D29). The legend row reads "Concession: dashed edge,
+tint inside".
+
 **Map labels.** Google's place labels are off on every view: at the fire view's zoom they put
 business names such as a "PT" company beside the boundary, and records name no company (shape
 O10).
@@ -233,15 +237,16 @@ each as `FireSummary` in `web/src/api.ts`, and a `fire_key` on each detection; a
 with its `pass`. A fire's key is the record ID of its first detection.
 
 **Motion tier:** 2 for the replay only, as the design system sets: one pass a step every
-`--fw-replay-step` (240 ms), no easing, under reduced motion too. Everything else stays tier 1.
+`--fw-replay-step` (600 ms, D30), no easing, under reduced motion too. Everything else stays tier 1.
 
 **Components used:** `fw-panel`, `fw-kv`, `fw-table` (with the selected row), `fw-help`, `fw-link`,
 `fw-btn` (secondary), `fw-mono`, `fw-empty`, `fw-skeleton`, the disclosure from the record panel,
 and from the detections guideline: fire dots, older-to-newer opacity, the selected ring, the
-first-seen diamond, the concession boundary and the replay timeline. No new components or tokens;
-the timeline is a native range input drawn as the guideline's track.
+first-seen diamond, the concession boundary with its inside tint, and the replay timeline. One new
+token, `--fw-concession`, added through `/design-system` (D29); the timeline is a native range
+input drawn as the guideline's track.
 
-**Design system:** Fire Watch, `docs/design/design-system/` (D2, D4, D22).
+**Design system:** Fire Watch, `docs/design/design-system/` (D2, D4, D22, D29, D30).
 
 **Preview:** real components in `web/src`: `ConcessionView` (fires table), `FireView` with
 `Replay`, `FireMap` (fade, diamonds, framing on the fire) and `FireRecordPage`. Run
@@ -251,7 +256,7 @@ straight to one. The data is real VIIRS NOAA-20 detections from 2026-10-12 to 15
 ID-WOOD-CONCESSION-0332, 0356, 0372 and 0540, grouped by D25 to D27 from the live read-only
 database (`web/src/preview/fire-origin.fixture.json`, no company names); seal times,
 fingerprints and transactions are made up. It replaces the fire-record preview, which showed the
-old concession table. Drift check passed over the 11 files written; all 35 tokens used exist in
+old concession table. Drift check passed over the 11 files written; all 36 tokens used exist in
 `docs/design/design-system/tokens/`. The 9 unit tests that read the old detections table in
 `ConcessionView.test.tsx` and `FireRecordPage.test.tsx` fail until `/build` rewrites them.
 
@@ -267,8 +272,8 @@ old concession table. Drift check passed over the 11 files written; all 35 token
 | O6 | Whether to flag fires that never spread (fire-record O4 promised this slice would). A smouldering peat fire can also stay put | question | spec p1 | user | Resolved | 2026-10-16: flag them, naming both a mill and smouldering peat (D27) |
 | O7 | The seals prove each detection hasn't changed, not that none is missing. A record left out could change where a fire reads as first seen. Anyone can compare against FIRMS's public archive | flag | spec p1 | user | Accepted risk | 2026-10-16: FIRMS's archive is public, so a missing detection can be found by anyone; sealing each run's list is not worth a new record type now (D24) |
 | O8 | The fires table lists newest first, so on ID-WOOD-CONCESSION-0332 one-pass fires fill the top rows and the 188- and 90-detection fires that crossed the edge sit lower. 18 of 0332's 34 fires were seen on one pass | question | spec p2 | user | Resolved | 2026-10-16: largest first, by detections, then newest first seen, as the concession list ranks worst first (D28) |
-| O9 | The map draws a concession as a dashed line only, so it doesn't show which side is inside. ID-WOOD-CONCESSION-0356 has several outlines close together, and "inside, 410 m" can't be read off the map. An inside tint would be a new design-system rule | question | spec p2 | user | Open | 2026-10-16: add a faint, non-fire inside tint through `/design-system` before `/build`; `FireMap` follows it |
-| O10 | The replay steps one pass every 240 ms (`--fw-replay-step`), so a 4-pass fire plays in under a second | question | spec p2 | user | Open | 2026-10-16: 600 ms a pass, changed through `/design-system` with O9 |
+| O9 | The map draws a concession as a dashed line only, so it doesn't show which side is inside. ID-WOOD-CONCESSION-0356 has several outlines close together, and "inside, 410 m" can't be read off the map. An inside tint would be a new design-system rule | question | spec p2 | user | Resolved | 2026-10-16: add a faint, non-fire inside tint through `/design-system` before `/build`; `FireMap` follows it. `/design-system`: `--fw-concession`, ink at 6% light and 7% dark, on every map view (D29) |
+| O10 | The replay steps one pass every 240 ms (`--fw-replay-step`), so a 4-pass fire plays in under a second | question | spec p2 | user | Resolved | 2026-10-16: 600 ms a pass, changed through `/design-system` with O9 (D30) |
 
 _Never delete this section or its rows. See references/ledger.md._
 

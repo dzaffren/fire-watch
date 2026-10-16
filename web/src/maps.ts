@@ -33,6 +33,16 @@ export function themeColour(name: string): string {
   return `#${rgb.slice(0, 3).map((n) => Number(n).toString(16).padStart(2, "0")).join("")}`;
 }
 
+// A token as the browser resolved it, alpha kept, for the canvas layer.
+export function themeFill(name: string): string {
+  const probe = document.createElement("span");
+  probe.style.color = `var(${name})`;
+  document.body.append(probe);
+  const colour = getComputedStyle(probe).color;
+  probe.remove();
+  return colour;
+}
+
 // The catch-all geometry rule paints roads the land colour too, so roads get their own rules after it.
 export function mapStyles(): google.maps.MapTypeStyle[] {
   const land = themeColour("--fw-map");
