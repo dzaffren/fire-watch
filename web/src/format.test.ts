@@ -1,5 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { count, detected, detectedShort, distance, firePower, gap, location, whereFromEdge } from "./format";
+import {
+  count,
+  detected,
+  detectedShort,
+  distance,
+  firePower,
+  firstSeenLine,
+  firstSeenShort,
+  gap,
+  location,
+  whereFromEdge,
+} from "./format";
 
 const A_UNIX = 1791958680;
 
@@ -41,5 +52,25 @@ describe("format", () => {
     expect(gap(A_UNIX, "2026-10-14T09:05:00Z")).toBe("2 h 47 min");
     expect(gap(A_UNIX, "2026-10-14T06:30:00Z")).toBe("12 min");
     expect(gap(A_UNIX, "2026-10-15T08:30:00Z")).toBe("1 d 2 h");
+  });
+
+  it("reads where a fire was first seen against the edge", () => {
+    expect(firstSeenLine({ reading: "outside", inside: false, edge_m: 954 })).toBe("First seen outside, 950 m from the edge");
+    expect(firstSeenLine({ reading: "inside", inside: true, edge_m: 409 })).toBe("First seen inside, 410 m from the edge");
+    expect(firstSeenLine({ reading: "outside", inside: false, edge_m: 4182 })).toBe("First seen outside, 4.2 km from the edge");
+    expect(firstSeenLine({ reading: "edge", inside: true, edge_m: 158 })).toBe(
+      "First seen 160 m inside the edge, within one satellite pixel of it",
+    );
+    expect(firstSeenLine({ reading: "edge", inside: false, edge_m: 64 })).toBe(
+      "First seen 60 m outside the edge, within one satellite pixel of it",
+    );
+    expect(firstSeenLine({ reading: "both", inside: false, edge_m: 23 })).toBe("First seen on both sides of the edge");
+  });
+
+  it("shortens the reading for the fires table", () => {
+    expect(firstSeenShort({ reading: "outside", inside: false, edge_m: 954 })).toBe("Outside, 950 m");
+    expect(firstSeenShort({ reading: "inside", inside: true, edge_m: 1106 })).toBe("Inside, 1.1 km");
+    expect(firstSeenShort({ reading: "edge", inside: true, edge_m: 158 })).toBe("Too close to tell");
+    expect(firstSeenShort({ reading: "both", inside: false, edge_m: 23 })).toBe("Both sides of the edge");
   });
 });
