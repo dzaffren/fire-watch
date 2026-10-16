@@ -2,6 +2,14 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Ring } from "./api";
 import { FireMap, type Dot } from "./FireMap";
+import type { Area } from "./maps";
+
+// Colours by token name, so a test can read which token the layer painted with.
+vi.mock("./maps", async (original) => ({
+  ...(await original<typeof import("./maps")>()),
+  themeColour: (name: string) => name,
+  themeFill: (name: string) => name,
+}));
 
 type Listener = (e?: unknown) => void;
 
@@ -14,7 +22,10 @@ class FirstFrameMap {
   private queued: (() => void) | null = null;
   private listeners = new Map<string, Listener[]>();
 
-  constructor(private div: HTMLElement) {
+  constructor(
+    private div: HTMLElement,
+    readonly options: google.maps.MapOptions,
+  ) {
     FirstFrameMap.last = this;
   }
   setOptions() {}
@@ -95,6 +106,30 @@ function recordShapes(): (string | number)[][] {
   return shapes;
 }
 
+/** Records every call the fire layer makes, with the fill colour, opacity and dash it sets. */
+function recordDrawing(): { frame(): string[] } {
+  const log: string[] = [];
+  const ctx = new Proxy(
+    {},
+    {
+      get: (_, name) => (...args: unknown[]) => {
+        log.push(name === "setLineDash" ? `setLineDash ${JSON.stringify(args[0])}` : String(name));
+      },
+      set: (_, name, value) => {
+        if (name === "fillStyle" || name === "globalAlpha") log.push(`${String(name)}=${value}`);
+        return true;
+      },
+    },
+  );
+  vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(ctx as unknown as CanvasRenderingContext2D);
+  // The latest draw, from the clear that starts it.
+  return { frame: () => log.slice(log.lastIndexOf("clearRect")) };
+}
+
+const DIAMOND = ["moveTo", "lineTo", "lineTo", "lineTo", "closePath", "fill", "stroke"];
+const diamondsAt = (frame: string[]) =>
+  frame.flatMap((_, i) => (DIAMOND.every((call, j) => frame[i + j] === call) ? [i] : []));
+
 async function mapReady(): Promise<FirstFrameMap> {
   FirstFrameMap.last = null;
   vi.stubGlobal("google", {
@@ -115,6 +150,8 @@ const BOUNDARY: Ring[] = [[[105.5, -3.5], [105.9, -3.5], [105.9, -3.8], [105.5, 
 const A: Dot = { lat_e5: -358175, lon_e5: 10571567, frp_e2: 520 };
 const STRONG: Dot = { lat_e5: -360000, lon_e5: 10575000, frp_e2: 5423 };
 const WEAK: Dot = { lat_e5: -359000, lon_e5: 10573000, frp_e2: 192 };
+// About 1 km around hotspot A, as the fire view pads a fire's detections.
+const FIRE_AREA: Area = { west: 105.70667, east: 105.72467, south: -3.59075, north: -3.57275 };
 const CROWDED = "Fire detection. Zoom in for fire power";
 const FIRE_POWER = "Fire power: under 5, 5–20, over 20 MW";
 
@@ -199,5 +236,91 @@ describe("FireMap", () => {
     expect(onSelect).toHaveBeenLastCalledWith(1);
     map.click(-3.7, 105.9);
     expect(onSelect).toHaveBeenCalledTimes(2);
+  });
+
+  it.each([
+    ["the concession view", {}],
+    ["the fire view", { area: FIRE_AREA, fire: true }],
+  ])("tints the concession inside its dashed edge on %s", async (_, view) => {
+    mapSize(991, 536);
+    const drawing = recordDrawing();
+    render(<FireMap label="Map" boundary={BOUNDARY} dots={[A]} {...view} />);
+    await mapReady();
+
+    await waitFor(() => expect(drawing.frame()).toContain("arc"));
+    const frame = drawing.frame();
+    const tint = frame.indexOf("fillStyle=--fw-concession");
+    const dash = frame.indexOf("setLineDash [5,4]");
+    expect(frame.slice(tint, tint + 2)).toEqual(["fillStyle=--fw-concession", "fill"]);
+    // Tint, then the dashed edge over it, then the detections over both.
+    expect(tint).toBeGreaterThan(-1);
+    expect(frame[dash + 1]).toBe("stroke");
+    expect(dash).toBeGreaterThan(tint);
+    expect(frame.indexOf("arc")).toBeGreaterThan(dash);
+    expect(screen.getByText("Concession: dashed edge, tint inside")).toBeInTheDocument();
+  });
+
+  it("draws the first pass as first-seen diamonds on top of the other detections", async () => {
+    mapSize(991, 536);
+    const drawing = recordDrawing();
+    const later = { ...STRONG, alpha: 1 };
+    const dots = [{ ...A, first: true }, { ...WEAK, first: true }, later];
+    render(<FireMap label="Map" boundary={BOUNDARY} dots={dots} area={FIRE_AREA} fire />);
+    await mapReady();
+
+    await waitFor(() => expect(diamondsAt(drawing.frame())).toHaveLength(2));
+    const frame = drawing.frame();
+    expect(frame.filter((call) => call === "arc")).toHaveLength(1);
+    expect(diamondsAt(frame)[0]).toBeGreaterThan(frame.lastIndexOf("arc"));
+    expect(screen.getByText("First seen")).toBeInTheDocument();
+  });
+
+  it("fades the detections older to newer", async () => {
+    mapSize(991, 536);
+    const drawing = recordDrawing();
+    const pass = (alpha: number, lon_e5: number): Dot => ({ ...A, lon_e5, alpha });
+    const dots = [pass(0.3, 10571000), pass(0.65, 10572000), pass(1, 10573000)];
+    render(<FireMap label="Map" boundary={BOUNDARY} dots={dots} area={FIRE_AREA} fire />);
+    await mapReady();
+
+    await waitFor(() => expect(drawing.frame().filter((call) => call === "arc")).toHaveLength(3));
+    const frame = drawing.frame();
+    const alphaBefore = (i: number) => frame.slice(0, i).reverse().find((call) => call.startsWith("globalAlpha="));
+    const arcs = frame.flatMap((call, i) => (call === "arc" ? [alphaBefore(i)] : []));
+    expect(arcs).toEqual(["globalAlpha=0.3", "globalAlpha=0.65", "globalAlpha=1"]);
+    expect(screen.getByText("Older to newer")).toBeInTheDocument();
+  });
+
+  it("frames the fire's area, at most zoom 14, and stays on it when a detection is picked", async () => {
+    mapSize(991, 536);
+    const { rerender } = render(<FireMap label="Map" boundary={BOUNDARY} dots={[A]} area={FIRE_AREA} fire />);
+    const map = await mapReady();
+
+    await waitFor(() => expect(map.zoom).toBe(14));
+    expect(map.center?.lng).toBeCloseTo(105.71567, 5);
+    expect(map.center?.lat).toBeCloseTo(-3.58175, 3);
+
+    rerender(<FireMap label="Map" boundary={BOUNDARY} dots={[A]} area={FIRE_AREA} selected={0} fire />);
+    map.drawFirstFrame();
+    expect(map.zoom).toBe(14);
+    expect(map.center?.lng).toBeCloseTo(105.71567, 5);
+  });
+
+  it("frames a wider fire at the zoom that fits it", async () => {
+    mapSize(991, 536);
+    render(<FireMap label="Map" boundary={BOUNDARY} dots={[A]} area={{ west: 105.6, east: 105.8, south: -3.65, north: -3.55 }} fire />);
+    const map = await mapReady();
+
+    await waitFor(() => expect(map.zoom).toBe(12));
+    expect(map.center?.lng).toBeCloseTo(105.7, 5);
+  });
+
+  it("turns Google's place labels off", async () => {
+    render(<FireMap label="Map" boundary={BOUNDARY} />);
+    const map = await mapReady();
+    await waitFor(() => expect(map.zoom).toBeDefined());
+
+    expect(map.options.styles).toContainEqual({ featureType: "poi", elementType: "labels", stylers: [{ visibility: "off" }] });
+    expect(map.options.clickableIcons).toBe(false);
   });
 });
