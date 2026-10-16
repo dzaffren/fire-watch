@@ -1,6 +1,6 @@
 # ClimateChain hackathon entry
 
-**Status:** Active · **Updated:** 2026-10-17 by /ship fire-origin
+**Status:** Active · **Updated:** 2026-10-17 by /build complaint-pack
 
 Fire Watch, an entry for the IEEE ClimateChain Global Hackathon (deadline 2026-10-25). It shows
 satellite fire hotspots with on-chain proof that each record hasn't changed since it was written,
@@ -32,6 +32,7 @@ for watchdog investigators who file grievances over fires on plantation land.
 | walking-skeleton | Shipped | See the latest fire hotspot on a map, with a check that its record still matches the seal on Base Sepolia. | docs/specs/walking-skeleton.md    |
 | fire-record      | Shipped | Pick dates, see which pulpwood concessions had hotspots, and check any hotspot's sealed record.             | docs/specs/fire-record.md         |
 | fire-origin      | Shipped | See a concession's fires, where each was first seen against its edge, and its passes in order, from sealed detections. | docs/specs/fire-origin.md         |
+| complaint-pack   | Built   | Turn one fire into a pack with its own link, which anyone's browser checks against the chain, and print it to PDF. | docs/specs/complaint-pack.md      |
 
 ## More
 

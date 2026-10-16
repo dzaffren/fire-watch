@@ -14,6 +14,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Open a concession to see its boundary and hotspots on the map, and check any hotspot's sealed record against Base Sepolia in your browser.
 - Every hotspot near a concession is recorded and sealed on the hour by the `firewatch-recorder` job, and GitHub emails the operator when recording stalls.
 - See a concession's fires, largest first, and open one to read where the satellite first saw it against the concession's edge, or that the record can't tell, then replay its spread pass by pass.
+- Make a complaint pack from any fire: a page with its own link that holds the fire's site, dates and basis as of when it was made, checks every detection against Base Sepolia in the reader's browser, and prints to PDF.
 
 ### Removed
 
