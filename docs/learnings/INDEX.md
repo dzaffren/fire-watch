@@ -13,3 +13,5 @@
 - Match points to big polygons by looping over the polygons in PostGIS — [postgis-loop-over-polygons](postgis-loop-over-polygons.md)
 - Chunk worktrees start at main; name the slice head in the brief — [chunk-worktrees-start-at-main](chunk-worktrees-start-at-main.md)
 - Use `globalThis.Map` inside the fake google.maps file — [fake-maps-shadows-map](fake-maps-shadows-map.md)
+- Test `infra/setup.sh` with a fake `az` first on PATH, never by running it — [setup-sh-reaches-real-azure](setup-sh-reaches-real-azure.md)
+- Hand over `!` commands with real values and an absolute `cd`, no `<placeholder>` — [no-placeholders-in-runnable-commands](no-placeholders-in-runnable-commands.md)
