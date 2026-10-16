@@ -25,7 +25,13 @@ MAX_DAYS = 31
 SIMPLIFY_DEGREES = 0.0005
 
 RECORDING_STARTED = """
-SELECT min(acquired_at) AS started FROM hotspots WHERE fingerprint_version = 2
+SELECT min(acquired_at) AS started FROM hotspots h
+WHERE h.fingerprint_version = 2 AND (%(as_of)s::timestamptz IS NULL OR h.created_at <= %(as_of)s)
+"""
+# Rounded up, so the cut keeps the newest detection whatever its fraction of a second.
+LATEST_STORED = """
+SELECT ceil(extract(epoch FROM max(created_at)))::bigint AS as_of
+FROM hotspots WHERE fingerprint_version = 2
 """
 CONCESSION_COUNTS = """
 SELECT c.id, c.province, c.area_ha,
@@ -60,6 +66,7 @@ SELECT h.record_id, h.lat_e5, h.lon_e5, h.acquired_at, m.inside, m.edge_m
 FROM hotspots h
 JOIN hotspot_concessions m ON m.hotspot_id = h.id AND m.concession_id = %(id)s
 WHERE h.fingerprint_version = 2
+  AND (%(as_of)s::timestamptz IS NULL OR h.created_at <= %(as_of)s)
 """
 FIRE_HOTSPOTS = """
 SELECT h.*,
@@ -130,10 +137,14 @@ def _record(row) -> dict:
     }
 
 
-def _group(conn, concession_id: str) -> tuple[list[fires.Fire], int]:
-    """Every fire near the concession, and the milliseconds grouping took."""
-    started = conn.execute(RECORDING_STARTED).fetchone()["started"]
-    rows = conn.execute(CONCESSION_DETECTIONS, {"id": concession_id}).fetchall()
+def _group(
+    conn, concession_id: str, as_of: datetime | None
+) -> tuple[list[fires.Fire], int]:
+    """Every fire near the concession from the detections stored by as_of (all when None),
+    and the milliseconds grouping took."""
+    params = {"id": concession_id, "as_of": as_of}
+    started = conn.execute(RECORDING_STARTED, params).fetchone()["started"]
+    rows = conn.execute(CONCESSION_DETECTIONS, params).fetchall()
     began = perf_counter()
     grouped = fires.group([fires.Detection(**row) for row in rows], started)
     return grouped, round((perf_counter() - began) * 1000)
@@ -167,7 +178,7 @@ def create_app(allowed_origin: str) -> FastAPI:
     def list_concessions(start: From, end: To):
         params = _range(start, end)
         with connect() as conn:
-            started = conn.execute(RECORDING_STARTED).fetchone()["started"]
+            started = conn.execute(RECORDING_STARTED, {"as_of": None}).fetchone()["started"]
             rows = conn.execute(CONCESSION_COUNTS, params).fetchall()
         log.info("served concessions from=%s to=%s count=%d", start, end, len(rows))
         return {
@@ -187,7 +198,7 @@ def create_app(allowed_origin: str) -> FastAPI:
                 raise HTTPException(status_code=404, detail="No such concession")
             # Records first: a detection stored between the two reads is then in the grouping.
             rows = conn.execute(CONCESSION_HOTSPOTS, params).fetchall()
-            grouped, group_ms = _group(conn, concession_id)
+            grouped, group_ms = _group(conn, concession_id, None)
         fire_of = {d.record_id: fire for fire in grouped for d in fire.detections}
         shown = {fire_of[row["record_id"]].key for row in rows}
         listed = sorted(
@@ -216,8 +227,14 @@ def create_app(allowed_origin: str) -> FastAPI:
     def fire(concession_id: str, key: FireKey):
         wanted = bytes.fromhex(key[2:])
         with connect() as conn:
+            # The cut first: a detection stored after it is then left out of the grouping.
+            as_of = conn.execute(LATEST_STORED).fetchone()["as_of"]
+            if as_of is None:
+                raise HTTPException(status_code=404, detail="No such fire")
             # An unknown concession has no detections, so no fire.
-            grouped, group_ms = _group(conn, concession_id)
+            grouped, group_ms = _group(
+                conn, concession_id, datetime.fromtimestamp(as_of, timezone.utc)
+            )
             found = next((fire for fire in grouped if fire.key == wanted), None)
             if found is None:
                 raise HTTPException(status_code=404, detail="No such fire")
@@ -230,6 +247,7 @@ def create_app(allowed_origin: str) -> FastAPI:
         )
         return {
             **_fire(found),
+            "as_of_unix": as_of,
             "hotspots": [
                 {**_record(by_id[record_id]), "pass": number}
                 for record_id, number in zip(ids, found.pass_numbers)
