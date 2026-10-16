@@ -224,13 +224,14 @@ def create_app(allowed_origin: str) -> FastAPI:
         }
 
     @app.get("/api/concessions/{concession_id}/fires/{key}")
-    def fire(concession_id: str, key: FireKey):
+    def fire(concession_id: str, key: FireKey, as_of: int | None = Query(None, ge=1)):
         wanted = bytes.fromhex(key[2:])
         with connect() as conn:
-            # The cut first: a detection stored after it is then left out of the grouping.
-            as_of = conn.execute(LATEST_STORED).fetchone()["as_of"]
             if as_of is None:
-                raise HTTPException(status_code=404, detail="No such fire")
+                # The cut first: a detection stored after it is then left out of the grouping.
+                as_of = conn.execute(LATEST_STORED).fetchone()["as_of"]
+                if as_of is None:
+                    raise HTTPException(status_code=404, detail="No such fire")
             # An unknown concession has no detections, so no fire.
             grouped, group_ms = _group(
                 conn, concession_id, datetime.fromtimestamp(as_of, timezone.utc)
@@ -242,8 +243,8 @@ def create_app(allowed_origin: str) -> FastAPI:
             rows = conn.execute(FIRE_HOTSPOTS, {"record_ids": ids}).fetchall()
         by_id = {row["record_id"]: row for row in rows}
         log.info(
-            "served fire id=%s key=%s detections=%d passes=%d group_ms=%d",
-            concession_id, key, len(ids), found.passes, group_ms,
+            "served fire id=%s key=%s as_of=%d detections=%d passes=%d group_ms=%d",
+            concession_id, key, as_of, len(ids), found.passes, group_ms,
         )
         return {
             **_fire(found),
