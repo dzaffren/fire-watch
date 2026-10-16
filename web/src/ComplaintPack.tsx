@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import type { Hex } from "viem";
+import { zeroHash, type Hex } from "viem";
 import type { HotspotRecord, PackDetail, PackRef } from "./api";
 import { FireMap } from "./FireMap";
 import { fireArea, fireDots, passTimes, Replay, where } from "./FireView";
@@ -12,7 +12,8 @@ export interface PackSource {
   pack(ref: PackRef): Promise<PackDetail | null>;
   /** FireRecords on Base Sepolia, which the reader's browser reads each seal from. */
   contract: Hex;
-  sealOf(record: HotspotRecord): Promise<Hex>;
+  /** Each record's sealed fingerprint, in order, in one read; zero for one not sealed yet. */
+  sealsOf(records: HotspotRecord[]): Promise<Hex[]>;
   fingerprint(record: HotspotRecord): Hex;
 }
 
@@ -122,16 +123,19 @@ export function ComplaintPack({ source, packRef, initialOpen = null }: Props) {
   useEffect(() => {
     if (!pack) return;
     let live = true;
-    const set = (i: number, check: Check) =>
-      live && setChecks((all) => all.map((c, j) => (j === i ? check : c)));
-    setChecks(pack.hotspots.map((h) => (h.tx_hash ? { state: "checking" } : { state: "pending" })));
-    pack.hotspots.forEach((h, i) => {
-      if (!h.tx_hash) return;
-      source.sealOf(h).then(
-        (sealed) => set(i, sealed === fps[i] ? { state: "matches" } : { state: "mismatch", sealed }),
-        () => set(i, { state: "error" }),
-      );
-    });
+    const all = (check: Check) => pack.hotspots.map(() => check);
+    setChecks(all({ state: "checking" }));
+    source.sealsOf(pack.hotspots).then(
+      (seals) =>
+        live &&
+        setChecks(
+          seals.map((sealed, i): Check => {
+            if (sealed === zeroHash) return { state: "pending" };
+            return sealed === fps[i] ? { state: "matches" } : { state: "mismatch", sealed };
+          }),
+        ),
+      () => live && setChecks(all({ state: "error" })),
+    );
     return () => {
       live = false;
     };
@@ -417,8 +421,8 @@ export function ComplaintPack({ source, packRef, initialOpen = null }: Props) {
 
               <footer className="pack-foot">
                 <p className="fw-help">
-                  This pack holds the fire as Fire Watch had stored it at {detected(pack.as_of_unix)}. It never
-                  changes, so passes after that are not in it.
+                  This pack holds every detection of this fire that Fire Watch had stored by{" "}
+                  {detected(pack.as_of_unix)}. It never changes, so passes after that are not in it.
                 </p>
                 <p className="fw-help">
                   Link: <span className="fw-mono pack-link">{window.location.href}</span>

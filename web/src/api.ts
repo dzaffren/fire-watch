@@ -1,5 +1,5 @@
 import type { Hex } from "viem";
-import { sealOf } from "./chain";
+import { sealOf, sealsOf } from "./chain";
 import { fingerprint, type MatchedDetection } from "./fingerprint";
 import type { PackSource } from "./ComplaintPack";
 import type { FireRecordSource } from "./FireRecordPage";
@@ -140,6 +140,6 @@ export const apiSource: FireRecordSource = {
 export const packSource: PackSource = {
   pack,
   contract: import.meta.env.VITE_CONTRACT_ADDRESS,
-  sealOf: apiSource.sealOf,
+  sealsOf: (records) => sealsOf(records.map((r) => r.record_id)),
   fingerprint,
 };
