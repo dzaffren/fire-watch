@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Ring } from "./api";
 import { FireMap, type Dot } from "./FireMap";
 
-type Listener = () => void;
+type Listener = (e?: unknown) => void;
 
 // Like the real map, fitBounds waits for the first frame. A background tab draws late, so a
 // queued fitBounds can land after the hotspot's centre.
@@ -40,8 +40,11 @@ class FirstFrameMap {
   addListener(name: string, fn: Listener) {
     this.listeners.set(name, [...(this.listeners.get(name) ?? []), fn]);
   }
-  private emit(name: string) {
-    this.listeners.get(name)?.forEach((fn) => fn());
+  click(lat: number, lng: number) {
+    this.emit("click", { latLng: { lat: () => lat, lng: () => lng } });
+  }
+  private emit(name: string, e?: unknown) {
+    this.listeners.get(name)?.forEach((fn) => fn(e));
   }
   fitBounds(b: google.maps.LatLngBoundsLiteral) {
     this.queued = () => {
@@ -180,5 +183,21 @@ describe("FireMap", () => {
     await waitFor(() =>
       expect(shapes.slice(-4)).toEqual([[3, "fill", "stroke"], [6.5, "fill", "stroke"], [4.5, "fill", "stroke"], [7, "stroke"]]),
     );
+  });
+
+  it("picks the detection nearest a click, up to 10 px away", async () => {
+    mapSize(991, 536);
+    const onSelect = vi.fn();
+    render(<FireMap label="Map" boundary={BOUNDARY} dots={[A, STRONG]} selected={0} onSelect={onSelect} />);
+    const map = await mapReady();
+    await waitFor(() => expect(map.zoom).toBe(11));
+
+    // A is about 4 px from STRONG; nothing is within 10 px of the third click.
+    map.click(-3.5818, 105.7157);
+    expect(onSelect).toHaveBeenLastCalledWith(0);
+    map.click(-3.6005, 105.7505);
+    expect(onSelect).toHaveBeenLastCalledWith(1);
+    map.click(-3.7, 105.9);
+    expect(onSelect).toHaveBeenCalledTimes(2);
   });
 });
