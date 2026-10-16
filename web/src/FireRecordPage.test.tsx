@@ -87,7 +87,7 @@ function fixtureSource(edit: (r: HotspotRecord) => HotspotRecord = (r) => r): Fi
         .sort((a, b) => a.acquired_unix - b.acquired_unix || a.lat_e5 - b.lat_e5),
       as_of_unix: 1792227600,
     })),
-    packHref: (id: string, f: { key: Hex; as_of_unix: number }) => `/?pack=${id}&fire=${f.key}&as_of=${f.as_of_unix}`,
+    packHref: vi.fn((id: string, f: { key: Hex; as_of_unix: number }) => `/?pack=${id}&fire=${f.key}&as_of=${f.as_of_unix}`),
     sealOf: vi.fn(async (r: HotspotRecord) => fingerprint(sealed.get(r.record_id)!)),
     fingerprint,
   };
@@ -251,6 +251,17 @@ describe("FireRecordPage", () => {
     expect(kv("Concession")).toHaveTextContent(`${ID}Outside, 950 m from the edge`);
     expect(kv("Sealed")).toHaveTextContent("2026-10-13 20:24 UTC2 h 47 min after detection");
     expect(isAt(map().dots![map().selected!], FIRST)).toBe(true);
+  });
+
+  it("offers a complaint pack of the open fire, as of the API's answer", async () => {
+    const source = fixtureSource();
+    await openFire(source);
+
+    expect(source.packHref).toHaveBeenLastCalledWith(ID, expect.objectContaining({ key: KEY, as_of_unix: 1792227600 }));
+    expect(screen.getByRole("link", { name: "Make complaint pack" })).toHaveAttribute(
+      "href",
+      `/?pack=${ID}&fire=${KEY}&as_of=1792227600`,
+    );
   });
 
   it("steps back out to the fire, its concession and the list", async () => {
