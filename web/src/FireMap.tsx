@@ -201,7 +201,7 @@ interface Props {
   onSelect?: (index: number) => void;
   /** Frame this area instead of the boundary, as the fire view does for its detections. */
   area?: Area;
-  /** Adds the first-seen and older-to-newer rows to the legend. */
+  /** Adds the first-seen row to the legend, and the older-to-newer row while a detection is faded. */
   fire?: boolean;
   /** Overlaid at the top of the map, as the fire view's replay is. */
   children?: ReactNode;
@@ -326,22 +326,22 @@ export function FireMap({ label, boundary, dots, selected = null, onSelect, area
             </div>
           )}
           {fire && (
-            <>
-              <div className="legend-row">
-                <span className="legend-key">
-                  <span className="legend-diamond" />
-                </span>
-                First seen
-              </div>
-              <div className="legend-row">
-                <span className="legend-key">
-                  <span className="legend-dot md" style={{ opacity: 0.3 }} />
-                  <span className="legend-dot md" style={{ opacity: 0.65 }} />
-                  <span className="legend-dot md" />
-                </span>
-                Older to newer
-              </div>
-            </>
+            <div className="legend-row">
+              <span className="legend-key">
+                <span className="legend-diamond" />
+              </span>
+              First seen
+            </div>
+          )}
+          {fire && dots?.some((d) => (d.alpha ?? 1) < 1) && (
+            <div className="legend-row">
+              <span className="legend-key">
+                <span className="legend-dot md" style={{ opacity: 0.3 }} />
+                <span className="legend-dot md" style={{ opacity: 0.65 }} />
+                <span className="legend-dot md" />
+              </span>
+              Older to newer
+            </div>
           )}
           <div className="legend-row">
             <span className="legend-key legend-area" />

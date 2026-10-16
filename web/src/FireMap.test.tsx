@@ -307,6 +307,13 @@ describe("FireMap", () => {
     expect(screen.getByText("Older to newer")).toBeInTheDocument();
   });
 
+  it("leaves Older to newer out of the legend when no detection is faded, as on a detection's record", () => {
+    render(<FireMap label="Map" boundary={BOUNDARY} dots={[{ ...A, first: true }, STRONG]} area={FIRE_AREA} fire />);
+
+    expect(screen.getByText("First seen")).toBeInTheDocument();
+    expect(screen.queryByText("Older to newer")).toBeNull();
+  });
+
   it("frames the fire's area, at most zoom 14, and stays on it when a detection is picked", async () => {
     mapSize(991, 536);
     const { rerender } = render(<FireMap label="Map" boundary={BOUNDARY} dots={[A]} area={FIRE_AREA} fire />);
