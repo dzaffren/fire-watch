@@ -57,6 +57,11 @@ the repo root; `--env-file ../.env` loads it, since `uv run` doesn't on its own.
    `infra/neon-reader.sql`.
 2. **Base Sepolia:** fund the recorder wallet from a faucet, then deploy the contract:
    `cd contracts && RECORDER_ADDRESS=<recorder> forge script script/Deploy.s.sol --rpc-url https://sepolia.base.org --private-key <deployer key> --broadcast`.
+   Then verify it on Basescan once, so its transactions read as `seal` calls. With
+   `ETHERSCAN_API_KEY` (a free Etherscan key, kept in `.env`) and `RECORDER_ADDRESS` in the
+   environment, run from `contracts/`:
+   `forge verify-contract 0x6a55489a05a9c79d2cd35212878d113557dceb2a src/FireRecords.sol:FireRecords --chain 84532 --constructor-args "$(cast abi-encode 'constructor(address)' "$RECORDER_ADDRESS")" --watch`.
+   The deployed FireRecords was verified this way on 2026-10-17.
 3. **Google Maps:** two keys. Production is locked to the site's address and to the Maps
    JavaScript API; development is locked to `http://localhost:5173/*`. Cap map loads at 300 a
    day and set a $1 budget alert in the Cloud console.
