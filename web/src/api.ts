@@ -68,7 +68,7 @@ export interface FireDetail extends FireSummary {
 export interface ConcessionDetail extends ConcessionSummary {
   boundary: Ring[];
   hotspots: HotspotRecord[];
-  /** Fires with a detection in the dates, newest first seen first. */
+  /** Fires with a detection in the dates, most detections first, then newest first seen. */
   fires: FireSummary[];
 }
 
