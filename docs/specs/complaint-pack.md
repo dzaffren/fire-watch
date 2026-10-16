@@ -256,7 +256,7 @@ deployed FireRecords. Drift check passed over the 11 files written; all 14 token
 | O5 | Basescan verification of FireRecords, handed here by walking-skeleton. A buyer who opens a transaction sees raw hex today. Verifying needs a free Etherscan API key | question | spec p1 | user | Resolved | 2026-10-17: in, as a one-time operator step; the user creates the key and keeps it in the untracked `.env` (D35) |
 | O6 | Who can make a pack. The site has no login, and every detection in a pack is public already | question | spec p1 | user | Resolved | 2026-10-17: anyone using the site (D36) |
 | O7 | A pack for a fire the record can't settle: too close to tell, both sides, or never spread (a possible mill, D27) | question | spec p1 | user | Resolved | 2026-10-17: allowed; the caveat goes directly under the headline (D36) |
-| O8 | The printed map relies on Google Maps drawing again at print size. Chromium's print to PDF drew it, light, on 2026-10-17; Firefox and Safari are not checked. If it doesn't draw, the record and tables still print | flag | spec p2 | user | Open | — |
+| O8 | The printed map relies on Google Maps drawing again at print size. Chromium's print to PDF drew it, light, on 2026-10-17; Firefox and Safari are not checked. If it doesn't draw, the record and tables still print | flag | spec p2 | user | Accepted risk | 2026-10-17: Chromium is checked; in another browser the worst case is a blank map box on the last page, and the record and tables still print |
 
 _Never delete this section or its rows. See references/ledger.md._
 
