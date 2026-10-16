@@ -1,6 +1,7 @@
 """Read-only API: pulpwood concessions, their hotspot records and fires, and a health check."""
 
 import logging
+import math
 import os
 from dataclasses import asdict
 from datetime import date, datetime, time, timezone
@@ -45,7 +46,7 @@ GROUP BY c.id
 ORDER BY inside DESC, near DESC, c.id
 """
 CONCESSION = """
-SELECT id, province, area_ha,
+SELECT id, province, area_ha, map_version,
        ST_AsGeoJSON(ST_Multi(ST_SimplifyPreserveTopology(boundary, %(simplify)s)), 5)::json
            AS boundary
 FROM concessions WHERE id = %(id)s
@@ -137,6 +138,11 @@ def _record(row) -> dict:
     }
 
 
+def _rings(boundary: dict) -> list:
+    """A MultiPolygon's rings, holes included, as one list."""
+    return [ring for polygon in boundary["coordinates"] for ring in polygon]
+
+
 def _group(
     conn, concession_id: str, as_of: datetime | None
 ) -> tuple[list[fires.Fire], int]:
@@ -216,7 +222,7 @@ def create_app(allowed_origin: str) -> FastAPI:
             "area_ha": found["area_ha"],
             "inside": inside,
             "near": len(rows) - inside,
-            "boundary": [ring for polygon in found["boundary"]["coordinates"] for ring in polygon],
+            "boundary": _rings(found["boundary"]),
             "hotspots": [
                 {**_record(row), "fire_key": _hex(fire_of[row["record_id"]].key)} for row in rows
             ],
@@ -225,13 +231,22 @@ def create_app(allowed_origin: str) -> FastAPI:
 
     @app.get("/api/concessions/{concession_id}/fires/{key}")
     def fire(concession_id: str, key: FireKey, as_of: int | None = Query(None, ge=1)):
+        # Rounded up as LATEST_STORED is, so a cut read this second is never in the future.
+        if as_of is not None and as_of > math.ceil(datetime.now(timezone.utc).timestamp()):
+            raise HTTPException(status_code=422, detail="as_of is in the future")
         wanted = bytes.fromhex(key[2:])
+        site = None
         with connect() as conn:
             if as_of is None:
                 # The cut first: a detection stored after it is then left out of the grouping.
                 as_of = conn.execute(LATEST_STORED).fetchone()["as_of"]
                 if as_of is None:
                     raise HTTPException(status_code=404, detail="No such fire")
+            else:
+                params = {"id": concession_id, "simplify": SIMPLIFY_DEGREES}
+                site = conn.execute(CONCESSION, params).fetchone()
+                if site is None:
+                    raise HTTPException(status_code=404, detail="No such concession")
             # An unknown concession has no detections, so no fire.
             grouped, group_ms = _group(
                 conn, concession_id, datetime.fromtimestamp(as_of, timezone.utc)
@@ -246,9 +261,17 @@ def create_app(allowed_origin: str) -> FastAPI:
             "served fire id=%s key=%s as_of=%d detections=%d passes=%d group_ms=%d",
             concession_id, key, as_of, len(ids), found.passes, group_ms,
         )
+        pack = {} if site is None else {
+            "concession_id": site["id"],
+            "province": site["province"],
+            "boundary": _rings(site["boundary"]),
+            "map_version": site["map_version"],
+            "rule_version": fires.RULE_VERSION,
+        }
         return {
             **_fire(found),
             "as_of_unix": as_of,
+            **pack,
             "hotspots": [
                 {**_record(by_id[record_id]), "pass": number}
                 for record_id, number in zip(ids, found.pass_numbers)
