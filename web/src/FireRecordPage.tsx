@@ -183,7 +183,10 @@ export function FireRecordPage({ source, today, initialView, initialDates }: Pro
             today={today}
             onChange={(from, to) => {
               setDates({ from, to });
-              if (view.kind !== "list") setView({ kind: "concession", id: view.id, picked: fireKey ?? undefined });
+              if (view.kind !== "list") {
+                const picked = fireKey ?? (view.kind === "concession" ? view.picked : undefined);
+                setView({ kind: "concession", id: view.id, picked });
+              }
             }}
           />
           <div className="slot" aria-live="polite">
