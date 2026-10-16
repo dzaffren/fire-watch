@@ -205,7 +205,7 @@ def create_app(allowed_origin: str) -> FastAPI:
             "area_ha": found["area_ha"],
             "inside": inside,
             "near": len(rows) - inside,
-            "boundary": [polygon[0] for polygon in found["boundary"]["coordinates"]],
+            "boundary": [ring for polygon in found["boundary"]["coordinates"] for ring in polygon],
             "hotspots": [
                 {**_record(row), "fire_key": _hex(fire_of[row["record_id"]].key)} for row in rows
             ],

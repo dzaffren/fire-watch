@@ -16,7 +16,7 @@ export interface HotspotRecord extends MatchedDetection {
   pass?: number;
 }
 
-/** A polygon's outer ring as [longitude, latitude] pairs; a concession may have several. */
+/** One ring of a concession's boundary as [longitude, latitude] pairs: an outer edge or a hole. */
 export type Ring = [number, number][];
 
 export interface ConcessionSummary {
