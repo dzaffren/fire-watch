@@ -30,9 +30,12 @@ def test_skips_permit_2024(migrated_db):
     ]
     proposed["properties"]["wood_supplier_permit_year"] = 2024.0
 
-    assert load(json.dumps(geojson).encode(), migrated_db) == 2
+    assert load(json.dumps(geojson).encode(), migrated_db) == 5
 
     assert stored(migrated_db) == [
+        ("ID-WOOD-CONCESSION-0332", "Kalimantan Tengah", 36199, MAP_VERSION, 2),
+        ("ID-WOOD-CONCESSION-0356", "Kalimantan Timur", 15133, MAP_VERSION, 4),
+        ("ID-WOOD-CONCESSION-0372", "Kalimantan Timur", 89125, MAP_VERSION, 1),
         ("ID-WOOD-CONCESSION-0377", "Kalimantan Selatan", 248719, MAP_VERSION, 21),
         ("ID-WOOD-CONCESSION-0540", "Sumatera Selatan", 251385, MAP_VERSION, 2),
     ]
@@ -45,10 +48,13 @@ def test_loads_a_path_as_given_and_reloads_in_place(migrated_db):
             [LOAD_CONCESSIONS, TRASE_CUT], env=env, capture_output=True, text=True, timeout=60
         )
         assert result.returncode == 0, result.stderr
-        assert result.stdout.strip() == f"Loaded 3 concessions from {MAP_VERSION}"
+        assert result.stdout.strip() == f"Loaded 6 concessions from {MAP_VERSION}"
 
     assert [row[:3] for row in stored(migrated_db)] == [
         ("ID-WOOD-CONCESSION-0275", "Kalimantan Selatan", 22131),
+        ("ID-WOOD-CONCESSION-0332", "Kalimantan Tengah", 36199),
+        ("ID-WOOD-CONCESSION-0356", "Kalimantan Timur", 15133),
+        ("ID-WOOD-CONCESSION-0372", "Kalimantan Timur", 89125),
         ("ID-WOOD-CONCESSION-0377", "Kalimantan Selatan", 248719),
         ("ID-WOOD-CONCESSION-0540", "Sumatera Selatan", 251385),
     ]
