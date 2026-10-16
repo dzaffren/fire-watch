@@ -11,7 +11,7 @@ declare global {
 
 const FAKE_GOOGLE_MAPS = fileURLToPath(new URL("./fake-google-maps.js", import.meta.url));
 const MAP_VERSION = "Trase pulpwood concessions 2023–2024, v2026-02-20";
-const LIST_NOTE = "3 concessions, ranked by hotspots inside.";
+const LIST_NOTE = "4 concessions, ranked by hotspots inside.";
 
 async function sql<Row>(text: string): Promise<Row[]> {
   const db = new pg.Client(E2E_DATABASE_URL);
@@ -29,7 +29,7 @@ async function fakeMaps(page: Page) {
   );
 }
 
-// The fixture CSV holds 2026-10-11 to 14; the cut-down map holds 0540, 0377 and 0275.
+// fire-record.csv holds 2026-10-11 to 14 near 0540, 0377 and 0275; fire-origin.csv adds a fire near 0332.
 async function openFixtureDates(page: Page) {
   await page.goto("/");
   await page.getByLabel("From").fill("2026-10-11");
@@ -39,6 +39,10 @@ async function openFixtureDates(page: Page) {
 
 const hotspotRow = (page: Page, fire: string) =>
   page.getByRole("row").filter({ hasText: "14 Oct 06:18" }).filter({ hasText: fire });
+// Hotspot A's fire: first seen 12 Oct 06:57, 3.0 km inside 0540, and seen again with A on 14 Oct.
+const fireOfA = (page: Page) => page.getByRole("row").filter({ hasText: "12 Oct 06:57" }).filter({ hasText: "Inside, 3.0 km" });
+// Hotspot B is a fire of its own on 0377, 371 m from its edge.
+const fireOfB = (page: Page) => page.getByRole("row").filter({ hasText: "14 Oct 06:18" }).filter({ hasText: "Too close to tell" });
 
 test.describe.configure({ mode: "serial" });
 
@@ -57,18 +61,25 @@ test("investigator lists the concessions", async ({ page }) => {
 
   await expect(page.getByText(LIST_NOTE)).toBeVisible();
   const rows = page.locator("tbody tr");
-  await expect(rows).toHaveCount(3);
+  await expect(rows).toHaveCount(4);
   const cells = (i: number) => rows.nth(i).getByRole("cell");
   await expect(cells(0)).toHaveText(["ID-WOOD-CONCESSION-0540Sumatera Selatan", "14", "9"]);
-  await expect(cells(1)).toHaveText([/ID-WOOD-CONCESSION-0275/, "0", "1"]);
-  await expect(cells(2)).toHaveText([/ID-WOOD-CONCESSION-0377/, "0", "1"]);
+  await expect(cells(1)).toHaveText([/ID-WOOD-CONCESSION-0332/, "0", "13"]);
+  await expect(cells(2)).toHaveText([/ID-WOOD-CONCESSION-0275/, "0", "1"]);
+  await expect(cells(3)).toHaveText([/ID-WOOD-CONCESSION-0377/, "0", "1"]);
 });
 
-test("opens 0540 and hotspot A matches the chain", async ({ page }) => {
+test("opens 0540, then hotspot A's fire, and A matches the chain", async ({ page }) => {
   const [{ tx_hash }] = await sql<{ tx_hash: string }>(
     "SELECT '0x' || encode(tx_hash, 'hex') AS tx_hash FROM hotspots WHERE lat_e5 = -358175 AND lon_e5 = 10571567",
   );
   expect(tx_hash).toMatch(/^0x[0-9a-f]{64}$/);
+  const fire = await sql<{ lat_e5: number; lon_e5: number }>(
+    "SELECT lat_e5, lon_e5 FROM hotspots WHERE (lat_e5, lon_e5) = (-358175, 10571567) OR acquired_at = '2026-10-12T06:57Z'" +
+      " AND abs(lat_e5 + 358175) < 1000 AND abs(lon_e5 - 10571567) < 1000",
+  );
+  expect(fire).toHaveLength(2);
+  const mid = (key: "lat_e5" | "lon_e5") => (Math.min(...fire.map((h) => h[key])) + Math.max(...fire.map((h) => h[key]))) / 2e5;
 
   await openFixtureDates(page);
   await page.getByRole("button", { name: /^ID-WOOD-CONCESSION-0540/ }).click();
@@ -76,6 +87,11 @@ test("opens 0540 and hotspot A matches the chain", async ({ page }) => {
   await expect(page.getByText("14 inside, 9 within 5 km")).toBeVisible();
   await expect(page.getByText(MAP_VERSION)).toBeVisible();
   await expect(page.getByRole("region", { name: "Map of ID-WOOD-CONCESSION-0540 with 23 hotspots" })).toBeVisible();
+  await expect(fireOfA(page)).toContainText("2 passes, 2 detections");
+
+  await fireOfA(page).getByRole("button").click();
+
+  await expect(page.getByRole("heading", { name: "First seen inside, 3.0 km from the edge" })).toBeVisible();
   await expect(hotspotRow(page, "5.2 MW")).toContainText("Inside, 3.1 km");
 
   await hotspotRow(page, "5.2 MW").getByRole("button").click();
@@ -92,7 +108,14 @@ test("opens 0540 and hotspot A matches the chain", async ({ page }) => {
     "href",
     `https://sepolia.basescan.org/tx/${tx_hash}`,
   );
-  expect(await page.evaluate(() => window.__fakeMap)).toMatchObject({ center: { lat: -3.58175, lng: 105.71567 }, zoom: 11 });
+  // The map stays framed on the fire, with A marked.
+  await expect(
+    page.getByRole("region", { name: "Map of the fire first seen 12 Oct 06:57 UTC, the detection at 3.58175°S, 105.71567°E marked" }),
+  ).toBeVisible();
+  const view = await page.evaluate(() => window.__fakeMap);
+  expect(view.center.lat).toBeCloseTo(mid("lat_e5"), 6);
+  expect(view.center.lng).toBeCloseTo(mid("lon_e5"), 6);
+  expect(view.zoom).toBeLessThanOrEqual(14);
 });
 
 test("every control is at least 44 px to tap on a touch screen", async ({ browser }) => {
@@ -125,6 +148,10 @@ test("every control is at least 44 px to tap on a touch screen", async ({ browse
   await expect(page.getByText("14 inside, 9 within 5 km")).toBeVisible();
   expect(await tooSmall()).toEqual([]);
 
+  await fireOfA(page).getByRole("button").click();
+  await expect(page.getByRole("heading", { name: "First seen inside, 3.0 km from the edge" })).toBeVisible();
+  expect(await tooSmall()).toEqual([]);
+
   await hotspotRow(page, "5.2 MW").getByRole("button").click();
   await expect(page.getByText("Matches the chain")).toBeVisible();
   expect(await tooSmall()).toEqual([]);
@@ -140,6 +167,7 @@ test("an edited match reads Does not match", async ({ page }) => {
 
   await openFixtureDates(page);
   await page.getByRole("button", { name: /^ID-WOOD-CONCESSION-0377/ }).click();
+  await fireOfB(page).getByRole("button").click();
   await hotspotRow(page, "3.03 MW").getByRole("button").click();
 
   const panel = page.getByRole("article", { name: "Hotspot record" });
