@@ -29,7 +29,11 @@ jobs:
             echo "::error::The last good run finished $((age / 60)) minutes ago"
             exit 1
           fi
-          if jq -e '.last_sealed == 0 and .unsealed > 0' <<<"$recorder" >/dev/null; then
+          # A run writes its row when it ends, so until this hour's run is in, the last row is an
+          # earlier run's and can't be judged against the records this one is still sealing.
+          last_run_at=$(jq -r '.last_run_at' <<<"$recorder")
+          if [ "$(date -d "$last_run_at" +%s)" -ge "$(date -d "$(date -u +%Y-%m-%dT%H:00:00Z)" +%s)" ] &&
+            jq -e '.last_sealed == 0 and .unsealed > 0' <<<"$recorder" >/dev/null; then
             echo "::error::The last run sealed nothing while $(jq .unsealed <<<"$recorder") records wait"
             exit 1
           fi
