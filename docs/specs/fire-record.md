@@ -313,7 +313,7 @@ flowchart LR
     CI -- "image :sha" --> R[(ghcr.io, public)]
     CI -- "az containerapp update, Contributor on firewatch-api only" --> CA[firewatch-api]
     CI -- "built page" --> SWA[Static Web Apps]
-    O((operator)) -- "az containerapp job update --image :sha" --> JOB[firewatch-recorder job]
+    O((operator)) -- "az containerapp job update --image @sha256:digest" --> JOB[firewatch-recorder job]
     O -- "migrate up, load-concessions, once" --> DB[(Neon)]
     R -- "pull" --> JOB
 ```
