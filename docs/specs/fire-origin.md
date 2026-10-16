@@ -1,6 +1,6 @@
 # Fire origin
 
-**Version:** v1 · **Status:** Built · **Type:** Feature · **Project type:** Web UI
+**Version:** v1 · **Status:** Shipped · **Type:** Feature · **Project type:** Web UI
 
 **Shape doc:** docs/specs/fire-watch/shape.md
 **Depends on:** fire-record
@@ -449,6 +449,7 @@ Recorded as D31, D32.
 | O13 | The spec does not say which detection is "first" when a pass has several at the same minute. That choice sets a fire's key (D32) and the distance that scenario 4 measures from ("none more than 483 m from the first") | flag | build | user | Decided alone | Chose: order by time, then lowest latitude, then lowest longitude, as walking-skeleton O13 picks the latest hotspot. It gives the pause 2 preview's key for all 171 fires and the 483 m. Other: highest fire power first, which gives 683 m on scenario 4. Undo: change the sort key in `api/src/firewatch/fires.py` and the rule's step 1. 2026-10-16 |
 | O14 | Adding ID-WOOD-CONCESSION-0332, 0356 and 0372 to `fixtures/concessions/trase-cut.geojson` breaks two loader tests in `api/tests/test_concessions.py`, a file the plan did not name | flag | build | user | Decided alone | Chose: those tests now expect 6 concessions (5 with the 2024 permit skipped). Other: a separate cut file for fire-origin. Undo: revert commit aafae31 and give the e2e and API tests their own cut. 2026-10-16 |
 | O15 | `GET /api/concessions/<id>` sent each polygon's outer ring only, so the new inside tint covered a concession's holes, land the record calls outside. ID-WOOD-CONCESSION-0377 has 6 holes, one of 37.8 km² | flag | review | user | Decided alone | Chose: `boundary` lists every ring, holes included, and `FireMap` fills the tint even-odd so holes stay clear. Other: send polygons as nested rings and change the `Ring[]` type. Undo: revert the review fix commit for O15. 2026-10-16 |
+| O16 | Seven `fix` commits on this branch get no CHANGELOG line: 9e3145a, 3339d4b, b7f905e, 7179fac, 09beabe, 91c5275 and 96c2e7c. Each fixes code this branch added, or the deploy order, before any user saw it | flag | ship | user | Decided alone | Chose: no Fixed lines; the one Added line for fire-origin covers them. Other: a Fixed line for each. Undo: add the lines under `### Fixed` in `CHANGELOG.md`. 2026-10-17 |
 
 _Never delete this section or its rows. See references/ledger.md._
 

@@ -1,6 +1,6 @@
 # ClimateChain hackathon entry · architecture
 
-**Status:** Active · **Updated:** 2026-10-16 by /ship fire-record
+**Status:** Active · **Updated:** 2026-10-17 by /ship fire-origin
 
 ## Context
 
@@ -23,7 +23,7 @@ flowchart LR
     R -- "match within 5 km, INSERT" --> D
     R -- "seal(recordId, fingerprint v2)" --> C[FireRecords, Base Sepolia]
     A[API] -- "SELECT, read-only role" --> D
-    W[fire record page] -- "GET /api/concessions" --> A
+    W[fire record page] -- "GET concessions and fires" --> A
     W -- "sealOf(recordId)" --> C
     W -- "map load" --> G[Google Maps]
     K[recorder-check] -- "GET /api/health" --> A
@@ -40,5 +40,5 @@ checks the chain itself.
 | API              | `api/`                          | Read-only FastAPI: `GET /api/concessions`, `GET /api/concessions/{id}`, `GET /api/concessions/{id}/fires/{key}` and `GET /api/health`; groups a concession's detections into fires on each request (`fires.py`, D31) |
 | Database         | `api/migrations/`               | Postgres with PostGIS on Neon: hotspots, concessions, their matches and recorder runs         |
 | Fire record page | `web/`                          | Lists concessions for the dates, shows one with its fires, shows where a fire was first seen and replays its passes, checks a record against the chain |
-| CI and deploy    | `.github/workflows/`, `infra/`  | Tests on every push; a push to main ships the API and the page; the job's image is set by hand, by digest |
+| CI and deploy    | `.github/workflows/`, `infra/`  | Tests on every push; a push to main ships the API, then the page; the job's image is set by hand, by digest |
 | recorder-check   | `.github/workflows/`            | Hourly: fails, so GitHub emails, after 2 hours without a good run or when a run seals nothing |
