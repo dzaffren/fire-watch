@@ -96,4 +96,4 @@ flowchart LR
 - **Backtest** — running a model over a past period to see how it would have done.
 - **Naive baseline** — the simplest possible guess, used to prove a model adds something.
 - **Walking skeleton** — the thinnest working path through every layer, deployed, before features.
-- **e2e test** — one test that drives the product the way a user does, end to end.
+- **e2e** — one test that drives the product the way a user does, end to end.
