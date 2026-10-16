@@ -2,7 +2,7 @@
 
 import logging
 import os
-from datetime import date, datetime, time, timedelta, timezone
+from datetime import date, datetime, time, timezone
 from typing import Annotated
 
 import psycopg
@@ -31,7 +31,7 @@ SELECT c.id, c.province, c.area_ha,
 FROM hotspots h
 JOIN hotspot_concessions m ON m.hotspot_id = h.id
 JOIN concessions c ON c.id = m.concession_id
-WHERE h.fingerprint_version = 2 AND h.acquired_at >= %(start)s AND h.acquired_at < %(end)s
+WHERE h.fingerprint_version = 2 AND h.acquired_at >= %(start)s AND h.acquired_at <= %(end)s
 GROUP BY c.id
 ORDER BY inside DESC, near DESC, c.id
 """
@@ -49,7 +49,7 @@ SELECT h.*, m.inside AS inside_here,
         FROM hotspot_concessions a WHERE a.hotspot_id = h.id) AS concessions
 FROM hotspots h
 JOIN hotspot_concessions m ON m.hotspot_id = h.id AND m.concession_id = %(id)s
-WHERE h.fingerprint_version = 2 AND h.acquired_at >= %(start)s AND h.acquired_at < %(end)s
+WHERE h.fingerprint_version = 2 AND h.acquired_at >= %(start)s AND h.acquired_at <= %(end)s
 ORDER BY h.acquired_at DESC, h.frp_e2 DESC, h.lat_e5, h.lon_e5
 """
 RECORDER = """
@@ -85,7 +85,7 @@ def _range(start: date, end: date) -> dict:
         raise HTTPException(status_code=422, detail=f"Pick {MAX_DAYS} days or fewer")
     return {
         "start": datetime.combine(start, time.min, timezone.utc),
-        "end": datetime.combine(end + timedelta(days=1), time.min, timezone.utc),
+        "end": datetime.combine(end, time.max, timezone.utc),
     }
 
 
