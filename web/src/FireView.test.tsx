@@ -138,6 +138,18 @@ describe("FireView", () => {
     expect(within(how).getByText(/NOAA-20 passes about twice a day and cloud can hide a fire/)).toBeInTheDocument();
   });
 
+  it("links to a pack in a new tab", () => {
+    const href = `/?pack=${OUTSIDE.id}&fire=${OUTSIDE.key}&as_of=1792227600`;
+    show(OUTSIDE.id, { kind: "ready", fire: fire(OUTSIDE) }, { packHref: href });
+
+    const make = screen.getByRole("link", { name: "Make complaint pack" });
+    expect(make).toHaveAttribute("href", href);
+    expect(make).toHaveAttribute("target", "_blank");
+    expect(make).toHaveAccessibleDescription(
+      "Opens this fire as it stands now on a page with its own link, to put in a grievance. The pack never changes, and anyone with the link can check it against the chain.",
+    );
+  });
+
   it("lists the detections oldest first and opens the one picked", () => {
     const { onPick } = showFire(OUTSIDE);
 

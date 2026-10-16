@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { apiSource, concession, concessions, type HotspotRecord } from "./api";
-import { sealOf } from "./chain";
+import { apiSource, concession, concessions, pack, packRef, packSource, type HotspotRecord } from "./api";
+import { sealOf, sealsOf } from "./chain";
 
-vi.mock("./chain", () => ({ sealOf: vi.fn() }));
+vi.mock("./chain", () => ({ sealOf: vi.fn(), sealsOf: vi.fn() }));
 
 const MAP = "Trase pulpwood concessions 2023–2024, v2026-02-20";
 const A_FP = "0x86a47945c682c15fb86471df99c10a3fe1d8fc4ba7f39f87e70b46703b85f051";
@@ -80,5 +80,58 @@ describe("apiSource", () => {
     vi.mocked(sealOf).mockResolvedValue({ fingerprint: A_FP, sealedAt: 1791968700n });
     await expect(apiSource.sealOf(hotspotA)).resolves.toBe(A_FP);
     expect(sealOf).toHaveBeenCalledWith(hotspotA.record_id);
+  });
+});
+
+describe("packRef", () => {
+  const KEY = "0x48f25fe185b0402018dc6cd3fab3930a760bc0c47bed4d163aa67f678000fbc1";
+  const link = (query: string) => packRef(new URLSearchParams(query));
+
+  it("reads the concession, the fire key and the as-of time from the link", () => {
+    expect(link(`pack=ID-WOOD-CONCESSION-0332&fire=${KEY}&as_of=1792227602`)).toEqual({
+      id: "ID-WOOD-CONCESSION-0332",
+      key: KEY,
+      asOf: 1792227602,
+    });
+  });
+
+  it("refuses a key cut short", () => {
+    expect(link(`pack=ID-WOOD-CONCESSION-0332&fire=${KEY.slice(0, 40)}&as_of=1792227602`)).toBeNull();
+  });
+
+  it("refuses a link with no as-of time", () => {
+    expect(link(`pack=ID-WOOD-CONCESSION-0332&fire=${KEY}`)).toBeNull();
+  });
+});
+
+describe("pack", () => {
+  const ref = { id: "ID-WOOD-CONCESSION-0332", key: `0x${"ab".repeat(32)}` as const, asOf: 1792227602 };
+
+  it("asks for the fire as of the link's time", async () => {
+    answer(200, { key: ref.key, as_of_unix: ref.asOf });
+    await expect(pack(ref)).resolves.toEqual({ key: ref.key, as_of_unix: ref.asOf });
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringMatching(new RegExp(`/api/concessions/ID-WOOD-CONCESSION-0332/fires/${ref.key}\\?as_of=1792227602$`)),
+    );
+  });
+
+  it("gives null when the API knows no such fire then", async () => {
+    answer(404, { detail: "No such fire" });
+    await expect(pack(ref)).resolves.toBeNull();
+  });
+
+  it("throws on a server error", async () => {
+    answer(503, { detail: "unavailable" });
+    await expect(pack(ref)).rejects.toThrow();
+  });
+});
+
+describe("packSource", () => {
+  it("reads every record's seal in one chain read", async () => {
+    const hotspotB = { ...hotspotA, record_id: `0x${"cd".repeat(32)}` as const };
+    vi.mocked(sealsOf).mockResolvedValue([A_FP, A_FP]);
+    await expect(packSource.sealsOf([hotspotA, hotspotB])).resolves.toEqual([A_FP, A_FP]);
+    expect(sealsOf).toHaveBeenCalledTimes(1);
+    expect(sealsOf).toHaveBeenCalledWith([hotspotA.record_id, hotspotB.record_id]);
   });
 });
