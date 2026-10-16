@@ -272,7 +272,7 @@ detection with its fire. A new route returns one fire with every detection in it
 dates. The recorder, the contract, the schema and the job don't change. The page is the pause 2
 preview code, already in `web/src`.
 
-Relies on: D7, D9, D10, D13, D14, D17, D18, D21, D24–D30, and D31, D32 drafted below.
+Relies on: D7, D9, D10, D13, D14, D17, D18, D21, D24–D32.
 
 ```mermaid
 flowchart TB
@@ -417,28 +417,7 @@ directory; neither chunk adds a dependency.
 
 ### Decisions to record
 
-```
-## D31 · 2026-10-16 · Group fires in the API on each request, in Python
-
-Why: one concession's detections fetch in 17–30 ms and group in 24 ms (1,083 detections, measured
-2026-10-16), so nothing needs storing. A stored grouping would change whenever a pass joins two
-fires, and the recorder's image is updated by hand (D21).
-Rejected: the recorder storing each detection's fire key (a table, regrouping on every join, and a
-hand-deployed job change), PostGIS ST_ClusterDBSCAN (clusters by one distance; "within 1 km and 48
-hours" is two).
-Source: docs/specs/fire-origin.md
-Status: active
-
-## D32 · 2026-10-16 · Name a fire by its first detection's record ID
-
-Why: the record ID is stored with the row and keys its seal on the chain (D9), so the name needs
-no table, and it holds while the fire grows. It changes only when a pass joins the fire to an
-older one (O11).
-Rejected: a stored serial fire ID (needs the table D31 rejects), a hash of the fire's record IDs
-(changes with every pass).
-Source: docs/specs/fire-origin.md
-Status: active
-```
+Recorded as D31, D32.
 
 ## Open items
 
