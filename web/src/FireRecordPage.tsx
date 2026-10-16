@@ -5,7 +5,7 @@ import { ConcessionList, type ListLoad } from "./ConcessionList";
 import { ConcessionView, type DetailLoad } from "./ConcessionView";
 import { DateRange, daysBefore } from "./DateRange";
 import { FireMap } from "./FireMap";
-import { fireDots, FireView, passTimes, Replay, type FireLoad } from "./FireView";
+import { fireArea, fireDots, FireView, passTimes, Replay, type FireLoad } from "./FireView";
 import { count, detectedShort, location } from "./format";
 import { ChevronLeftIcon, ExternalIcon } from "./icons";
 import { LoadErrorPanel, LoadingPanel, RecordPanel, type Check } from "./RecordPanel";
@@ -15,6 +15,8 @@ export interface FireRecordSource {
   concessions(from: string, to: string): Promise<ConcessionListing>;
   concession(id: string, from: string, to: string): Promise<ConcessionDetail>;
   fire(id: string, key: Hex): Promise<FireDetail>;
+  /** The link of a complaint pack holding this fire as the view shows it. */
+  packHref(id: string, fire: FireDetail): string;
   sealOf(record: HotspotRecord): Promise<Hex>;
   fingerprint(record: HotspotRecord): Hex;
 }
@@ -26,8 +28,6 @@ export type View =
   | { kind: "hotspot"; id: string; key: Hex; index: number };
 
 const SLOW_AFTER_MS = 3000;
-// About 1 km around a fire's detections, so the nearby edge shows.
-const FIRE_PAD_DEG = 0.01;
 const DEFAULT_DAYS = 7;
 const TRASE_DATASET = "https://trase.earth/open-data/datasets/indonesia-wood-pulp-concessions-2023-2024";
 
@@ -111,17 +111,7 @@ export function FireRecordPage({ source, today, initialView, initialDates }: Pro
   const record = view.kind === "hotspot" && openFire ? openFire.hotspots[view.index] : null;
   const times = useMemo(() => (openFire ? passTimes(openFire.hotspots) : []), [openFire]);
   const at = replayAt ?? times.length;
-  const fireArea = useMemo(() => {
-    if (!openFire) return undefined;
-    const lats = openFire.hotspots.map((h) => h.lat_e5 / 1e5);
-    const lons = openFire.hotspots.map((h) => h.lon_e5 / 1e5);
-    return {
-      west: Math.min(...lons) - FIRE_PAD_DEG,
-      east: Math.max(...lons) + FIRE_PAD_DEG,
-      south: Math.min(...lats) - FIRE_PAD_DEG,
-      north: Math.max(...lats) + FIRE_PAD_DEG,
-    };
-  }, [openFire]);
+  const area = useMemo(() => (openFire ? fireArea(openFire.hotspots) : undefined), [openFire]);
   const replay = useMemo(
     () => (openFire && view.kind === "fire" ? fireDots(openFire.hotspots, at) : null),
     [openFire, view.kind, at],
@@ -217,6 +207,7 @@ export function FireRecordPage({ source, today, initialView, initialDates }: Pro
                 key={view.key}
                 id={view.id}
                 load={fire.kind === "ready" && !openFire ? { kind: "loading" } : fire}
+                packHref={openFire ? source.packHref(view.id, openFire) : null}
                 picked={view.picked ?? null}
                 onBack={() => setView({ kind: "concession", id: view.id, picked: view.key })}
                 onPick={(index) => setView({ kind: "hotspot", id: view.id, key: view.key, index })}
@@ -262,7 +253,7 @@ export function FireRecordPage({ source, today, initialView, initialDates }: Pro
           boundary={ready?.boundary}
           dots={fireKey ? (replay?.dots ?? allFireDots) : ready?.hotspots}
           selected={record && view.kind === "hotspot" ? view.index : null}
-          area={fireKey ? fireArea : undefined}
+          area={fireKey ? area : undefined}
           fire={fireKey !== null}
           onSelect={onMapSelect}
         >

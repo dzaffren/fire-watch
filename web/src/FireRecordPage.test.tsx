@@ -85,7 +85,9 @@ function fixtureSource(edit: (r: HotspotRecord) => HotspotRecord = (r) => r): Fi
       hotspots: stored(id)
         .filter((h) => h.fire_key === key)
         .sort((a, b) => a.acquired_unix - b.acquired_unix || a.lat_e5 - b.lat_e5),
+      as_of_unix: 1792227600,
     })),
+    packHref: (id: string, f: { key: Hex; as_of_unix: number }) => `/?pack=${id}&fire=${f.key}&as_of=${f.as_of_unix}`,
     sealOf: vi.fn(async (r: HotspotRecord) => fingerprint(sealed.get(r.record_id)!)),
     fingerprint,
   };
