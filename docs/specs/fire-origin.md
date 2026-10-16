@@ -201,7 +201,7 @@ on the map, and opens any detection's record; back links step out one level at a
 
 | Step | Left column | Map |
 | ---- | ----------- | --- |
-| Concession | As fire-record, plus "Fires 34" in the details. Then "Detections within 1 km and 48 hours of each other count as one fire. Newest first." and a table: First seen (UTC), with "4 passes, 19 detections" under it, and Where first seen ("Outside, 950 m", "Too close to tell", "Both sides of the edge"), with "Inside from 15 Oct 18:43", the edge distance, or "Never spread" under it. 100 rows at a time | As fire-record: boundary and every detection in the dates. A dot opens its fire |
+| Concession | As fire-record, plus "Fires 34" in the details. Then "Detections within 1 km and 48 hours of each other count as one fire. Largest first." and a table, most detections first, then newest first seen: First seen (UTC), with "4 passes, 19 detections" under it, and Where first seen ("Outside, 950 m", "Too close to tell", "Both sides of the edge"), with "Inside from 15 Oct 18:43", the edge distance, or "Never spread" under it. 100 rows at a time | As fire-record: boundary and every detection in the dates. A dot opens its fire |
 | Fire | "Fires in ID-WOOD-CONCESSION-0332", then a panel: the reading as its title ("First seen outside, 950 m from the edge"), the notes that qualify it, then Concession, First seen, Seen inside from or Seen outside from, Last seen, Passes ("4, with 19 detections"), and "How this is worked out" behind a disclosure. Then "19 detections, oldest first. Pick one to check it against the chain." and the detections table from fire-record, oldest first | Framed on the fire's detections plus about 1 km, at most zoom 14. First-pass detections are first-seen diamonds; the rest fade older to newer. The replay timeline sits across the top, left of the zoom buttons, starting on the last pass. Legend adds First seen and Older to newer |
 | Record | "Fire first seen 13 Oct 17:37", then the record panel, unchanged | Stays framed on the fire, the picked detection ringed |
 
@@ -227,8 +227,8 @@ is sealed, so anyone can redo this from the chain and NASA FIRMS's public archiv
 business names such as a "PT" company beside the boundary, and records name no company (shape
 O10).
 
-**The page expects** (pause 3 settles it): `GET /api/concessions/<id>` adds `fires`, each as
-`FireSummary` in `web/src/api.ts`, and a `fire_key` on each detection; a new
+**The page expects** (pause 3 settles it): `GET /api/concessions/<id>` adds `fires`, largest first,
+each as `FireSummary` in `web/src/api.ts`, and a `fire_key` on each detection; a new
 `GET /api/concessions/<id>/fires/<key>` returns one fire with every detection, oldest first, each
 with its `pass`. A fire's key is the record ID of its first detection.
 
@@ -266,9 +266,9 @@ old concession table. Drift check passed over the 11 files written; all 35 token
 | O5 | The headline answer is often "can't tell": of 65 fires with detections on both sides of an edge, 50 were first seen within 375 m of it or on both sides at once. Calling the side by where the first detections fall, ignoring the pixel, would call 39 | flag | spec p1 | user | Accepted risk | 2026-10-16: say "can't tell" rather than make calls a company can pick apart; 15 of 65 called (D26) |
 | O6 | Whether to flag fires that never spread (fire-record O4 promised this slice would). A smouldering peat fire can also stay put | question | spec p1 | user | Resolved | 2026-10-16: flag them, naming both a mill and smouldering peat (D27) |
 | O7 | The seals prove each detection hasn't changed, not that none is missing. A record left out could change where a fire reads as first seen. Anyone can compare against FIRMS's public archive | flag | spec p1 | user | Accepted risk | 2026-10-16: FIRMS's archive is public, so a missing detection can be found by anyone; sealing each run's list is not worth a new record type now (D24) |
-| O8 | The fires table lists newest first, so on ID-WOOD-CONCESSION-0332 one-pass fires fill the top rows and the 188- and 90-detection fires that crossed the edge sit lower. 18 of 0332's 34 fires were seen on one pass | question | spec p2 | user | Open | — |
-| O9 | The map draws a concession as a dashed line only, so it doesn't show which side is inside. ID-WOOD-CONCESSION-0356 has several outlines close together, and "inside, 410 m" can't be read off the map. An inside tint would be a new design-system rule | question | spec p2 | user | Open | — |
-| O10 | The replay steps one pass every 240 ms (`--fw-replay-step`), so a 4-pass fire plays in under a second | question | spec p2 | user | Open | — |
+| O8 | The fires table lists newest first, so on ID-WOOD-CONCESSION-0332 one-pass fires fill the top rows and the 188- and 90-detection fires that crossed the edge sit lower. 18 of 0332's 34 fires were seen on one pass | question | spec p2 | user | Resolved | 2026-10-16: largest first, by detections, then newest first seen, as the concession list ranks worst first (D28) |
+| O9 | The map draws a concession as a dashed line only, so it doesn't show which side is inside. ID-WOOD-CONCESSION-0356 has several outlines close together, and "inside, 410 m" can't be read off the map. An inside tint would be a new design-system rule | question | spec p2 | user | Open | 2026-10-16: add a faint, non-fire inside tint through `/design-system` before `/build`; `FireMap` follows it |
+| O10 | The replay steps one pass every 240 ms (`--fw-replay-step`), so a 4-pass fire plays in under a second | question | spec p2 | user | Open | 2026-10-16: 600 ms a pass, changed through `/design-system` with O9 |
 
 _Never delete this section or its rows. See references/ledger.md._
 

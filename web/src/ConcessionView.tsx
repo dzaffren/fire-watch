@@ -76,7 +76,7 @@ export function ConcessionView({ id, load, mapVersion, picked, onBack, onPick, o
             <dd>{mapVersion}</dd>
           </dl>
           <p className="fw-help list-note enter">
-            Detections within 1 km and 48 hours of each other count as one fire. Newest first.
+            Detections within 1 km and 48 hours of each other count as one fire. Largest first.
           </p>
           <div className="table-box enter">
             <table className="fw-table">
