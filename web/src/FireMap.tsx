@@ -108,7 +108,8 @@ function createLayer(OverlayView: typeof google.maps.OverlayView): Layer {
       ctx.clearRect(0, 0, w, h);
 
       const ink = themeColour("--fw-ink");
-      // The inside tint shows which side of the dashed edge is the concession.
+      // The inside tint shows which side of the dashed edge is the concession; even-odd leaves its
+      // holes untinted.
       ctx.beginPath();
       for (const ring of this.data.boundary) {
         ring.forEach(([lng, lat], i) => {
@@ -118,7 +119,7 @@ function createLayer(OverlayView: typeof google.maps.OverlayView): Layer {
         ctx.closePath();
       }
       ctx.fillStyle = themeFill("--fw-concession");
-      ctx.fill();
+      ctx.fill("evenodd");
       ctx.strokeStyle = ink;
       ctx.lineWidth = 1.5;
       ctx.setLineDash([5, 4]);

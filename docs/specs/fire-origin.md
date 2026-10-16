@@ -346,7 +346,7 @@ component.
 
 | Route | Answers |
 | ----- | ------- |
-| `GET /api/concessions/<id>?from=<date>&to=<date>` | As today, plus `fires`: each with `key`, `first_seen_unix`, `last_seen_unix`, `passes`, `detections`, `first_seen` (`reading`, `inside`, `edge_m`), `inside_from_unix`, `outside_from_unix`, `never_spread`, `recorded_before_h`, largest first. Each record gains `fire_key` |
+| `GET /api/concessions/<id>?from=<date>&to=<date>` | As today, with `boundary` now holding each polygon's holes as well as its outer ring (O15), plus `fires`: each with `key`, `first_seen_unix`, `last_seen_unix`, `passes`, `detections`, `first_seen` (`reading`, `inside`, `edge_m`), `inside_from_unix`, `outside_from_unix`, `never_spread`, `recorded_before_h`, largest first. Each record gains `fire_key` |
 | `GET /api/concessions/<id>/fires/<key>` | 200 with the same fire fields and `hotspots`, every record oldest first, each with `pass`. 404 when the concession or fire is unknown, including a fire that has since joined an older one (O11). 422 for a malformed key. No dates: a fire is never cut by them |
 
 ### Earn-it
@@ -437,6 +437,7 @@ Recorded as D31, D32.
 | O12 | Grouping on every request stays under about 1 s on the 0.25-vCPU container through judging. Measured on a laptop: 24 ms at 1,083 detections, 270 ms at 10,830 | unproven | spec p3 | user | Accepted risk | 2026-10-16: ship as planned and read `group_ms` in the API log after deploy; past about 1 s, the recorder stores each detection's fire key as its own change |
 | O13 | The spec does not say which detection is "first" when a pass has several at the same minute. That choice sets a fire's key (D32) and the distance that scenario 4 measures from ("none more than 483 m from the first") | flag | build | user | Decided alone | Chose: order by time, then lowest latitude, then lowest longitude, as walking-skeleton O13 picks the latest hotspot. It gives the pause 2 preview's key for all 171 fires and the 483 m. Other: highest fire power first, which gives 683 m on scenario 4. Undo: change the sort key in `api/src/firewatch/fires.py` and the rule's step 1. 2026-10-16 |
 | O14 | Adding ID-WOOD-CONCESSION-0332, 0356 and 0372 to `fixtures/concessions/trase-cut.geojson` breaks two loader tests in `api/tests/test_concessions.py`, a file the plan did not name | flag | build | user | Decided alone | Chose: those tests now expect 6 concessions (5 with the 2024 permit skipped). Other: a separate cut file for fire-origin. Undo: revert commit aafae31 and give the e2e and API tests their own cut. 2026-10-16 |
+| O15 | `GET /api/concessions/<id>` sent each polygon's outer ring only, so the new inside tint covered a concession's holes, land the record calls outside. ID-WOOD-CONCESSION-0377 has 6 holes, one of 37.8 km² | flag | review | user | Decided alone | Chose: `boundary` lists every ring, holes included, and `FireMap` fills the tint even-odd so holes stay clear. Other: send polygons as nested rings and change the `Ring[]` type. Undo: revert the review fix commit for O15. 2026-10-16 |
 
 _Never delete this section or its rows. See references/ledger.md._
 

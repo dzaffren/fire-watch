@@ -7,7 +7,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from firewatch import concessions
-from firewatch.app import create_app
+from firewatch.app import SIMPLIFY_DEGREES, create_app
 from firewatch.concessions import MAP_VERSION
 
 SITE = "https://fire-watch.example"
@@ -227,18 +227,22 @@ def test_concession_lists_fires_largest_first_with_fire_keys(client, db):
     }
 
 
-def test_concession_boundary_is_its_simplified_outer_rings(client, db):
+def test_concession_boundary_is_its_simplified_rings_holes_included(client, db):
     with psycopg.connect(db) as conn:
-        (polygons,) = conn.execute(
-            "SELECT ST_NumGeometries(boundary) FROM concessions WHERE id = %s", (C0540,)
+        polygons, rings = conn.execute(
+            "SELECT ST_NumGeometries(boundary), ST_NRings(ST_SimplifyPreserveTopology(boundary, %s))"
+            " FROM concessions WHERE id = %s",
+            (SIMPLIFY_DEGREES, C0377),
         ).fetchone()
 
-    boundary = client.get(f"/api/concessions/{C0540}", params=RANGE).json()["boundary"]
+    boundary = client.get(f"/api/concessions/{C0377}", params=RANGE).json()["boundary"]
 
-    assert len(boundary) == polygons == 2
+    # The holes too, so the page's inside tint leaves land the record calls outside untinted.
+    assert polygons == 21 and rings > polygons
+    assert len(boundary) == rings
     for ring in boundary:
         assert ring[0] == ring[-1]
-        assert all(105 < lon < 107 and -4.5 < lat < -2.5 for lon, lat in ring)
+        assert all(114.9 < lon < 116.2 and -4 < lat < -2.3 for lon, lat in ring)
 
 
 def test_concession_with_no_records_in_range_has_zero_counts(client):

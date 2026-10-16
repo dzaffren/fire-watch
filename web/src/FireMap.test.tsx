@@ -113,7 +113,8 @@ function recordDrawing(): { frame(): string[] } {
     {},
     {
       get: (_, name) => (...args: unknown[]) => {
-        log.push(name === "setLineDash" ? `setLineDash ${JSON.stringify(args[0])}` : String(name));
+        if (name === "setLineDash") log.push(`setLineDash ${JSON.stringify(args[0])}`);
+        else log.push(name === "fill" && args[0] ? `fill ${args[0]}` : String(name));
       },
       set: (_, name, value) => {
         if (name === "fillStyle" || name === "globalAlpha") log.push(`${String(name)}=${value}`);
@@ -251,7 +252,8 @@ describe("FireMap", () => {
     const frame = drawing.frame();
     const tint = frame.indexOf("fillStyle=--fw-concession");
     const dash = frame.indexOf("setLineDash [5,4]");
-    expect(frame.slice(tint, tint + 2)).toEqual(["fillStyle=--fw-concession", "fill"]);
+    // Even-odd, so a hole ring in the boundary stays untinted, as the record calls it outside.
+    expect(frame.slice(tint, tint + 2)).toEqual(["fillStyle=--fw-concession", "fill evenodd"]);
     // Tint, then the dashed edge over it, then the detections over both.
     expect(tint).toBeGreaterThan(-1);
     expect(frame[dash + 1]).toBe("stroke");
