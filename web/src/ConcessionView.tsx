@@ -1,11 +1,21 @@
 import { Fragment, useState } from "react";
-import type { ConcessionDetail } from "./api";
-import { count, detectedShort, distance, firePower } from "./format";
+import type { ConcessionDetail, FireSummary } from "./api";
+import { count, detectedShort, distance, firstSeenShort, plural } from "./format";
 import { AlertIcon, ChevronLeftIcon } from "./icons";
 
 export type DetailLoad = { kind: "loading" } | { kind: "error" } | { kind: "ready"; detail: ConcessionDetail };
 
 const PAGE = 100;
+
+/** Under the fires table's "Where first seen": when it was first clearly on the other side. */
+function whereNext(fire: FireSummary): string | null {
+  const { reading, inside, edge_m } = fire.first_seen;
+  if (reading === "outside" && fire.inside_from_unix) return `Inside from ${detectedShort(fire.inside_from_unix)}`;
+  if (reading === "inside" && fire.outside_from_unix) return `Outside from ${detectedShort(fire.outside_from_unix)}`;
+  if (reading === "edge") return `${distance(edge_m)} ${inside ? "inside" : "outside"} the edge`;
+  if (fire.never_spread) return "Never spread";
+  return null;
+}
 
 interface Props {
   id: string;
@@ -18,7 +28,7 @@ interface Props {
 }
 
 export function ConcessionView({ id, load, mapVersion, picked, onBack, onPick, onRetry }: Props) {
-  // Keep the picked hotspot's row on screen when coming back from its record.
+  // Keep the picked fire's row on screen when coming back from it.
   const [shown, setShown] = useState(() => (picked === null ? PAGE : Math.ceil((picked + 1) / PAGE) * PAGE));
 
   return (
@@ -41,7 +51,7 @@ export function ConcessionView({ id, load, mapVersion, picked, onBack, onPick, o
       {load.kind === "loading" && (
         <div className="fw-panel" aria-busy="true" aria-label="Loading the concession">
           <div className="sk-rows">
-            {[50, 35, 60, 80].map((w, i) => (
+            {[50, 35, 60, 80, 45].map((w, i) => (
               <Fragment key={i}>
                 <div className="fw-skeleton" />
                 <div className="fw-skeleton" style={{ width: `${w}%` }} />
@@ -60,36 +70,46 @@ export function ConcessionView({ id, load, mapVersion, picked, onBack, onPick, o
             <dd>{count(load.detail.area_ha)} ha</dd>
             <dt>Hotspots</dt>
             <dd>{count(load.detail.inside)} inside, {count(load.detail.near)} within 5 km</dd>
+            <dt>Fires</dt>
+            <dd>{count(load.detail.fires.length)}</dd>
             <dt>Boundaries</dt>
             <dd>{mapVersion}</dd>
           </dl>
+          <p className="fw-help list-note enter">
+            Detections within 1 km and 48 hours of each other count as one fire. Newest first.
+          </p>
           <div className="table-box enter">
             <table className="fw-table">
               <thead>
-                <tr><th scope="col">Detected (UTC)</th><th scope="col" className="num">Fire power</th><th scope="col">Where</th></tr>
+                <tr><th scope="col">First seen (UTC)</th><th scope="col">Where first seen</th></tr>
               </thead>
               <tbody>
-                {load.detail.hotspots.slice(0, shown).map((h, i) => {
-                  const match = h.concessions.find((m) => m.id === id);
+                {load.detail.fires.slice(0, shown).map((f, i) => {
+                  const next = whereNext(f);
                   return (
-                    <tr key={h.record_id} className="row-open" aria-selected={i === picked ? true : undefined}>
+                    <tr key={f.key} className="row-open" aria-selected={i === picked ? true : undefined}>
                       <td>
                         <button className="row-btn" type="button" onClick={() => onPick(i)}>
-                          {detectedShort(h.acquired_unix)}
+                          {detectedShort(f.first_seen_unix)}
+                          <span className="sub">
+                            {plural(f.passes, "pass", "passes")}, {plural(f.detections, "detection", "detections")}
+                          </span>
                         </button>
                       </td>
-                      <td className="num">{firePower(h.frp_e2)}</td>
-                      <td>{match && `${match.inside ? "Inside" : "Outside"}, ${distance(match.edge_m)}`}</td>
+                      <td>
+                        {firstSeenShort(f.first_seen)}
+                        {next && <span className="sub">{next}</span>}
+                      </td>
                     </tr>
                   );
                 })}
               </tbody>
             </table>
           </div>
-          {shown < load.detail.hotspots.length && (
+          {shown < load.detail.fires.length && (
             <button className="fw-btn fw-btn--secondary more" type="button" onClick={() => setShown((n) => n + PAGE)}>
-              Show {Math.min(PAGE, load.detail.hotspots.length - shown)} more
-              <span className="more-left">{count(load.detail.hotspots.length - shown)} not shown</span>
+              Show {Math.min(PAGE, load.detail.fires.length - shown)} more
+              <span className="more-left">{count(load.detail.fires.length - shown)} not shown</span>
             </button>
           )}
         </>

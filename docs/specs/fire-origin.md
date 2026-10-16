@@ -28,7 +28,7 @@ which side it was first seen on. In the other 50 it can't (O5, D26).
 | Check                         | Result |
 | ----------------------------- | ------ |
 | Cuts every layer it needs     | yes — fires worked out in the API from the stored records, a fire view on the page, shipped by the existing deploy. The recorder and the chain don't change (D24) |
-| One e2e test walks it         | yes — record the real ID-WOOD-CONCESSION-0332 fire on anvil, open 0332, open the fire, see "First seen outside, 954 m from the edge", step through 4 passes, see the first detection match the chain |
+| One e2e test walks it         | yes — record the real ID-WOOD-CONCESSION-0332 fire on anvil, open 0332, open the fire, see "First seen outside, 950 m from the edge", step through 4 passes, see the first detection match the chain |
 | Worth shipping alone          | yes — when a company says a fire started outside, the investigator can show where the satellite first saw it, from sealed detections, or know the record can't settle it |
 | Fits (≤5 scenarios, ≤2 areas) | yes — 5 scenarios; two areas: the API's fire grouping and the page's fire view |
 
@@ -103,7 +103,7 @@ Scenario: A fire first seen outside a concession, then seen inside
     | 2026-10-15 18:43 | 6          | 4 inside, 194 to 804 m; 2 outside, 7 and 283 m   |
   When the investigator opens ID-WOOD-CONCESSION-0332 for 2026-10-12 to 2026-10-15
   And opens this fire
-  Then it reads "First seen outside, 954 m from the edge" and "2026-10-13 17:37 UTC"
+  Then it reads "First seen outside, 950 m from the edge" and "2026-10-13 17:37 UTC"
   And "Seen inside from 2026-10-15 18:43 UTC"
   And it lists the 4 passes in time order, 19 detections, each checkable against the chain
   And it says recording had started 38 hours before, so the fire may have been burning earlier
@@ -114,11 +114,11 @@ Scenario: A fire first seen inside a concession
     | 2026-10-14 06:20 | 1          | inside, 409 m from the edge                  | outside, 4,182 m               |
     | 2026-10-14 17:20 | 3          | 2 inside, 217 and 304 m; 1 outside, 211 m    | outside, 3,976 to 4,399 m      |
   When the investigator opens this fire from ID-WOOD-CONCESSION-0356
-  Then it reads "First seen inside, 409 m from the edge" and "2026-10-14 06:20 UTC"
+  Then it reads "First seen inside, 410 m from the edge" and "2026-10-14 06:20 UTC"
   And it has no "Seen outside from" line, since the one outside detection is within 375 m
   And it has no recording-start note, since recording had run 51 hours
   When they open the same fire from ID-WOOD-CONCESSION-0372
-  Then it reads "First seen outside, 4,182 m from the edge"
+  Then it reads "First seen outside, 4.2 km from the edge"
 
 Scenario: A fire first seen too close to the edge to tell
   Given these detections near ID-WOOD-CONCESSION-0540 are recorded and sealed:
@@ -128,7 +128,7 @@ Scenario: A fire first seen too close to the edge to tell
     | 2026-10-15 05:59 | 2          | inside, 360 and 408 m                    |
     | 2026-10-15 18:41 | 2          | inside, 235 and 302 m                    |
   When the investigator opens this fire
-  Then it reads "First seen 158 m inside the edge, within one satellite pixel of it"
+  Then it reads "First seen 160 m inside the edge, within one satellite pixel of it"
   And "The satellite record can't say which side this fire started on"
   And "Seen inside from 2026-10-15 05:59 UTC"
 
@@ -143,7 +143,7 @@ Scenario: The chosen dates don't move where a fire was first seen
   Given the ID-WOOD-CONCESSION-0332 fire from the first scenario
   When the investigator picks 2026-10-15 to 2026-10-15
   Then the fire is listed
-  And it still reads "First seen outside, 954 m from the edge" and "2026-10-13 17:37 UTC"
+  And it still reads "First seen outside, 950 m from the edge" and "2026-10-13 17:37 UTC"
   And all 4 passes show
 ```
 
@@ -178,6 +178,83 @@ Scenario: The chosen dates don't move where a fire was first seen
 - Past seasons — season-backtest.
 - Company names — not planned (shape O10).
 
+## Interface
+
+The concession step's table becomes its fires, and a fire step sits between it and the record.
+Every detection belongs to exactly one fire, so each stays one click deeper. The map still shows
+all the concession's detections, and clicking one opens its fire. Record first, map second, as
+before (D2).
+
+```mermaid
+flowchart LR
+    D[Dates] -- "a valid range" --> L[Concession list]
+    L -- "opens a row" --> C[Concession and its fires]
+    C -- "picks a fire row or a dot" --> F[Fire: first seen, detections, replay]
+    F -- "picks a detection row or a dot" --> R[Detection record]
+    R -- "Fire first seen 13 Oct 17:37" --> F
+    F -- "Fires in ID-WOOD-CONCESSION-0332" --> C
+    C -- "All concessions" --> L
+```
+
+The investigator opens a concession, picks a fire, reads where it was first seen, plays its passes
+on the map, and opens any detection's record; back links step out one level at a time.
+
+| Step | Left column | Map |
+| ---- | ----------- | --- |
+| Concession | As fire-record, plus "Fires 34" in the details. Then "Detections within 1 km and 48 hours of each other count as one fire. Newest first." and a table: First seen (UTC), with "4 passes, 19 detections" under it, and Where first seen ("Outside, 950 m", "Too close to tell", "Both sides of the edge"), with "Inside from 15 Oct 18:43", the edge distance, or "Never spread" under it. 100 rows at a time | As fire-record: boundary and every detection in the dates. A dot opens its fire |
+| Fire | "Fires in ID-WOOD-CONCESSION-0332", then a panel: the reading as its title ("First seen outside, 950 m from the edge"), the notes that qualify it, then Concession, First seen, Seen inside from or Seen outside from, Last seen, Passes ("4, with 19 detections"), and "How this is worked out" behind a disclosure. Then "19 detections, oldest first. Pick one to check it against the chain." and the detections table from fire-record, oldest first | Framed on the fire's detections plus about 1 km, at most zoom 14. First-pass detections are first-seen diamonds; the rest fade older to newer. The replay timeline sits across the top, left of the zoom buttons, starting on the last pass. Legend adds First seen and Older to newer |
+| Record | "Fire first seen 13 Oct 17:37", then the record panel, unchanged | Stays framed on the fire, the picked detection ringed |
+
+| State | What shows |
+| ----- | ---------- |
+| Reading inside or outside | "First seen inside, 410 m from the edge" |
+| Too close to tell | "First seen 160 m inside the edge, within one satellite pixel of it", then "The satellite record can't say which side this fire started on." |
+| Both sides on the first pass | "First seen on both sides of the edge", with the same note |
+| Never spread | "Seen on 5 passes without spreading. This can be a fixed heat source, such as a mill, or peat smouldering in place." |
+| Near recording start | "Recording had started 38 hours before this fire was first seen, so it may have been burning earlier." Under an hour: "less than an hour" |
+| One pass only | No replay; the diamonds alone |
+| Loading or couldn't load a fire | The panel's skeleton; or "Couldn't load this fire", "The server didn't answer. Try again in a moment." and Try again |
+| Replay | Play, then one pass a step; dragging or the arrow keys move it and stop play. Its value reads "Pass 2 of 4, 2026-10-14 06:18 UTC" |
+
+**Fixed copy.** "How this is worked out": "A detection joins a fire when it is within 1 km and 48
+hours of one already in it. The first pass is the earliest satellite pass that saw the fire. A side
+is named only when every detection on that pass is more than 375 m from the edge, half the widest
+VIIRS pixel; nearer than that, the fire could be on either side." and "NOAA-20 passes about twice
+a day and cloud can hide a fire, so it may burn for hours before it is first seen. Each detection
+is sealed, so anyone can redo this from the chain and NASA FIRMS's public archive."
+
+**Map labels.** Google's place labels are off on every view: at the fire view's zoom they put
+business names such as a "PT" company beside the boundary, and records name no company (shape
+O10).
+
+**The page expects** (pause 3 settles it): `GET /api/concessions/<id>` adds `fires`, each as
+`FireSummary` in `web/src/api.ts`, and a `fire_key` on each detection; a new
+`GET /api/concessions/<id>/fires/<key>` returns one fire with every detection, oldest first, each
+with its `pass`. A fire's key is the record ID of its first detection.
+
+**Motion tier:** 2 for the replay only, as the design system sets: one pass a step every
+`--fw-replay-step` (240 ms), no easing, under reduced motion too. Everything else stays tier 1.
+
+**Components used:** `fw-panel`, `fw-kv`, `fw-table` (with the selected row), `fw-help`, `fw-link`,
+`fw-btn` (secondary), `fw-mono`, `fw-empty`, `fw-skeleton`, the disclosure from the record panel,
+and from the detections guideline: fire dots, older-to-newer opacity, the selected ring, the
+first-seen diamond, the concession boundary and the replay timeline. No new components or tokens;
+the timeline is a native range input drawn as the guideline's track.
+
+**Design system:** Fire Watch, `docs/design/design-system/` (D2, D4, D22).
+
+**Preview:** real components in `web/src`: `ConcessionView` (fires table), `FireView` with
+`Replay`, `FireMap` (fade, diamonds, framing on the fire) and `FireRecordPage`. Run
+`cd web && pnpm dev` and open `http://localhost:5173/?preview=fire-origin`. Pickers at the top
+switch between 18 states, numbered by scenario, and themes; `&state=edge&theme=dark` links
+straight to one. The data is real VIIRS NOAA-20 detections from 2026-10-12 to 15 near
+ID-WOOD-CONCESSION-0332, 0356, 0372 and 0540, grouped by D25 to D27 from the live read-only
+database (`web/src/preview/fire-origin.fixture.json`, no company names); seal times,
+fingerprints and transactions are made up. It replaces the fire-record preview, which showed the
+old concession table. Drift check passed over the 11 files written; all 35 tokens used exist in
+`docs/design/design-system/tokens/`. The 9 unit tests that read the old detections table in
+`ConcessionView.test.tsx` and `FireRecordPage.test.tsx` fail until `/build` rewrites them.
+
 ## Open items
 
 | ID | What | Type | Raised at | Owner | Status | Answer |
@@ -189,6 +266,9 @@ Scenario: The chosen dates don't move where a fire was first seen
 | O5 | The headline answer is often "can't tell": of 65 fires with detections on both sides of an edge, 50 were first seen within 375 m of it or on both sides at once. Calling the side by where the first detections fall, ignoring the pixel, would call 39 | flag | spec p1 | user | Accepted risk | 2026-10-16: say "can't tell" rather than make calls a company can pick apart; 15 of 65 called (D26) |
 | O6 | Whether to flag fires that never spread (fire-record O4 promised this slice would). A smouldering peat fire can also stay put | question | spec p1 | user | Resolved | 2026-10-16: flag them, naming both a mill and smouldering peat (D27) |
 | O7 | The seals prove each detection hasn't changed, not that none is missing. A record left out could change where a fire reads as first seen. Anyone can compare against FIRMS's public archive | flag | spec p1 | user | Accepted risk | 2026-10-16: FIRMS's archive is public, so a missing detection can be found by anyone; sealing each run's list is not worth a new record type now (D24) |
+| O8 | The fires table lists newest first, so on ID-WOOD-CONCESSION-0332 one-pass fires fill the top rows and the 188- and 90-detection fires that crossed the edge sit lower. 18 of 0332's 34 fires were seen on one pass | question | spec p2 | user | Open | — |
+| O9 | The map draws a concession as a dashed line only, so it doesn't show which side is inside. ID-WOOD-CONCESSION-0356 has several outlines close together, and "inside, 410 m" can't be read off the map. An inside tint would be a new design-system rule | question | spec p2 | user | Open | — |
+| O10 | The replay steps one pass every 240 ms (`--fw-replay-step`), so a 4-pass fire plays in under a second | question | spec p2 | user | Open | — |
 
 _Never delete this section or its rows. See references/ledger.md._
 
@@ -204,4 +284,6 @@ _Never delete this section or its rows. See references/ledger.md._
 - **FIRMS** — NASA's free service publishing satellite fire detections, live and archived.
 - **Peat** — waterlogged soil made of old plant matter; when dry it can smoulder for weeks.
 - **Sentinel-2** — a European satellite with 10–20 m images, sharper than VIIRS but no fire alerts.
+- **Replay** — the map stepping through a fire's passes in order, oldest first.
+- **Disclosure** — a "show more" toggle that keeps detail hidden until asked for.
 - **e2e** — end-to-end: one test that walks the whole slice as a user would.

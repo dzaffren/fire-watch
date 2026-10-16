@@ -47,6 +47,8 @@ export function mapStyles(): google.maps.MapTypeStyle[] {
     { elementType: "labels.text.fill", stylers: [{ color: muted }] },
     { elementType: "labels.text.stroke", stylers: [{ color: land }] },
     { featureType: "poi.park", elementType: "labels.text.fill", stylers: [{ color: muted }] },
+    // Business and other place labels name companies beside the boundaries, and records name none (shape O10).
+    { featureType: "poi", elementType: "labels", stylers: [{ visibility: "off" }] },
   ];
 }
 

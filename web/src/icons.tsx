@@ -29,3 +29,15 @@ export const PlusIcon = () => <Icon size={16} width={2}><path d="M12 5v14" /><pa
 export const MinusIcon = () => <Icon size={16} width={2}><path d="M5 12h14" /></Icon>;
 export const ChevronLeftIcon = () => <Icon size={16} width={2}><path d="m15 18-6-6 6-6" /></Icon>;
 export const CalendarIcon = () => <Icon className="icon" size={28} width={1.5}><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4" /><path d="M8 2v4" /><path d="M3 10h18" /></Icon>;
+// Filled, as on the detections guideline's replay timeline.
+export const PlayIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+    <path d="M7 4.5v15a1 1 0 0 0 1.5.86l12.5-7.5a1 1 0 0 0 0-1.72L8.5 3.64A1 1 0 0 0 7 4.5z" />
+  </svg>
+);
+export const PauseIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+    <rect x="6" y="4" width="4" height="16" rx="1" />
+    <rect x="14" y="4" width="4" height="16" rx="1" />
+  </svg>
+);

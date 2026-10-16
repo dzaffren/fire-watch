@@ -1,3 +1,5 @@
+import type { FirstSeen } from "./api";
+
 const SATELLITES: Record<string, string> = { VIIRS_NOAA20_NRT: "VIIRS NOAA-20" };
 const CONFIDENCE: Record<string, string> = { n: "Nominal", l: "Low", h: "High" };
 
@@ -50,3 +52,21 @@ export function gap(fromUnix: number, toIso: string): string {
   if (minutes < 1440) return `${Math.floor(minutes / 60)} h ${minutes % 60} min`;
   return `${Math.floor(minutes / 1440)} d ${Math.floor((minutes % 1440) / 60)} h`;
 }
+
+/** The fire view's headline: where the fire's first pass saw it against this concession (D26). */
+export function firstSeenLine(f: FirstSeen): string {
+  if (f.reading === "both") return "First seen on both sides of the edge";
+  if (f.reading === "edge") {
+    return `First seen ${distance(f.edge_m)} ${f.inside ? "inside" : "outside"} the edge, within one satellite pixel of it`;
+  }
+  return `First seen ${f.reading}, ${distance(f.edge_m)} from the edge`;
+}
+
+/** The fires table's short form: "Outside, 950 m", or "Too close to tell". */
+export function firstSeenShort(f: FirstSeen): string {
+  if (f.reading === "both") return "Both sides of the edge";
+  if (f.reading === "edge") return "Too close to tell";
+  return `${f.reading === "inside" ? "Inside" : "Outside"}, ${distance(f.edge_m)}`;
+}
+
+export const plural = (n: number, one: string, many: string) => `${count(n)} ${n === 1 ? one : many}`;

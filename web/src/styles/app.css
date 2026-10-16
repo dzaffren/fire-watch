@@ -61,7 +61,7 @@
 .dates-field { margin: 0; padding: 0; border: 0; min-width: 0; }
 .dates { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--fw-space-2); }
 
-.list, .concession, .hotspot { display: grid; gap: var(--fw-space-3); }
+.list, .concession, .fire, .hotspot { display: grid; gap: var(--fw-space-3); }
 .list-note { margin: 0; }
 .table-box { background: var(--fw-surface); border: var(--fw-border) solid var(--fw-line); border-radius: var(--fw-radius-panel); overflow-x: auto; }
 .fw-table th { white-space: nowrap; }
@@ -101,12 +101,57 @@ button.fw-link { margin: 0; padding: 0; border: 0; background: none; font: inher
 .legend-dot.md { width: 9px; height: 9px; }
 .legend-dot.lg { width: 13px; height: 13px; }
 .legend-dash { border-top: 1.5px dashed var(--fw-ink); }
+.legend-diamond {
+  width: 8px; height: 8px; margin-left: 2px; box-sizing: border-box;
+  border: 1.5px solid var(--fw-ink); background: var(--fw-surface); transform: rotate(45deg);
+}
+
+/* Fire origin: one fire's first-seen reading, its detections, and the replay (docs/specs/fire-origin.md) */
+.fire-reading h2 { font-size: var(--fw-text-lg); font-weight: var(--fw-weight-semibold); }
+.fire-notes { display: grid; gap: var(--fw-space-2); }
+.fire-notes .fw-help { margin: 0; }
+.fire-reading details { border-top: var(--fw-border) solid var(--fw-line); padding-top: var(--fw-space-3); font-size: var(--fw-text-sm); }
+.fire-reading summary { cursor: pointer; color: var(--fw-accent); font-weight: var(--fw-weight-medium); min-height: var(--fw-space-5); }
+.fire-reading summary:hover { color: var(--fw-accent-hover); }
+.fire-reading details p { margin: var(--fw-space-2) 0 0; }
+.fire-reading details[open] > :not(summary) { animation: fw-enter var(--fw-dur) var(--fw-ease) both; }
+
+/* The detections guideline's replay timeline, over the top of the map beside the zoom buttons */
+.replay {
+  position: absolute; top: var(--fw-space-4); left: var(--fw-space-4);
+  right: calc(var(--fw-space-4) * 2 + var(--fw-control-height));
+  flex-direction: row; flex-wrap: wrap; align-items: center; gap: var(--fw-space-2) var(--fw-space-3);
+  padding: var(--fw-space-2) var(--fw-space-3);
+}
+.replay-play { width: var(--fw-control-height); padding: 0; flex: none; }
+.replay-at { font-size: var(--fw-text-sm); white-space: nowrap; }
+.replay-track {
+  flex: 1 1 120px; min-width: 120px; height: 16px; margin: 0; background: none; cursor: pointer;
+  appearance: none; -webkit-appearance: none;
+}
+.replay-track::-webkit-slider-runnable-track {
+  height: 4px; border-radius: 2px;
+  background: linear-gradient(to right, var(--fw-accent) var(--fill), var(--fw-line) var(--fill));
+}
+.replay-track::-moz-range-track { height: 4px; border-radius: 2px; background: var(--fw-line); }
+.replay-track::-moz-range-progress { height: 4px; border-radius: 2px; background: var(--fw-accent); }
+.replay-track::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none; width: 16px; height: 16px; margin-top: -6px; box-sizing: border-box;
+  border-radius: 50%; background: var(--fw-surface); border: 2px solid var(--fw-accent);
+}
+.replay-track::-moz-range-thumb {
+  width: 16px; height: 16px; box-sizing: border-box;
+  border-radius: 50%; background: var(--fw-surface); border: 2px solid var(--fw-accent);
+}
+.replay-track:focus-visible { outline: var(--fw-focus-ring) solid var(--fw-accent); outline-offset: 4px; border-radius: 2px; }
 
 @media (pointer: coarse) {
   .zoom .fw-btn { width: var(--fw-touch-target); }
   .row-open td { height: var(--fw-touch-target); }
   .back { min-height: var(--fw-touch-target); }
-  .rec summary { padding-block: calc((var(--fw-touch-target) - var(--fw-space-5)) / 2); }
+  .rec summary, .fire-reading summary { padding-block: calc((var(--fw-touch-target) - var(--fw-space-5)) / 2); }
+  .replay-play { width: var(--fw-touch-target); }
+  .replay-track { height: var(--fw-touch-target); }
   /* Grow the inline transaction link's tap area to the touch target without moving the row */
   .fw-kv a.fw-link { position: relative; }
   .fw-kv a.fw-link::after { content: ""; position: absolute; inset: calc((var(--fw-touch-target) - 100%) / -2) 0; }
