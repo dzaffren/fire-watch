@@ -369,6 +369,60 @@ def test_fire_answers_as_of_the_newest_stored_detection(client, db, newest, as_o
     assert "province" not in response.json()
 
 
+def test_pack_leaves_out_detections_stored_after_it(client, db):
+    first = record(
+        db, "2026-10-13T17:37Z", [(C0332, False, 954)],
+        lat_e5=-310000, lon_e5=11281000, created_at="2026-10-14T09:00Z",
+    )
+    record(
+        db, "2026-10-14T06:18Z", [(C0332, False, 731)],
+        lat_e5=-310100, lon_e5=11281100, created_at="2026-10-14T09:00Z",
+    )
+    record(
+        db, "2026-10-15T18:43Z", [(C0332, True, 804)],
+        lat_e5=-310300, lon_e5=11281700, created_at="2026-10-16T09:00Z",
+    )
+    made = client.get(f"/api/concessions/{C0332}/fires/{first}").json()
+    record(
+        db, "2026-10-16T10:00Z", [(C0332, True, 500)],
+        lat_e5=-310200, lon_e5=11281200, created_at="2026-10-16T11:00Z",
+    )
+
+    live = client.get(f"/api/concessions/{C0332}/fires/{first}").json()
+    pack = client.get(
+        f"/api/concessions/{C0332}/fires/{first}", params={"as_of": made["as_of_unix"]}
+    ).json()
+
+    assert made["as_of_unix"] == unix("2026-10-16T09:00Z")
+    assert (live["passes"], live["detections"]) == (4, 4)
+    assert {k: pack[k] for k in made} == made
+
+
+def test_pack_keeps_its_key_after_a_join_to_an_older_fire(client, db):
+    record(
+        db, "2026-10-13T06:00Z", [(C0332, False, 900)],
+        lat_e5=-310000, lon_e5=11281000, created_at="2026-10-13T09:00Z",
+    )
+    newer = record(
+        db, "2026-10-14T06:00Z", [(C0332, False, 700)],
+        lat_e5=-311400, lon_e5=11281000, created_at="2026-10-15T09:00Z",
+    )
+    made = client.get(f"/api/concessions/{C0332}/fires/{newer}").json()
+    record(
+        db, "2026-10-14T18:00Z", [(C0332, False, 800)],
+        lat_e5=-310700, lon_e5=11281000, created_at="2026-10-16T10:00Z",
+    )
+
+    live = client.get(f"/api/concessions/{C0332}/fires/{newer}")
+    pack = client.get(
+        f"/api/concessions/{C0332}/fires/{newer}", params={"as_of": made["as_of_unix"]}
+    )
+
+    assert live.status_code == 404
+    assert pack.status_code == 200
+    assert {k: pack.json()[k] for k in made} == made
+
+
 @pytest.mark.parametrize(
     "key",
     ["0x" + "ab" * 31, "0x" + "ab" * 33, "0x" + "AB" * 32, "ab" * 33, "0x" + "zz" * 32],
