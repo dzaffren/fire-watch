@@ -18,16 +18,16 @@ It doesn't group them into fires or say where a fire was first seen, so the inve
 answer that claim from it.
 
 The fires are there. From 2026-10-12 03:32 to 2026-10-15 18:43 UTC, the 6,608 recorded detections
-form 1,451 fires (same fire when within 1 km and 48 hours, O4), and 400 of them were seen on two
+form 1,451 fires (same fire when within 1 km and 48 hours, D25), and 400 of them were seen on two
 or more passes. A fire had detections on both sides of a concession's edge 65 times. In 15 of
 those, every first detection sat more than 375 m from the edge on one side, so the record can say
-which side it was first seen on. In the other 50 it can't (O5).
+which side it was first seen on. In the other 50 it can't (O5, D26).
 
 ## Slice test
 
 | Check                         | Result |
 | ----------------------------- | ------ |
-| Cuts every layer it needs     | yes — fires worked out in the API from the stored records, a fire view on the page, shipped by the existing deploy. The recorder and the chain don't change (O3) |
+| Cuts every layer it needs     | yes — fires worked out in the API from the stored records, a fire view on the page, shipped by the existing deploy. The recorder and the chain don't change (D24) |
 | One e2e test walks it         | yes — record the real ID-WOOD-CONCESSION-0332 fire on anvil, open 0332, open the fire, see "First seen outside, 954 m from the edge", step through 4 passes, see the first detection match the chain |
 | Worth shipping alone          | yes — when a company says a fire started outside, the investigator can show where the satellite first saw it, from sealed detections, or know the record can't settle it |
 | Fits (≤5 scenarios, ≤2 areas) | yes — 5 scenarios; two areas: the API's fire grouping and the page's fire view |
@@ -76,7 +76,7 @@ stateDiagram-v2
 ```
 
 Fires are worked out again on each request, so a new pass grows a fire, and a detection that
-links two fires changes what the joined fire reads (O4).
+links two fires changes what the joined fire reads (O4, D25).
 
 How the first pass is read, per concession:
 
@@ -151,7 +151,7 @@ Scenario: The chosen dates don't move where a fire was first seen
 
 **In:**
 - A concession's fires, worked out from every stored version 2 detection inside or within 5 km of
-  it: same fire when a detection is within 1 km and 48 hours of one already in it (O4). Rule
+  it: same fire when a detection is within 1 km and 48 hours of one already in it (D25). Rule
   version 1, written out on the page and in the repo, so anyone can redo it.
 - The dates pick which fires show, those with any detection in the range. They never cut a fire:
   first seen and the passes come from all its detections (scenario 5).
@@ -163,8 +163,8 @@ Scenario: The chosen dates don't move where a fire was first seen
 - A fire first seen within 48 hours of recording starting (2026-10-12 03:32 UTC) says it may have
   been burning before recording began.
 - A fire seen on 4 or more passes with no detection more than 750 m from its first carries the
-  never-spread note of scenario 4 (O6). 5 fires met that on 2026-10-12 to 15.
-- No new seals. Each detection was sealed when recorded; the fire is worked out from them (O3).
+  never-spread note of scenario 4 (D27). 5 fires met that on 2026-10-12 to 15.
+- No new seals. Each detection was sealed when recorded; the fire is worked out from them (D24).
 
 **Out:**
 - Where a fire goes next — spread-forecast (new slice).
@@ -182,13 +182,13 @@ Scenario: The chosen dates don't move where a fire was first seen
 
 | ID | What | Type | Raised at | Owner | Status | Answer |
 | -- | ---- | ---- | --------- | ----- | ------ | ------ |
-| O1 | A spread forecast built in about 3 days beats a naive baseline (fire moves downwind at its recent speed) on 2023 fires (from shape O12) | unproven | shape | user | Open | Proposed: not this slice. The forecast moves to spread-forecast (Split above); shape O12 becomes Handed to spread-forecast |
-| O2 | First detection is close enough to the real start to say "started inside" or "started outside". Satellites pass a few times a day and can miss small fires (from shape O13) | unproven | shape | user | Open | Proposed: no "started" claims. The page says "first seen", calls a side only beyond 375 m (15 of 65 crossings on 2026-10-12 to 15), and notes the twice-a-day passes and the recording start |
-| O3 | Whether a fire's first-seen reading gets its own seal, or is worked out from the sealed detections. The shape said "each step is written on-chain as detections arrive"; every detection already is, within the hour | question | spec p1 | user | Open | — |
-| O4 | Same fire when within 1 km and 48 h of a detection already in it. Measured on 2026-10-12 to 15: 750 m gives 1,634 fires, 1 km 1,451, 1.5 km and 72 h 1,236. Of 737 gaps between passes of one fire, 9 were over 50 h. A chain of detections can join two fires, and a fire lit inside within 1 km of one burning outside reads as one fire first seen outside | question | spec p1 | user | Open | — |
-| O5 | The headline answer is often "can't tell": of 65 fires with detections on both sides of an edge, 50 were first seen within 375 m of it or on both sides at once. Calling the side by where the first detections fall, ignoring the pixel, would call 39 | flag | spec p1 | user | Open | — |
-| O6 | Whether to flag fires that never spread (fire-record O4 promised this slice would). A smouldering peat fire can also stay put | question | spec p1 | user | Open | — |
-| O7 | The seals prove each detection hasn't changed, not that none is missing. A record left out could change where a fire reads as first seen. Anyone can compare against FIRMS's public archive | flag | spec p1 | user | Open | — |
+| O1 | A spread forecast built in about 3 days beats a naive baseline (fire moves downwind at its recent speed) on 2023 fires (from shape O12) | unproven | shape | user | Resolved | 2026-10-16: not this slice. The forecast moves to spread-forecast (D23); shape O12 becomes Handed to spread-forecast |
+| O2 | First detection is close enough to the real start to say "started inside" or "started outside". Satellites pass a few times a day and can miss small fires (from shape O13) | unproven | shape | user | Resolved | 2026-10-16: no "started" claims. The page says "first seen", calls a side only beyond 375 m (D26), notes the twice-a-day passes, and flags fires first seen within 48 h of recording starting |
+| O3 | Whether a fire's first-seen reading gets its own seal, or is worked out from the sealed detections. The shape said "each step is written on-chain as detections arrive"; every detection already is, within the hour | question | spec p1 | user | Resolved | 2026-10-16: worked out from the sealed detections with a published rule; no new seals (D24) |
+| O4 | Same fire when within 1 km and 48 h of a detection already in it. Measured on 2026-10-12 to 15: 750 m gives 1,634 fires, 1 km 1,451, 1.5 km and 72 h 1,236. Of 737 gaps between passes of one fire, 9 were over 50 h. A chain of detections can join two fires, and a fire lit inside within 1 km of one burning outside reads as one fire first seen outside | question | spec p1 | user | Resolved | 2026-10-16: 1 km and 48 h (D25). The joining cases stay; the spread order shows each pass, so a reader sees where it went |
+| O5 | The headline answer is often "can't tell": of 65 fires with detections on both sides of an edge, 50 were first seen within 375 m of it or on both sides at once. Calling the side by where the first detections fall, ignoring the pixel, would call 39 | flag | spec p1 | user | Accepted risk | 2026-10-16: say "can't tell" rather than make calls a company can pick apart; 15 of 65 called (D26) |
+| O6 | Whether to flag fires that never spread (fire-record O4 promised this slice would). A smouldering peat fire can also stay put | question | spec p1 | user | Resolved | 2026-10-16: flag them, naming both a mill and smouldering peat (D27) |
+| O7 | The seals prove each detection hasn't changed, not that none is missing. A record left out could change where a fire reads as first seen. Anyone can compare against FIRMS's public archive | flag | spec p1 | user | Accepted risk | 2026-10-16: FIRMS's archive is public, so a missing detection can be found by anyone; sealing each run's list is not worth a new record type now (D24) |
 
 _Never delete this section or its rows. See references/ledger.md._
 
