@@ -356,7 +356,7 @@ Status: active
 Why: a grievance must show the buyer what the investigator sent. Fires grow, and a fire loses its
 key when a pass joins it to an older one (fire-origin O11). Of 1,801 fire and concession pairs to
 2026-10-15, 39 grew and 1 lost its key by 2026-10-16 07:22 UTC. Detections that wait for a seal
-stay in and read "Not sealed yet"; the recorder seals within the hour.
+stay in and read "Not on chain yet"; the recorder seals within the hour.
 Rejected: a pack that follows the live fire (the buyer could see something the grievance doesn't
 say), a count of newer detections on the pack (one more query, on a pack that records what was
 sent), leaving unsealed detections out (6 of the 0332 fire's 19 waited during the backfill), no
