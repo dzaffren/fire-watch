@@ -31,6 +31,9 @@ const FIRMS_CSVS = ["fire-record.csv", "fire-origin.csv"].map((f) => resolve(ROO
 // The real boundaries of ID-WOOD-CONCESSION-0540, 0377, 0275, 0332, 0356 and 0372, so matches come at real
 // distances.
 const CONCESSIONS = resolve(ROOT, "fixtures/concessions/trase-cut.geojson");
+// Multicall3 as deployed on Base Sepolia; a pack reads its seals through it (D38), and anvil has none.
+const MULTICALL3 = resolve(ROOT, "fixtures/chain/multicall3.hex");
+const MULTICALL3_ADDRESS = "0xcA11bde05977b3631167028862bE2a173976CA11";
 const VITE = resolve(WEB, "node_modules/.bin/vite");
 const PATH = `${homedir()}/.foundry/bin:${process.env.PATH}`;
 
@@ -71,6 +74,12 @@ async function waitFor(name: string, child: ChildProcess | null, ready: () => Pr
 
 const answers = (url: string, init?: RequestInit) => async () => (await fetch(url, init)).ok;
 
+const rpc = (method: string, params: unknown[]): RequestInit => ({
+  method: "POST",
+  headers: { "content-type": "application/json" },
+  body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
+});
+
 async function resetDatabase() {
   const admin = new pg.Client(ADMIN_DATABASE_URL);
   await admin.connect();
@@ -100,11 +109,9 @@ export default async function globalSetup() {
   try {
     const anvil = start("anvil", ["--port", String(ANVIL_PORT), "--silent"], WEB);
     children.push(anvil);
-    await waitFor("anvil", anvil, answers(RPC_URL, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "eth_chainId", params: [] }),
-    }));
+    await waitFor("anvil", anvil, answers(RPC_URL, rpc("eth_chainId", [])));
+    const setCode = await (await fetch(RPC_URL, rpc("anvil_setCode", [MULTICALL3_ADDRESS, readFileSync(MULTICALL3, "utf8").trim()]))).json();
+    if (setCode.error) throw new Error(`anvil_setCode for Multicall3 failed: ${setCode.error.message}`);
 
     await run(
       "forge",
