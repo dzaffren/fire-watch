@@ -199,10 +199,13 @@ export function Replay({ times, at, onChange }: ReplayProps) {
       setPlaying(false);
       return;
     }
-    const step = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--fw-replay-step")) || 240;
+    const step = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--fw-replay-step")) || 600;
     const timer = setTimeout(() => onChange(at + 1), step);
     return () => clearTimeout(timer);
   }, [playing, at, last, onChange]);
+
+  // One pass has nothing to replay; its first-seen diamonds are the whole fire.
+  if (last < 2) return null;
 
   function toggle() {
     if (playing) return setPlaying(false);
