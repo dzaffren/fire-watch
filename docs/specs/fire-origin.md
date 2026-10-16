@@ -1,9 +1,10 @@
 # Fire origin
 
-**Version:** v1 · **Status:** Draft · **Type:** Feature · **Project type:** Web UI
+**Version:** v1 · **Status:** Refined · **Type:** Feature · **Project type:** Web UI
 
 **Shape doc:** docs/specs/fire-watch/shape.md
 **Depends on:** fire-record
+**Page:** https://claude.ai/artifact/WHnPspH8tAtRqeAijtd37y
 
 The investigator opens a concession and sees its nearby detections grouped into fires. For each
 fire it says where the satellite first saw it against the boundary, and in what order it spread,
@@ -453,8 +454,8 @@ Status: active
 | O8 | The fires table lists newest first, so on ID-WOOD-CONCESSION-0332 one-pass fires fill the top rows and the 188- and 90-detection fires that crossed the edge sit lower. 18 of 0332's 34 fires were seen on one pass | question | spec p2 | user | Resolved | 2026-10-16: largest first, by detections, then newest first seen, as the concession list ranks worst first (D28) |
 | O9 | The map draws a concession as a dashed line only, so it doesn't show which side is inside. ID-WOOD-CONCESSION-0356 has several outlines close together, and "inside, 410 m" can't be read off the map. An inside tint would be a new design-system rule | question | spec p2 | user | Resolved | 2026-10-16: add a faint, non-fire inside tint through `/design-system` before `/build`; `FireMap` follows it. `/design-system`: `--fw-concession`, ink at 6% light and 7% dark, on every map view (D29) |
 | O10 | The replay steps one pass every 240 ms (`--fw-replay-step`), so a 4-pass fire plays in under a second | question | spec p2 | user | Resolved | 2026-10-16: 600 ms a pass, changed through `/design-system` with O9 (D30) |
-| O11 | A fire's key is its first detection's record ID (D32). When a later pass links it to an older fire, the joined fire takes the older key, so a fire view left open answers 404, and complaint-pack can't link to a key and expect it to last | flag | spec p3 | user | Open | — |
-| O12 | Grouping on every request stays under about 1 s on the 0.25-vCPU container through judging. Measured on a laptop: 24 ms at 1,083 detections, 270 ms at 10,830 | unproven | spec p3 | user | Open | — |
+| O11 | A fire's key is its first detection's record ID (D32). When a later pass links it to an older fire, the joined fire takes the older key, so a fire view left open answers 404, and complaint-pack can't link to a key and expect it to last | flag | spec p3 | user | Accepted risk | 2026-10-16: the page shows "Couldn't load this fire" with Try again, and Back reloads the fires; joins mid-look are rare. complaint-pack keeps its own copy of a fire rather than linking to the key |
+| O12 | Grouping on every request stays under about 1 s on the 0.25-vCPU container through judging. Measured on a laptop: 24 ms at 1,083 detections, 270 ms at 10,830 | unproven | spec p3 | user | Accepted risk | 2026-10-16: ship as planned and read `group_ms` in the API log after deploy; past about 1 s, the recorder stores each detection's fire key as its own change |
 
 _Never delete this section or its rows. See references/ledger.md._
 
