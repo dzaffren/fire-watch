@@ -490,4 +490,5 @@ _Never delete this section or its rows. See references/ledger.md._
 - **Etherscan V2 key** — one free API key that Etherscan's sites, Basescan among them, accept for
   contract verification.
 - **created_at** — the time a detection's row was stored, set by the database.
+- **Lockfile** — the file that pins the exact version of every dependency.
 - **e2e** — end-to-end: one test that walks the whole slice as a user would.
