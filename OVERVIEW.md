@@ -30,7 +30,7 @@ for watchdog investigators who file grievances over fires on plantation land.
 | Slice            | Status | What it does                                                                                              | Page                              |
 | ---------------- | ------ | --------------------------------------------------------------------------------------------------------- | --------------------------------- |
 | walking-skeleton | Shipped | See the latest fire hotspot on a map, with a check that its record still matches the seal on Base Sepolia. | docs/specs/walking-skeleton.md    |
-| fire-record      | Built  | Pick dates, see which pulpwood concessions had hotspots, and check any hotspot's sealed record.             | docs/specs/fire-record.md         |
+| fire-record      | Shipped | Pick dates, see which pulpwood concessions had hotspots, and check any hotspot's sealed record.             | docs/specs/fire-record.md         |
 
 ## More
 

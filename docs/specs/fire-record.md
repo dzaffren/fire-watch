@@ -1,6 +1,6 @@
 # Fire record
 
-**Version:** v1 · **Status:** Built · **Type:** Feature · **Project type:** Web UI
+**Version:** v1 · **Status:** Shipped · **Type:** Feature · **Project type:** Web UI
 
 **Shape doc:** docs/specs/fire-watch/shape.md
 **Depends on:** walking-skeleton
@@ -452,7 +452,7 @@ simplified boundary (simplified per request instead), a link per view (O10).
 |                      |                                                                               |
 | -------------------- | ----------------------------------------------------------------------------- |
 | **Load**             | About 1,600 records a day (541 to 2,495), one run an hour, about 70 seals an hour. Tens of visits a day during judging: one list call, one to three concession calls, one RPC call per opened record |
-| **Breaks first**     | The wallet: 0.04 ETH lasts about 40 days at the busiest day's rate, about 4 days at 10×. Then sealing: at 10× (about 670 an hour) a 40-minute run seals at most about 960 at an estimated 2.5 s a seal, so it keeps up, but only just. Past that, send transactions without waiting on each receipt, or batch seals in a new contract |
+| **Breaks first**     | The wallet: 0.04 ETH lasts about 40 days at the busiest day's rate, about 4 days at 10×. Then sealing: at 10× (about 670 an hour) a 40-minute run seals at most about 960 at an estimated 2.5 s a seal, so it keeps up, but only just. 2026-10-16, /ship: the first live run sealed 408 in 40 minutes, 5.9 s a seal, so a run seals about 400 an hour: enough for the busiest day (about 104 an hour), not for 10×. The 5-day backfill of 6,608 records clears in about a day. Past that, send transactions without waiting on each receipt, or batch seals in a new contract |
 | **Security surface** | Public: two GET routes taking dates and a concession ID (parsed as dates, range at most 31 days, ID as a bound parameter), CORS for the site only, the read-only role. The job holds the owner login, wallet key and FIRMS key as Container Apps secrets, out of GitHub's reach (D21). Trusts: the FIRMS CSV (range checks, `firms.py:37`), the Trase file (sha256 pinned), RPC answers. Stores public satellite data and concession IDs; no company names, nothing personal |
 | **Proof it works**   | The job logs `recorded fetched=8650 kept=1612 new=71 sealed=71 unsealed=0 balance_eth=0.0393`; `/api/health` returns `"recorder": {"last_run_ok": true, "unsealed": 0}`; `recorder-check` is green every hour; the live page shows "Matches the chain" on a hotspot sealed that day |
 | **Rollout**          | No flag: the page swap is the release, and nothing depends on the old screen. Order: `migrate up`, `load-concessions`, merge (Deploy ships the API and page), `setup.sh` creates the job, and its first run backfills. Rollback: API image to the previous sha; page by redeploying the previous commit; stop recording with `az containerapp job delete -g firewatch -n firewatch-recorder` (`setup.sh` recreates it); schema with `migrate down`. Seals stay on chain, harmless |

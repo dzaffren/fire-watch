@@ -14,6 +14,7 @@ for watchdog investigators who file grievances over fires on plantation land.
 ## Features
 
 - See the latest fire hotspot on a map, with a check that its record still matches the seal on Base Sepolia.
+- Pick dates, see which pulpwood concessions had hotspots, and check any hotspot's sealed record.
 
 ## Docs
 
