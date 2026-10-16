@@ -59,8 +59,9 @@ the repo root; `--env-file ../.env` loads it, since `uv run` doesn't on its own.
    JavaScript API; development is locked to `http://localhost:5173/*`. Cap map loads at 300 a
    day and set a $1 budget alert in the Cloud console.
 4. **GitHub:** push the repo. CI runs; Deploy pushes `ghcr.io/<owner>/firewatch-api:<sha>` and
-   then fails at the Azure login, which is expected the first time. Make that package public.
-5. **Azure:** `GITHUB_REPO=<owner/name> ALERT_EMAIL=<you> READER_DATABASE_URL=<reader url> IMAGE=<that image> OWNER_DATABASE_URL=<owner url> RECORDER_PRIVATE_KEY=<key> FIRMS_MAP_KEY=<key> RPC_URL=https://sepolia.base.org CONTRACT_ADDRESS=<address> infra/setup.sh`.
+   then fails at the Azure login, which is expected the first time. Make that package public,
+   and get its digest: `docker buildx imagetools inspect ghcr.io/<owner>/firewatch-api:<sha>`.
+5. **Azure:** `GITHUB_REPO=<owner/name> ALERT_EMAIL=<you> READER_DATABASE_URL=<reader url> IMAGE=ghcr.io/<owner>/firewatch-api@sha256:<digest> OWNER_DATABASE_URL=<owner url> RECORDER_PRIVATE_KEY=<key> FIRMS_MAP_KEY=<key> RPC_URL=https://sepolia.base.org CONTRACT_ADDRESS=<address> infra/setup.sh`.
    It creates everything with the cost guardrails and a $1 budget alert, including the
    `firewatch-recorder` job that runs `record-hotspots` on the hour with the recorder's
    settings as secrets, then prints the GitHub variables to set. Set them and rerun Deploy.
@@ -72,12 +73,13 @@ the repo root; `--env-file ../.env` loads it, since `uv run` doesn't on its own.
 ## Updating
 
 Deploy ships the API and the page on every push to main. GitHub can't reach the recorder job,
-which holds the wallet key, so after a recorder change point it at the new image by hand:
-`az containerapp job update -g firewatch -n firewatch-recorder --image ghcr.io/<owner>/firewatch-api:<sha>`.
+which holds the wallet key, so after a recorder change point it at the new image by hand, by
+digest so a re-pushed tag can't change it:
+`az containerapp job update -g firewatch -n firewatch-recorder --image ghcr.io/<owner>/firewatch-api@sha256:<digest>`.
 
 Moving a walking-skeleton deploy to the fire record, in order: `migrate up`,
 `load-concessions`, merge to main (Deploy ships the API and the page), then rerun
-`infra/setup.sh` as in step 5 with `IMAGE` at the merged sha. That creates the job, whose
+`infra/setup.sh` as in step 5 with `IMAGE` at the merged sha's digest. That creates the job, whose
 first run backfills, and narrows GitHub's Azure role to the API app. The Recorder check is red
 until that first run finishes. If Deploy's `az containerapp update` is then refused, also give
 GitHub Contributor on `firewatch-env`. To stop recording,

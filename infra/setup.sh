@@ -6,13 +6,15 @@
 #   GITHUB_REPO          owner/name of the GitHub repo
 #   ALERT_EMAIL          where budget alerts go
 #   READER_DATABASE_URL  Neon URL for the firewatch_reader role (infra/neon-reader.sql)
-#   IMAGE                ghcr.io/<owner>/firewatch-api:<sha>, pushed and public
+#   IMAGE                ghcr.io/<owner>/firewatch-api@sha256:<digest>, pushed and public. By digest:
+#                        Deploy can re-push a tag, which would change the recorder job's code (D21)
 #   OWNER_DATABASE_URL   Neon owner URL, for the recorder job
 #   RECORDER_PRIVATE_KEY, FIRMS_MAP_KEY, RPC_URL, CONTRACT_ADDRESS   the recorder's, as in .env
 set -euo pipefail
 
 : "${GITHUB_REPO:?}" "${ALERT_EMAIL:?}" "${READER_DATABASE_URL:?}" "${IMAGE:?}" "${OWNER_DATABASE_URL:?}"
 : "${RECORDER_PRIVATE_KEY:?}" "${FIRMS_MAP_KEY:?}" "${RPC_URL:?}" "${CONTRACT_ADDRESS:?}"
+[[ "$IMAGE" == *@sha256:* ]] || { echo "IMAGE must be pinned by digest: ghcr.io/<owner>/firewatch-api@sha256:<digest>" >&2; exit 1; }
 
 RG=firewatch
 LOCATION=southeastasia
