@@ -296,6 +296,8 @@ export function FireMap({ label, boundary, dots, selected = null, onSelect, area
   return (
     <section className="map-col" aria-label={label}>
       <div ref={container} className="map" />
+      {/* Before the zoom buttons, so tab order runs left to right along the top. */}
+      {children}
       <div className="zoom">
         <button className="fw-btn fw-btn--secondary" type="button" aria-label="Zoom in" onClick={() => zoomBy(1)}>
           <PlusIcon />
@@ -347,7 +349,6 @@ export function FireMap({ label, boundary, dots, selected = null, onSelect, area
           </div>
         </div>
       )}
-      {children}
     </section>
   );
 }
