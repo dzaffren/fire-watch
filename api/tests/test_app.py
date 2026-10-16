@@ -253,6 +253,103 @@ def test_unknown_concession_is_404(client):
     assert response.status_code == 404
 
 
+def test_fire_has_every_detection_whatever_the_dates(client, db):
+    record(db, "2026-10-12T03:32Z", [(C0540, True, 3099)])
+    detections = [
+        record(db, "2026-10-13T17:37Z", [(C0332, False, 954)], lat_e5=-310000, lon_e5=11281000),
+        record(db, "2026-10-13T17:37Z", [(C0332, False, 1258)], lat_e5=-310000, lon_e5=11281300),
+        record(db, "2026-10-14T06:18Z", [(C0332, False, 731)], lat_e5=-310100, lon_e5=11281100),
+        record(db, "2026-10-14T17:20Z", [(C0332, False, 32)], lat_e5=-310200, lon_e5=11281200),
+        record(db, "2026-10-15T18:43Z", [(C0332, False, 7)], lat_e5=-310300, lon_e5=11281000),
+        record(db, "2026-10-15T18:43Z", [(C0332, True, 804)], lat_e5=-310300, lon_e5=11281700),
+    ]
+
+    concession = client.get(
+        f"/api/concessions/{C0332}", params={"from": "2026-10-15", "to": "2026-10-15"}
+    ).json()
+    fire = client.get(f"/api/concessions/{C0332}/fires/{detections[0]}").json()
+
+    assert {h["record_id"]: h["fire_key"] for h in concession["hotspots"]} == {
+        detections[4]: detections[0],
+        detections[5]: detections[0],
+    }
+    assert concession["fires"] == [{k: v for k, v in fire.items() if k != "hotspots"}]
+    assert fire["first_seen"] == {"reading": "outside", "inside": False, "edge_m": 954}
+    assert fire["first_seen_unix"] == unix("2026-10-13T17:37Z")
+    assert fire["inside_from_unix"] == unix("2026-10-15T18:43Z")
+    assert (fire["passes"], fire["detections"], fire["recorded_before_h"]) == (4, 6, 38)
+    assert fire["never_spread"] is False
+    assert [h["record_id"] for h in fire["hotspots"]] == detections
+    assert [h["pass"] for h in fire["hotspots"]] == [1, 1, 2, 3, 4, 4]
+
+
+def test_fire_detections_oldest_first_with_pass(client, db):
+    tx_hash, sealed_at = bytes.fromhex("cd" * 32), "2026-10-13T07:05:12Z"
+    first = record(
+        db, "2026-10-13T06:18Z", [(C0540, True, 3099), (C0377, False, 900)],
+        lat_e5=-300000, lon_e5=10600000, frp_e2=303, tx_hash=tx_hash, sealed_at=sealed_at,
+    )
+    north = record(db, "2026-10-13T07:19Z", [(C0540, True, 3000)], lat_e5=-300050, lon_e5=10600000)
+    south = record(db, "2026-10-13T07:19Z", [(C0540, True, 3000)], lat_e5=-300200, lon_e5=10600000)
+    same_pass = record(
+        db, "2026-10-13T06:48Z", [(C0540, True, 3000)], lat_e5=-300100, lon_e5=10600000
+    )
+    later = record(db, "2026-10-14T06:18Z", [(C0540, True, 2000)], lat_e5=-300000, lon_e5=10600100)
+
+    response = client.get(f"/api/concessions/{C0540}/fires/{first}")
+
+    assert response.status_code == 200
+    hotspots = response.json()["hotspots"]
+    assert [(h["record_id"], h["pass"]) for h in hotspots] == [
+        (first, 1), (same_pass, 1), (south, 2), (north, 2), (later, 3),
+    ]
+    assert hotspots[0] == {
+        "record_id": first,
+        "source": "VIIRS_NOAA20_NRT",
+        "lat_e5": -300000,
+        "lon_e5": 10600000,
+        "acquired_at": "2026-10-13T06:18:00Z",
+        "acquired_unix": unix("2026-10-13T06:18Z"),
+        "frp_e2": 303,
+        "confidence": "n",
+        "tx_hash": "0x" + "cd" * 32,
+        "sealed_at": sealed_at,
+        "fingerprint_version": 2,
+        "map_version": MAP_VERSION,
+        "concessions": [
+            {"id": C0540, "inside": True, "edge_m": 3099},
+            {"id": C0377, "inside": False, "edge_m": 900},
+        ],
+        "pass": 1,
+    }
+
+
+def test_unknown_fire_is_404(client, db):
+    later = record(db, "2026-10-13T08:00Z", [(C0540, True, 3099)])
+    elsewhere = record(db, "2026-10-13T08:00Z", [(C0377, True, 50)], lat_e5=-400000)
+    assert client.get(f"/api/concessions/{C0540}/fires/{later}").status_code == 200
+
+    older = record(db, "2026-10-13T06:18Z", [(C0540, True, 3099)])
+
+    for concession_id, key in [
+        (C0540, later),
+        (C0540, elsewhere),
+        (C0540, "0x" + "ab" * 32),
+        ("ID-WOOD-CONCESSION-9999", older),
+    ]:
+        assert client.get(f"/api/concessions/{concession_id}/fires/{key}").status_code == 404
+    assert client.get(f"/api/concessions/{C0540}/fires/{older}").status_code == 200
+
+
+@pytest.mark.parametrize(
+    "key",
+    ["0x" + "ab" * 31, "0x" + "ab" * 33, "0x" + "AB" * 32, "ab" * 33, "0x" + "zz" * 32],
+    ids=["short", "long", "upper case", "no 0x", "not hex"],
+)
+def test_malformed_fire_key_is_422(client, key):
+    assert client.get(f"/api/concessions/{C0540}/fires/{key}").status_code == 422
+
+
 def test_health_reports_last_run(client, db):
     record(db, "2026-10-14T06:18Z", [(C0540, True, 3099)], tx_hash=b"\x01" * 32, sealed_at="2026-10-14T07:00Z")
     record(db, "2026-10-14T06:18Z", [(C0540, True, 3099)])
