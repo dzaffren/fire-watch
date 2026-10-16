@@ -1,8 +1,10 @@
-"""Read-only API: pulpwood concessions with their hotspot records, and a health check."""
+"""Read-only API: pulpwood concessions, their hotspot records and fires, and a health check."""
 
 import logging
 import os
+from dataclasses import asdict
 from datetime import date, datetime, time, timezone
+from time import perf_counter
 from typing import Annotated
 
 import psycopg
@@ -11,6 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
 
+from firewatch import fires
 from firewatch.concessions import MAP_VERSION
 from firewatch.db import connect
 
@@ -52,6 +55,12 @@ JOIN hotspot_concessions m ON m.hotspot_id = h.id AND m.concession_id = %(id)s
 WHERE h.fingerprint_version = 2 AND h.acquired_at >= %(start)s AND h.acquired_at <= %(end)s
 ORDER BY h.acquired_at DESC, h.frp_e2 DESC, h.lat_e5, h.lon_e5
 """
+CONCESSION_DETECTIONS = """
+SELECT h.record_id, h.lat_e5, h.lon_e5, h.acquired_at, m.inside, m.edge_m
+FROM hotspots h
+JOIN hotspot_concessions m ON m.hotspot_id = h.id AND m.concession_id = %(id)s
+WHERE h.fingerprint_version = 2
+"""
 RECORDER = """
 SELECT n.finished_at AS last_run_at,
        CASE WHEN n.id IS NOT NULL THEN n.error IS NULL END AS last_run_ok,
@@ -89,6 +98,10 @@ def _range(start: date, end: date) -> dict:
     }
 
 
+def _unix(at: datetime | None) -> int | None:
+    return int(at.timestamp()) if at else None
+
+
 def _record(row) -> dict:
     return {
         "record_id": _hex(row["record_id"]),
@@ -104,6 +117,30 @@ def _record(row) -> dict:
         "fingerprint_version": row["fingerprint_version"],
         "map_version": row["map_version"],
         "concessions": row["concessions"],
+    }
+
+
+def _group(conn, concession_id: str) -> tuple[list[fires.Fire], int]:
+    """Every fire near the concession, and the milliseconds grouping took."""
+    started = conn.execute(RECORDING_STARTED).fetchone()["started"]
+    rows = conn.execute(CONCESSION_DETECTIONS, {"id": concession_id}).fetchall()
+    began = perf_counter()
+    grouped = fires.group([fires.Detection(**row) for row in rows], started)
+    return grouped, round((perf_counter() - began) * 1000)
+
+
+def _fire(fire: fires.Fire) -> dict:
+    return {
+        "key": _hex(fire.key),
+        "first_seen_unix": _unix(fire.first_seen_at),
+        "last_seen_unix": _unix(fire.last_seen_at),
+        "passes": fire.passes,
+        "detections": len(fire.detections),
+        "first_seen": asdict(fire.first_seen),
+        "inside_from_unix": _unix(fire.inside_from),
+        "outside_from_unix": _unix(fire.outside_from),
+        "never_spread": fire.never_spread,
+        "recorded_before_h": fire.recorded_before_h,
     }
 
 
@@ -138,9 +175,20 @@ def create_app(allowed_origin: str) -> FastAPI:
             found = conn.execute(CONCESSION, params).fetchone()
             if found is None:
                 raise HTTPException(status_code=404, detail="No such concession")
+            # Records first: a detection stored between the two reads is then in the grouping.
             rows = conn.execute(CONCESSION_HOTSPOTS, params).fetchall()
+            grouped, group_ms = _group(conn, concession_id)
+        fire_of = {d.record_id: fire for fire in grouped for d in fire.detections}
+        shown = {fire_of[row["record_id"]].key for row in rows}
+        listed = sorted(
+            (fire for fire in grouped if fire.key in shown),
+            key=lambda f: (-len(f.detections), -f.first_seen_at.timestamp(), f.key),
+        )
         inside = sum(1 for row in rows if row["inside_here"])
-        log.info("served concession id=%s hotspots=%d", concession_id, len(rows))
+        log.info(
+            "served concession id=%s hotspots=%d fires=%d group_ms=%d",
+            concession_id, len(rows), len(listed), group_ms,
+        )
         return {
             "id": found["id"],
             "province": found["province"],
@@ -148,7 +196,10 @@ def create_app(allowed_origin: str) -> FastAPI:
             "inside": inside,
             "near": len(rows) - inside,
             "boundary": [polygon[0] for polygon in found["boundary"]["coordinates"]],
-            "hotspots": [_record(row) for row in rows],
+            "hotspots": [
+                {**_record(row), "fire_key": _hex(fire_of[row["record_id"]].key)} for row in rows
+            ],
+            "fires": [_fire(fire) for fire in listed],
         }
 
     @app.get("/api/health")

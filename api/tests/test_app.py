@@ -1,4 +1,5 @@
 import itertools
+from datetime import datetime
 from pathlib import Path
 
 import psycopg
@@ -11,7 +12,9 @@ from firewatch.concessions import MAP_VERSION
 
 SITE = "https://fire-watch.example"
 TRASE_CUT = Path(__file__).parents[2] / "fixtures" / "concessions" / "trase-cut.geojson"
-C0275, C0377, C0540 = (f"ID-WOOD-CONCESSION-{n}" for n in ("0275", "0377", "0540"))
+C0275, C0332, C0377, C0540 = (
+    f"ID-WOOD-CONCESSION-{n}" for n in ("0275", "0332", "0377", "0540")
+)
 RANGE = {"from": "2026-10-11", "to": "2026-10-14"}
 _ids = itertools.count(1)
 
@@ -28,7 +31,9 @@ def client(db, monkeypatch):
     return TestClient(create_app(SITE))
 
 
-def record(url, acquired_at, matches, version=2, lat_e5=-358175, frp_e2=520, **sealed):
+def record(
+    url, acquired_at, matches, version=2, lat_e5=-358175, lon_e5=None, frp_e2=520, **sealed
+):
     """Stores a hotspot with its (concession ID, inside, edge_m) matches; returns its record ID."""
     n = next(_ids)
     record_id = bytes([n]) * 32
@@ -38,7 +43,8 @@ def record(url, acquired_at, matches, version=2, lat_e5=-358175, frp_e2=520, **s
             " confidence, fingerprint_version, map_version, tx_hash, sealed_at)"
             " VALUES (%s, 'VIIRS_NOAA20_NRT', %s, %s, %s, %s, 'n', %s, %s, %s, %s) RETURNING id",
             (
-                record_id, lat_e5, 10571567 + n, acquired_at, frp_e2, version,
+                record_id, lat_e5, 10571567 + n if lon_e5 is None else lon_e5,
+                acquired_at, frp_e2, version,
                 MAP_VERSION if version == 2 else None,
                 sealed.get("tx_hash"), sealed.get("sealed_at"),
             ),
@@ -49,6 +55,10 @@ def record(url, acquired_at, matches, version=2, lat_e5=-358175, frp_e2=520, **s
                 (hotspot_id, concession_id, inside, edge_m),
             )
     return "0x" + record_id.hex()
+
+
+def unix(at):
+    return int(datetime.fromisoformat(at).timestamp())
 
 
 def test_concessions_ranked_by_inside(client, db):
@@ -165,12 +175,56 @@ def test_concession_lists_its_records_newest_first_with_every_match(client, db):
             {"id": C0377, "inside": False, "edge_m": 371},
             {"id": C0275, "inside": False, "edge_m": 1019},
         ],
+        "fire_key": b,
     }
     assert body["hotspots"][1]["tx_hash"] is None and body["hotspots"][1]["sealed_at"] is None
     assert body["hotspots"][4]["concessions"] == [
         {"id": C0275, "inside": True, "edge_m": 2000},
         {"id": C0377, "inside": False, "edge_m": 100},
     ]
+
+
+def test_concession_lists_fires_largest_first_with_fire_keys(client, db):
+    record(db, "2026-10-01T06:18Z", [(C0540, True, 3099)], lat_e5=-350000)
+    largest = [
+        record(db, "2026-10-12T06:18Z", [(C0540, True, 3099)], lat_e5=-300000, lon_e5=10600000),
+        record(db, "2026-10-12T06:18Z", [(C0540, True, 2900)], lat_e5=-300000, lon_e5=10600300),
+        record(db, "2026-10-12T18:00Z", [(C0540, True, 3000)], lat_e5=-300300, lon_e5=10600000),
+    ]
+    record(db, "2026-10-13T06:18Z", [(C0377, True, 50)], lat_e5=-300000, lon_e5=10600000)
+    older = [
+        record(db, "2026-10-13T06:18Z", [(C0540, True, 3099)], lat_e5=-310000, lon_e5=10600000 + i)
+        for i in range(2)
+    ]
+    newer = [
+        record(db, "2026-10-14T06:18Z", [(C0540, True, 3099)], lat_e5=-320000, lon_e5=10600000 + i)
+        for i in range(2)
+    ]
+    north = record(db, "2026-10-14T06:18Z", [(C0540, False, 500)], lat_e5=-330000, lon_e5=10600000)
+    south = record(db, "2026-10-14T06:18Z", [(C0540, False, 500)], lat_e5=-340000, lon_e5=10600000)
+
+    body = client.get(f"/api/concessions/{C0540}", params=RANGE).json()
+
+    assert [f["key"] for f in body["fires"]] == [largest[0], newer[0], older[0], north, south]
+    assert body["fires"][0] == {
+        "key": largest[0],
+        "first_seen_unix": unix("2026-10-12T06:18Z"),
+        "last_seen_unix": unix("2026-10-12T18:00Z"),
+        "passes": 2,
+        "detections": 3,
+        "first_seen": {"reading": "inside", "inside": True, "edge_m": 2900},
+        "inside_from_unix": unix("2026-10-12T06:18Z"),
+        "outside_from_unix": None,
+        "never_spread": False,
+        "recorded_before_h": None,
+    }
+    assert {h["record_id"]: h["fire_key"] for h in body["hotspots"]} == {
+        **{r: largest[0] for r in largest},
+        **{r: older[0] for r in older},
+        **{r: newer[0] for r in newer},
+        north: north,
+        south: south,
+    }
 
 
 def test_concession_boundary_is_its_simplified_outer_rings(client, db):
@@ -190,7 +244,7 @@ def test_concession_boundary_is_its_simplified_outer_rings(client, db):
 def test_concession_with_no_records_in_range_has_zero_counts(client):
     body = client.get(f"/api/concessions/{C0540}", params=RANGE).json()
 
-    assert (body["inside"], body["near"], body["hotspots"]) == (0, 0, [])
+    assert (body["inside"], body["near"], body["hotspots"], body["fires"]) == (0, 0, [], [])
 
 
 def test_unknown_concession_is_404(client):
