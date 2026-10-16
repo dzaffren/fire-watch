@@ -104,6 +104,12 @@ def test_31_days_is_allowed(client):
     assert response.status_code == 200
 
 
+@pytest.mark.parametrize("path", ["/api/concessions", f"/api/concessions/{C0540}"])
+def test_last_possible_date_is_allowed(client, path):
+    response = client.get(path, params={"from": "9999-12-31", "to": "9999-12-31"})
+    assert response.status_code == 200
+
+
 def test_empty_range_still_gives_recording_started(client, db):
     record(db, "2026-10-11T07:14Z", [(C0540, True, 3099)])
 
