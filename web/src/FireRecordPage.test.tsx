@@ -237,4 +237,20 @@ describe("FireRecordPage", () => {
     expect(kv("Sealed fingerprint")).toHaveTextContent("5ac17c85b7…d2b3c9");
     expect(kv("Fingerprint now")).toHaveTextContent("aea5b4e67c…bcfe5c");
   });
+
+  it("drops the picked row when the dates change, since the rows are a new list", async () => {
+    const source = fixtureSource();
+    render(<FireRecordPage source={source} today="2026-10-15" initialDates={{ from: "2026-10-11", to: "2026-10-14" }} />);
+    fireEvent.click(await screen.findByRole("button", { name: /^ID-WOOD-CONCESSION-0377/ }));
+    await screen.findByText("88 inside, 169 within 5 km");
+    fireEvent.click(within(rowWith("14 Oct 06:18", "3.03 MW")).getByRole("button"));
+    fireEvent.click(screen.getByRole("button", { name: "Hotspots in ID-WOOD-CONCESSION-0377" }));
+    expect(rowWith("14 Oct 06:18", "3.03 MW")).toHaveAttribute("aria-selected", "true");
+
+    pick(from(), "2026-10-12");
+
+    expect(source.concession).toHaveBeenLastCalledWith("ID-WOOD-CONCESSION-0377", "2026-10-12", "2026-10-14");
+    await screen.findByText("88 inside, 169 within 5 km");
+    expect(screen.getAllByRole("row").filter((r) => r.getAttribute("aria-selected") === "true")).toHaveLength(0);
+  });
 });
