@@ -1,5 +1,5 @@
 import { spawn, type ChildProcess } from "node:child_process";
-import { createReadStream, existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { createServer } from "node:http";
 import { homedir } from "node:os";
 import { resolve } from "node:path";
@@ -26,8 +26,10 @@ const WEB = fileURLToPath(new URL("..", import.meta.url));
 const ROOT = resolve(WEB, "..");
 const CONTRACTS = resolve(ROOT, "contracts");
 const API = resolve(ROOT, "api");
-const FIRMS_CSV = resolve(ROOT, "fixtures/firms/fire-record.csv");
-// The real boundaries of ID-WOOD-CONCESSION-0540, 0377 and 0275, so matches come at real distances.
+// The recorder asks FIRMS once, so the fixture server answers with both files' rows.
+const FIRMS_CSVS = ["fire-record.csv", "fire-origin.csv"].map((f) => resolve(ROOT, "fixtures/firms", f));
+// The real boundaries of ID-WOOD-CONCESSION-0540, 0377, 0275, 0332, 0356 and 0372, so matches come at real
+// distances.
 const CONCESSIONS = resolve(ROOT, "fixtures/concessions/trase-cut.geojson");
 const VITE = resolve(WEB, "node_modules/.bin/vite");
 const PATH = `${homedir()}/.foundry/bin:${process.env.PATH}`;
@@ -82,9 +84,13 @@ async function resetDatabase() {
 
 export default async function globalSetup() {
   const children: ChildProcess[] = [];
+  const [header, ...rows] = FIRMS_CSVS.flatMap((path, i) =>
+    readFileSync(path, "utf8").trimEnd().split("\n").slice(i === 0 ? 0 : 1),
+  );
+  const firmsCsv = [header, ...rows].join("\n") + "\n";
   const firms = createServer((_req, res) => {
     res.writeHead(200, { "content-type": "text/csv" });
-    createReadStream(FIRMS_CSV).pipe(res);
+    res.end(firmsCsv);
   });
   const teardown = () => {
     children.forEach(stop);
