@@ -1,6 +1,6 @@
 # Complaint pack
 
-**Version:** v1 · **Status:** Draft · **Type:** Feature · **Project type:** Web UI
+**Version:** v1 · **Status:** Refined · **Type:** Feature · **Project type:** Web UI
 
 **Shape doc:** docs/specs/fire-watch/shape.md
 **Depends on:** fire-origin
@@ -345,7 +345,7 @@ shows as "Does not match". A record left out of the pack can't show (fire-origin
 | `fixtures/chain/multicall3.hex` (new) | Multicall3's deployed bytecode, read from Base Sepolia with `cast code` | E2E |
 | `web/e2e/global-setup.ts:103` | After anvil answers, `anvil_setCode` puts Multicall3 at its usual address | E2E |
 | `web/e2e/complaint-pack.spec.ts` (new) | Scenarios 1 and 2 through the browser, then scenario 3 by changing one row and putting it back | E2E |
-| `README.md` | The operator's Basescan step: `forge verify-contract 0x6a55489a05a9c79d2cd35212878d113557dceb2a src/FireRecords.sol:FireRecords --chain 84532 --constructor-args "$(cast abi-encode 'constructor(address)' "$RECORDER_ADDRESS")" --watch`, with `ETHERSCAN_API_KEY` from `.env` | D35 |
+| `README.md` | The operator's Basescan step, run on 2026-10-17 (O10): `forge verify-contract 0x6a55489a05a9c79d2cd35212878d113557dceb2a src/FireRecords.sol:FireRecords --chain 84532 --constructor-args "$(cast abi-encode 'constructor(address)' "$RECORDER_ADDRESS")" --watch`, with `ETHERSCAN_API_KEY` from `.env` | D35 |
 
 Reusing: `connect()`, `_group()`, `_fire()`, `_record()`, `CONCESSION`, `FIRE_HOTSPOTS`, the `record()`
 and `client` pytest fixtures, `fingerprint()`, the e2e harness with its anvil, FIRMS server, fake
@@ -379,7 +379,7 @@ seal read per detection (D38), a `rule` field in the link (the `as_of` date says
 | **Breaks first**     | The public RPC's 25 calls a second, per visitor: a pack is one call per 500 detections, so 10 visitors on one network open packs together before it bites. Then grouping time as the record grows (fire-origin O12) |
 | **Security surface** | Public: the GET route. `as_of` is a whole number, bound as a timestamp, 1 to now; the key and concession ID as before. Read-only role, CORS for the site only. No secrets in the page or the API. The Etherscan key stays in the operator's untracked `.env`, used once. Stores nothing |
 | **Proof it works**   | The API logs `served fire id=ID-WOOD-CONCESSION-0332 key=0x48f2…fbc1 as_of=1792227602 detections=19 passes=4 group_ms=31`. The live pack of the 0332 fire reads "19 of 19 detections match the chain". The e2e passes in CI. Basescan shows FireRecords' source |
-| **Rollout**          | No flag: the button and the page are the release. Merge to main: Deploy ships the API, then the page. Rollback: the previous API image and page commit; nothing to migrate. Pack links made since then open the home page until the next release. Basescan verification is separate and can't be undone, and needs none |
+| **Rollout**          | No flag: the button and the page are the release. Merge to main: Deploy ships the API, then the page. Rollback: the previous API image and page commit; nothing to migrate. Pack links made since then open the home page until the next release. Basescan verification is done (O10) and needs no rollback |
 
 ### Test plan
 
@@ -420,7 +420,6 @@ its e2e passes only once A is in. Neither chunk adds a dependency, so neither lo
 | Multicall3 on anvil is set by `anvil_setCode`, so the e2e can't prove the public RPC | Measured on Base Sepolia on 2026-10-17; after deploy, open the live 0332 pack and read "19 of 19" |
 | The public RPC caps the gas of one `eth_call`, unmeasured | 488 seals in one call worked; calls hold at most 500 records |
 | A rule version 2 would read old packs differently | Version 2 applies only to `as_of` after its release; old links keep version 1 |
-| `forge verify-contract` fails for Base Sepolia (O10) | Nothing depends on it; transactions keep showing raw hex |
 | The printed map in Firefox or Safari (O8) | Accepted; the record and tables still print |
 
 ### Decisions to record
@@ -464,7 +463,7 @@ Status: active
 | O7 | A pack for a fire the record can't settle: too close to tell, both sides, or never spread (a possible mill, D27) | question | spec p1 | user | Resolved | 2026-10-17: allowed; the caveat goes directly under the headline (D36) |
 | O8 | The printed map relies on Google Maps drawing again at print size. Chromium's print to PDF drew it, light, on 2026-10-17; Firefox and Safari are not checked. If it doesn't draw, the record and tables still print | flag | spec p2 | user | Accepted risk | 2026-10-17: Chromium is checked; in another browser the worst case is a blank map box on the last page, and the record and tables still print |
 | O9 | What "as of" means. The recorder stores a run's rows with the time its transaction began, before FIRMS is fetched. A pack cut at the click time could gain rows committed after the click. Cutting at the newest stored time avoids it, but a pack made at 09:20 reads "As of 09:00" | question | spec p3 | user | Resolved | 2026-10-17: the newest stored time; scenario 1 reads "As of 2026-10-17 09:00 UTC" for a pack made at 09:20 (D37) |
-| O10 | `forge verify-contract` 1.8.5 with an Etherscan V2 key verifies FireRecords on Basescan for chain 84532. Not run; it needs the user's key | unproven | spec p3 | user | Open | — |
+| O10 | `forge verify-contract` 1.8.5 with an Etherscan V2 key verifies FireRecords on Basescan for chain 84532. Not run; it needs the user's key | unproven | spec p3 | poc | Resolved | 2026-10-17: yes. The local build matched the deployed bytecode exactly, metadata included. `forge verify-contract … --chain 84532` answered "Pass - Verified", and Etherscan's API returns the FireRecords source, v0.8.28. Forge also sent it to Sourcify. D35 is done |
 | O11 | A pack's detections rest on `created_at`, which is stored, not sealed. Someone with the database owner login could move a row into or out of an old pack, as they could delete one today (fire-origin O7) | flag | spec p3 | user | Accepted risk | 2026-10-17: the same exposure as fire-origin O7; every detection in a pack is still checked against its seal |
 
 _Never delete this section or its rows. See references/ledger.md._
