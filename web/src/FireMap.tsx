@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { Ring } from "./api";
 import { fitView, loadMaps, mapStyles, themeColour, WATCH_AREA, type Area } from "./maps";
 import { MinusIcon, PlusIcon } from "./icons";
@@ -7,6 +7,10 @@ export interface Dot {
   lat_e5: number;
   lon_e5: number;
   frp_e2: number;
+  /** Older to newer in a fire's replay: 1, 0.65 or 0.3. */
+  alpha?: number;
+  /** On the fire's first pass, drawn as the first-seen diamond. */
+  first?: boolean;
 }
 
 // Fire power under 5, 5–20 and over 20 MW: 6, 9 and 13 px across, as on the detections guideline.
@@ -15,12 +19,16 @@ const radius = (frp_e2: number) => (frp_e2 < 500 ? 3 : frp_e2 <= 2000 ? 4.5 : 6.
 const FIRE_POWER_ZOOM = 12;
 const CROWDED_RADIUS = 1.5;
 const RING_RADIUS = 7;
+// The detections guideline's first-seen diamond: an 8 px square turned 45 degrees.
+const DIAMOND_HALF = 4 * Math.SQRT2;
 const HIT_PX = 10;
 // About 5 km, so hotspots just outside the edge stay in view.
 const EDGE_PAD_DEG = 0.05;
 // About 1,450 px per degree: a hotspot 3 km from the edge sits about 40 px from it, and
 // neighbouring 375 m detections are about 5 px apart instead of overlapping.
 const HOTSPOT_ZOOM = 11;
+// A one-detection fire would otherwise fill the map with a single pixel.
+const MAX_FIT_ZOOM = 14;
 
 function areaOf(rings: Ring[]): Area {
   const area = { west: 180, south: 90, east: -180, north: -90 };
@@ -125,10 +133,29 @@ function createLayer(OverlayView: typeof google.maps.OverlayView): Layer {
         const dot = this.data.dots[i];
         const p = this.pixel(dot.lon_e5 / 1e5, dot.lat_e5 / 1e5);
         if (!p || p[0] < -RING_RADIUS || p[1] < -RING_RADIUS || p[0] > w + RING_RADIUS || p[1] > h + RING_RADIUS) continue;
+        if (dot.first) continue;
+        ctx.globalAlpha = dot.alpha ?? 1;
         ctx.beginPath();
         ctx.arc(p[0], p[1], firePower ? radius(dot.frp_e2) : CROWDED_RADIUS, 0, 2 * Math.PI);
         ctx.fill();
         if (firePower) ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = themeColour("--fw-surface");
+      ctx.strokeStyle = ink;
+      ctx.lineWidth = 1.5;
+      for (const dot of this.data.dots) {
+        if (!dot.first) continue;
+        const p = this.pixel(dot.lon_e5 / 1e5, dot.lat_e5 / 1e5);
+        if (!p) continue;
+        ctx.beginPath();
+        ctx.moveTo(p[0], p[1] - DIAMOND_HALF);
+        ctx.lineTo(p[0] + DIAMOND_HALF, p[1]);
+        ctx.lineTo(p[0], p[1] + DIAMOND_HALF);
+        ctx.lineTo(p[0] - DIAMOND_HALF, p[1]);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
       }
       if (this.data.selected !== null) {
         const dot = this.data.dots[this.data.selected];
@@ -168,9 +195,15 @@ interface Props {
   dots?: Dot[];
   selected?: number | null;
   onSelect?: (index: number) => void;
+  /** Frame this area instead of the boundary, as the fire view does for its detections. */
+  area?: Area;
+  /** Adds the first-seen and older-to-newer rows to the legend. */
+  fire?: boolean;
+  /** Overlaid at the top of the map, as the fire view's replay is. */
+  children?: ReactNode;
 }
 
-export function FireMap({ label, boundary, dots, selected = null, onSelect }: Props) {
+export function FireMap({ label, boundary, dots, selected = null, onSelect, area, fire = false, children }: Props) {
   const container = useRef<HTMLDivElement>(null);
   const map = useRef<google.maps.Map | null>(null);
   const layer = useRef<Layer | null>(null);
@@ -236,15 +269,16 @@ export function FireMap({ label, boundary, dots, selected = null, onSelect }: Pr
 
   useEffect(() => {
     if (!ready || !map.current) return;
-    if (focus) {
+    // Inside a fire the view stays on the fire, so its picked detection is ringed in place.
+    if (focus && !area) {
       map.current.setCenter({ lat: focus.lat_e5 / 1e5, lng: focus.lon_e5 / 1e5 });
       map.current.setZoom(HOTSPOT_ZOOM);
       return;
     }
-    const view = fitView(map.current.getDiv(), boundary?.length ? areaOf(boundary) : WATCH_AREA);
+    const view = fitView(map.current.getDiv(), area ?? (boundary?.length ? areaOf(boundary) : WATCH_AREA));
     map.current.setCenter(view.center);
-    map.current.setZoom(view.zoom);
-  }, [ready, boundary, focus]);
+    map.current.setZoom(Math.min(view.zoom, MAX_FIT_ZOOM));
+  }, [ready, boundary, focus, area]);
 
   useEffect(() => {
     layer.current?.setData({ boundary: boundary ?? [], dots: dots ?? [], selected });
@@ -285,12 +319,31 @@ export function FireMap({ label, boundary, dots, selected = null, onSelect }: Pr
               Fire detection. Zoom in for fire power
             </div>
           )}
+          {fire && (
+            <>
+              <div className="legend-row">
+                <span className="legend-key">
+                  <span className="legend-diamond" />
+                </span>
+                First seen
+              </div>
+              <div className="legend-row">
+                <span className="legend-key">
+                  <span className="legend-dot md" style={{ opacity: 0.3 }} />
+                  <span className="legend-dot md" style={{ opacity: 0.65 }} />
+                  <span className="legend-dot md" />
+                </span>
+                Older to newer
+              </div>
+            </>
+          )}
           <div className="legend-row">
             <span className="legend-key legend-dash" />
             Concession boundary
           </div>
         </div>
       )}
+      {children}
     </section>
   );
 }

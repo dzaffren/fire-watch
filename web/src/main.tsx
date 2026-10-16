@@ -10,11 +10,11 @@ const HomePage = lazy(() =>
   import("./api").then(({ apiSource }) => ({ default: () => <FireRecordPage source={apiSource} today={today} /> })),
 );
 // Development only, so the preview's made-up hashes never reach the public site.
-const FireRecordPreview = import.meta.env.DEV ? lazy(() => import("./preview/FireRecordPreview")) : null;
-const preview = new URLSearchParams(location.search).get("preview") === "fire-record";
+const FireOriginPreview = import.meta.env.DEV ? lazy(() => import("./preview/FireOriginPreview")) : null;
+const preview = new URLSearchParams(location.search).get("preview") === "fire-origin";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <Suspense fallback={null}>{FireRecordPreview && preview ? <FireRecordPreview /> : <HomePage />}</Suspense>
+    <Suspense fallback={null}>{FireOriginPreview && preview ? <FireOriginPreview /> : <HomePage />}</Suspense>
   </StrictMode>,
 );

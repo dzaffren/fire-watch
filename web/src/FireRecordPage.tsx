@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Hex } from "viem";
-import type { ConcessionDetail, ConcessionListing, HotspotRecord } from "./api";
+import type { ConcessionDetail, ConcessionListing, FireDetail, HotspotRecord } from "./api";
 import { ConcessionList, type ListLoad } from "./ConcessionList";
 import { ConcessionView, type DetailLoad } from "./ConcessionView";
 import { DateRange, daysBefore } from "./DateRange";
 import { FireMap } from "./FireMap";
-import { count, location } from "./format";
+import { fireDots, FireView, passTimes, Replay, type FireLoad } from "./FireView";
+import { count, detectedShort, location } from "./format";
 import { ChevronLeftIcon, ExternalIcon } from "./icons";
 import { LoadErrorPanel, LoadingPanel, RecordPanel, type Check } from "./RecordPanel";
 
@@ -13,16 +14,20 @@ import { LoadErrorPanel, LoadingPanel, RecordPanel, type Check } from "./RecordP
 export interface FireRecordSource {
   concessions(from: string, to: string): Promise<ConcessionListing>;
   concession(id: string, from: string, to: string): Promise<ConcessionDetail>;
+  fire(id: string, key: Hex): Promise<FireDetail>;
   sealOf(record: HotspotRecord): Promise<Hex>;
   fingerprint(record: HotspotRecord): Hex;
 }
 
 export type View =
   | { kind: "list" }
-  | { kind: "concession"; id: string; picked?: number }
-  | { kind: "hotspot"; id: string; index: number };
+  | { kind: "concession"; id: string; picked?: Hex }
+  | { kind: "fire"; id: string; key: Hex; picked?: number }
+  | { kind: "hotspot"; id: string; key: Hex; index: number };
 
 const SLOW_AFTER_MS = 3000;
+// About 1 km around a fire's detections, so the nearby edge shows.
+const FIRE_PAD_DEG = 0.01;
 const DEFAULT_DAYS = 7;
 const TRASE_DATASET = "https://trase.earth/open-data/datasets/indonesia-wood-pulp-concessions-2023-2024";
 
@@ -45,7 +50,12 @@ export function FireRecordPage({ source, today, initialView, initialDates }: Pro
   const [detailAttempt, setDetailAttempt] = useState(0);
   const [check, setCheck] = useState<Check>({ state: "checking" });
   const [checkAttempt, setCheckAttempt] = useState(0);
+  const [fire, setFire] = useState<FireLoad>({ kind: "loading" });
+  const [fireAttempt, setFireAttempt] = useState(0);
+  // The replay's pass; null shows every pass.
+  const [replayAt, setReplayAt] = useState<number | null>(null);
   const openId = view.kind === "list" ? null : view.id;
+  const fireKey = view.kind === "fire" || view.kind === "hotspot" ? view.key : null;
 
   useEffect(() => {
     let live = true;
@@ -82,8 +92,40 @@ export function FireRecordPage({ source, today, initialView, initialDates }: Pro
     };
   }, [source, openId, dates, detailAttempt]);
 
+  useEffect(() => {
+    if (!openId || !fireKey) return;
+    let live = true;
+    setFire({ kind: "loading" });
+    setReplayAt(null);
+    source.fire(openId, fireKey).then(
+      (f) => live && setFire({ kind: "ready", fire: f }),
+      () => live && setFire({ kind: "error" }),
+    );
+    return () => {
+      live = false;
+    };
+  }, [source, openId, fireKey, fireAttempt]);
+
   const ready = detail.kind === "ready" && detail.detail.id === openId ? detail.detail : null;
-  const record = view.kind === "hotspot" && ready ? ready.hotspots[view.index] : null;
+  const openFire = fire.kind === "ready" && fire.fire.key === fireKey ? fire.fire : null;
+  const record = view.kind === "hotspot" && openFire ? openFire.hotspots[view.index] : null;
+  const times = useMemo(() => (openFire ? passTimes(openFire.hotspots) : []), [openFire]);
+  const at = replayAt ?? times.length;
+  const fireArea = useMemo(() => {
+    if (!openFire) return undefined;
+    const lats = openFire.hotspots.map((h) => h.lat_e5 / 1e5);
+    const lons = openFire.hotspots.map((h) => h.lon_e5 / 1e5);
+    return {
+      west: Math.min(...lons) - FIRE_PAD_DEG,
+      east: Math.max(...lons) + FIRE_PAD_DEG,
+      south: Math.min(...lats) - FIRE_PAD_DEG,
+      north: Math.max(...lats) + FIRE_PAD_DEG,
+    };
+  }, [openFire]);
+  const replay = useMemo(
+    () => (openFire && view.kind === "fire" ? fireDots(openFire.hotspots, at) : null),
+    [openFire, view.kind, at],
+  );
   const fp = useMemo(() => record && source.fingerprint(record), [source, record]);
 
   useEffect(() => {
@@ -102,7 +144,23 @@ export function FireRecordPage({ source, today, initialView, initialDates }: Pro
   let mapLabel = "Map of Indonesia's pulpwood concessions";
   if (view.kind === "list" && list.kind === "ready") mapLabel = `Map of the ${count(list.concessions.length)} listed concessions`;
   if (ready) mapLabel = `Map of ${openId} with ${count(ready.hotspots.length)} hotspots`;
-  if (record) mapLabel += `, the one at ${location(record.lat_e5, record.lon_e5)} marked`;
+  if (openFire && view.kind !== "concession") {
+    mapLabel = `Map of the fire first seen ${detectedShort(openFire.first_seen_unix)} UTC`;
+    if (view.kind === "fire") mapLabel += `, pass ${at} of ${times.length} shown`;
+  }
+  if (record) mapLabel += `, the detection at ${location(record.lat_e5, record.lon_e5)} marked`;
+
+  const allFireDots = useMemo(() => openFire?.hotspots.map((h) => ({ ...h, first: h.pass === 1 })), [openFire]);
+
+  // One level down, as the rows do: a dot opens its fire, and in a fire it opens the detection.
+  function onMapSelect(i: number) {
+    if (view.kind === "concession") {
+      const key = ready?.hotspots[i]?.fire_key;
+      if (key) setView({ kind: "fire", id: view.id, key });
+    } else if (view.kind === "fire" || view.kind === "hotspot") {
+      setView({ kind: "hotspot", id: view.id, key: view.key, index: replay ? replay.index[i] : i });
+    }
+  }
 
   return (
     <div className="app">
@@ -125,7 +183,7 @@ export function FireRecordPage({ source, today, initialView, initialDates }: Pro
             today={today}
             onChange={(from, to) => {
               setDates({ from, to });
-              if (view.kind !== "list") setView({ kind: "concession", id: view.id });
+              if (view.kind !== "list") setView({ kind: "concession", id: view.id, picked: fireKey ?? undefined });
             }}
           />
           <div className="slot" aria-live="polite">
@@ -145,10 +203,21 @@ export function FireRecordPage({ source, today, initialView, initialDates }: Pro
                 id={view.id}
                 load={detail}
                 mapVersion={mapVersion}
-                picked={view.picked ?? null}
+                picked={view.picked && ready ? ready.fires.findIndex((f) => f.key === view.picked) : null}
                 onBack={() => setView({ kind: "list" })}
-                onPick={(index) => setView({ kind: "hotspot", id: view.id, index })}
+                onPick={(index) => ready && setView({ kind: "fire", id: view.id, key: ready.fires[index].key })}
                 onRetry={() => setDetailAttempt((n) => n + 1)}
+              />
+            )}
+            {view.kind === "fire" && (
+              <FireView
+                key={view.key}
+                id={view.id}
+                load={fire.kind === "ready" && !openFire ? { kind: "loading" } : fire}
+                picked={view.picked ?? null}
+                onBack={() => setView({ kind: "concession", id: view.id, picked: view.key })}
+                onPick={(index) => setView({ kind: "hotspot", id: view.id, key: view.key, index })}
+                onRetry={() => setFireAttempt((n) => n + 1)}
               />
             )}
             {view.kind === "hotspot" && (
@@ -156,10 +225,10 @@ export function FireRecordPage({ source, today, initialView, initialDates }: Pro
                 <button
                   className="fw-link back"
                   type="button"
-                  onClick={() => setView({ kind: "concession", id: view.id, picked: view.index })}
+                  onClick={() => setView({ kind: "fire", id: view.id, key: view.key, picked: view.index })}
                 >
                   <ChevronLeftIcon />
-                  Hotspots in {view.id}
+                  {openFire ? `Fire first seen ${detectedShort(openFire.first_seen_unix)}` : "The fire"}
                 </button>
                 {record && fp ? (
                   <RecordPanel
@@ -168,8 +237,8 @@ export function FireRecordPage({ source, today, initialView, initialDates }: Pro
                     check={record.tx_hash ? check : { state: "pending" }}
                     onCheckAgain={() => setCheckAttempt((n) => n + 1)}
                   />
-                ) : detail.kind === "error" ? (
-                  <LoadErrorPanel onRetry={() => setDetailAttempt((n) => n + 1)} />
+                ) : fire.kind === "error" ? (
+                  <LoadErrorPanel onRetry={() => setFireAttempt((n) => n + 1)} />
                 ) : (
                   <LoadingPanel />
                 )}
@@ -188,10 +257,14 @@ export function FireRecordPage({ source, today, initialView, initialDates }: Pro
         <FireMap
           label={mapLabel}
           boundary={ready?.boundary}
-          dots={ready?.hotspots}
-          selected={view.kind === "hotspot" ? view.index : null}
-          onSelect={openId ? (index) => setView({ kind: "hotspot", id: openId, index }) : undefined}
-        />
+          dots={fireKey ? (replay?.dots ?? allFireDots) : ready?.hotspots}
+          selected={record && view.kind === "hotspot" ? view.index : null}
+          area={fireKey ? fireArea : undefined}
+          fire={fireKey !== null}
+          onSelect={onMapSelect}
+        >
+          {view.kind === "fire" && times.length > 1 && <Replay times={times} at={at} onChange={setReplayAt} />}
+        </FireMap>
       </main>
     </div>
   );

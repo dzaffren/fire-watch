@@ -1,0 +1,244 @@
+import { Fragment, useEffect, useState, type CSSProperties } from "react";
+import type { FireDetail, HotspotRecord } from "./api";
+import type { Dot } from "./FireMap";
+import { count, detected, detectedShort, distance, firePower, firstSeenLine, plural } from "./format";
+import { AlertIcon, ChevronLeftIcon, PauseIcon, PlayIcon } from "./icons";
+
+export type FireLoad = { kind: "loading" } | { kind: "error" } | { kind: "ready"; fire: FireDetail };
+
+const PAGE = 100;
+// Older to newer, as on the detections guideline: this pass, the one before, the rest.
+const AGE_ALPHA = [1, 0.65, 0.3];
+
+/** The fire's detections up to `at` for the map, faded by pass, the first pass marked. */
+export function fireDots(hotspots: HotspotRecord[], at: number): { dots: Dot[]; index: number[] } {
+  const dots: Dot[] = [];
+  const index: number[] = [];
+  hotspots.forEach((h, i) => {
+    const pass = h.pass ?? 1;
+    if (pass > at) return;
+    dots.push({ ...h, alpha: AGE_ALPHA[Math.min(at - pass, 2)], first: pass === 1 });
+    index.push(i);
+  });
+  return { dots, index };
+}
+
+/** Each pass's time, from its first detection. */
+export const passTimes = (hotspots: HotspotRecord[]) => {
+  const times: number[] = [];
+  for (const h of hotspots) times[(h.pass ?? 1) - 1] ??= h.acquired_unix;
+  return times;
+};
+
+function where(h: HotspotRecord, id: string): string {
+  const m = h.concessions.find((c) => c.id === id);
+  return m ? `${m.inside ? "Inside" : "Outside"}, ${distance(m.edge_m)}` : "";
+}
+
+interface Props {
+  id: string;
+  load: FireLoad;
+  picked: number | null;
+  onBack: () => void;
+  onPick: (index: number) => void;
+  onRetry: () => void;
+}
+
+export function FireView({ id, load, picked, onBack, onPick, onRetry }: Props) {
+  const [shown, setShown] = useState(() => (picked === null ? PAGE : Math.ceil((picked + 1) / PAGE) * PAGE));
+
+  return (
+    <div className="fire">
+      <button className="fw-link back" type="button" onClick={onBack}>
+        <ChevronLeftIcon />
+        Fires in {id}
+      </button>
+
+      {load.kind === "error" && (
+        <div className="fw-panel fw-empty enter">
+          <AlertIcon />
+          <h3>Couldn't load this fire</h3>
+          <p className="fw-help">The server didn't answer. Try again in a moment.</p>
+          <button className="fw-btn" type="button" onClick={onRetry}>Try again</button>
+        </div>
+      )}
+
+      {load.kind === "loading" && (
+        <div className="fw-panel" aria-busy="true" aria-label="Loading the fire">
+          <div className="fw-skeleton" style={{ width: "80%", height: 18 }} />
+          <div className="sk-rows">
+            {[55, 55, 55, 40].map((w, i) => (
+              <Fragment key={i}>
+                <div className="fw-skeleton" />
+                <div className="fw-skeleton" style={{ width: `${w}%` }} />
+              </Fragment>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {load.kind === "ready" && <Reading id={id} fire={load.fire} />}
+
+      {load.kind === "ready" && (
+        <>
+          <p className="fw-help list-note enter">
+            {plural(load.fire.detections, "detection", "detections")}, oldest first. Pick one to check it against the
+            chain.
+          </p>
+          <div className="table-box enter">
+            <table className="fw-table">
+              <thead>
+                <tr><th scope="col">Detected (UTC)</th><th scope="col" className="num">Fire power</th><th scope="col">Where</th></tr>
+              </thead>
+              <tbody>
+                {load.fire.hotspots.slice(0, shown).map((h, i) => (
+                  <tr key={h.record_id} className="row-open" aria-selected={i === picked ? true : undefined}>
+                    <td>
+                      <button className="row-btn" type="button" onClick={() => onPick(i)}>
+                        {detectedShort(h.acquired_unix)}
+                      </button>
+                    </td>
+                    <td className="num">{firePower(h.frp_e2)}</td>
+                    <td>{where(h, id)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {shown < load.fire.hotspots.length && (
+            <button className="fw-btn fw-btn--secondary more" type="button" onClick={() => setShown((n) => n + PAGE)}>
+              Show {Math.min(PAGE, load.fire.hotspots.length - shown)} more
+              <span className="more-left">{count(load.fire.hotspots.length - shown)} not shown</span>
+            </button>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+function Reading({ id, fire }: { id: string; fire: FireDetail }) {
+  const { reading } = fire.first_seen;
+  const unclear = reading === "edge" || reading === "both";
+  const showInside = fire.inside_from_unix !== null && (reading === "outside" || unclear);
+  const showOutside = fire.outside_from_unix !== null && (reading === "inside" || unclear);
+  const hours = fire.recorded_before_h;
+
+  return (
+    <article className="fw-panel fire-reading enter" aria-labelledby="h-fire">
+      <h2 id="h-fire">{firstSeenLine(fire.first_seen)}</h2>
+      {(unclear || fire.never_spread || hours !== null) && (
+        <div className="fire-notes">
+          {unclear && <p className="fw-help">The satellite record can't say which side this fire started on.</p>}
+          {fire.never_spread && (
+            <p className="fw-help">
+              Seen on {count(fire.passes)} passes without spreading. This can be a fixed heat source, such as a mill, or
+              peat smouldering in place.
+            </p>
+          )}
+          {hours !== null && (
+            <p className="fw-help">
+              Recording had started {hours < 1 ? "less than an hour" : plural(hours, "hour", "hours")} before this fire
+              was first seen, so it may have been burning earlier.
+            </p>
+          )}
+        </div>
+      )}
+      <dl className="fw-kv">
+        <dt>Concession</dt>
+        <dd>{id}</dd>
+        <dt>First seen</dt>
+        <dd>{detected(fire.first_seen_unix)}</dd>
+        {showInside && (
+          <>
+            <dt>Seen inside from</dt>
+            <dd>{detected(fire.inside_from_unix!)}</dd>
+          </>
+        )}
+        {showOutside && (
+          <>
+            <dt>Seen outside from</dt>
+            <dd>{detected(fire.outside_from_unix!)}</dd>
+          </>
+        )}
+        <dt>Last seen</dt>
+        <dd>{detected(fire.last_seen_unix)}</dd>
+        <dt>Passes</dt>
+        <dd>{count(fire.passes)}, with {plural(fire.detections, "detection", "detections")}</dd>
+      </dl>
+      <details>
+        <summary>How this is worked out</summary>
+        <p className="fw-help">
+          A detection joins a fire when it is within 1 km and 48 hours of one already in it. The first pass is the
+          earliest satellite pass that saw the fire. A side is named only when every detection on that pass is more
+          than 375 m from the edge, half the widest VIIRS pixel; nearer than that, the fire could be on either side.
+        </p>
+        <p className="fw-help">
+          NOAA-20 passes about twice a day and cloud can hide a fire, so it may burn for hours before it is first
+          seen. Each detection is sealed, so anyone can redo this from the chain and NASA FIRMS's public archive.
+        </p>
+      </details>
+    </article>
+  );
+}
+
+interface ReplayProps {
+  times: number[];
+  at: number;
+  onChange: (at: number) => void;
+}
+
+/** The detections guideline's replay timeline: one satellite pass a step, every --fw-replay-step. */
+export function Replay({ times, at, onChange }: ReplayProps) {
+  const [playing, setPlaying] = useState(false);
+  const last = times.length;
+
+  useEffect(() => {
+    if (!playing) return;
+    if (at >= last) {
+      setPlaying(false);
+      return;
+    }
+    const step = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--fw-replay-step")) || 240;
+    const timer = setTimeout(() => onChange(at + 1), step);
+    return () => clearTimeout(timer);
+  }, [playing, at, last, onChange]);
+
+  function toggle() {
+    if (playing) return setPlaying(false);
+    if (at >= last) onChange(1);
+    setPlaying(true);
+  }
+
+  const label = `Pass ${at} of ${last}`;
+  return (
+    <div className="fw-panel replay">
+      <button
+        className="fw-btn fw-btn--secondary replay-play"
+        type="button"
+        aria-label={playing ? "Pause the spread" : "Play the spread, pass by pass"}
+        onClick={toggle}
+      >
+        {playing ? <PauseIcon /> : <PlayIcon />}
+      </button>
+      <input
+        className="replay-track"
+        type="range"
+        min={1}
+        max={last}
+        step={1}
+        value={at}
+        aria-label="Satellite pass"
+        aria-valuetext={`${label}, ${detected(times[at - 1])}`}
+        style={{ "--fill": `${((at - 1) / (last - 1)) * 100}%` } as CSSProperties}
+        onChange={(e) => {
+          setPlaying(false);
+          onChange(Number(e.target.value));
+        }}
+      />
+      <span className="fw-mono replay-at">
+        {label} · {detectedShort(times[at - 1])} UTC
+      </span>
+    </div>
+  );
+}
