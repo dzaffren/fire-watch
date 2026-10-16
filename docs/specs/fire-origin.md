@@ -419,6 +419,17 @@ directory; neither chunk adds a dependency.
 
 Recorded as D31, D32.
 
+## Review
+
+2026-10-16 · 10 raw findings, 6 survived, 6 fixed.
+
+- correctness · `web/src/FireMap.tsx:112` · the API sends each polygon's holes and the inside tint fills even-odd, so holes stay untinted · `b7f905e`
+- correctness · `web/src/FireRecordPage.tsx:186` · a date change from the concession view keeps its marked fire · `7179fac`
+- correctness · `web/src/FireMap.tsx:349` · the replay comes before the zoom buttons, so tab order runs left to right · `09beabe`
+- correctness · `web/src/FireRecordPage.tsx:263` · the legend shows Older to newer only while a detection is faded · `91c5275`
+- correctness · `web/src/styles/app.css:127` · the replay label reserves its widest pass's width, so the track holds still · `96c2e7c`
+- coverage · `web/src/FireView.tsx:48` · tests page a 188-detection fire and open it on the picked page · `5654aea`
+
 ## Open items
 
 | ID | What | Type | Raised at | Owner | Status | Answer |
