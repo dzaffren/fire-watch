@@ -36,18 +36,20 @@ flowchart LR
     S1 -- "matched fires + boundaries" --> S2[2 fire-origin]
     S1 -- "fire records" --> S3[3 complaint-pack]
     S2 -- "origin + spread path" --> S3
-    S2 -- "spread forecast" --> S4[4 season-backtest]
-    S1 -. "fire records, if time" .-> S5[5 damage-estimate]
+    S2 -- "fires + spread so far" --> S4[4 spread-forecast]
+    S4 -- "spread forecast" --> S5[5 season-backtest]
+    S1 -. "fire records, if time" .-> S6[6 damage-estimate]
 ```
 
 | # | Slice | What ships | Why this order |
 |---|-------|-----------|----------------|
 | 0 | walking-skeleton | One page shows one real hotspot on a map; its record is written on-chain and read back; one e2e test; deployed. | Empty repo. Proves the stack, the chain write and the host before anything real. |
-| 1 | fire-record | The investigator picks an area and dates and sees fires matched to the concession they fall on. Each match is written on-chain with the map version used, and anyone can check it. | Smallest thing a watchdog can use alone. Builds the matching and chain write that 2, 3 and 5 reuse. |
-| 2 | fire-origin | For a fire on or near a concession: where and when it was first seen relative to the boundary, the order it spread in, and a forecast of where it goes next. Each step is written on-chain as detections arrive. | Answers the dispute companies actually raise ("started outside, spread in"). Needs slice 1's matching. Must run live by about 2026-10-19 for O9. |
+| 1 | fire-record | The investigator picks an area and dates and sees fires matched to the concession they fall on. Each match is written on-chain with the map version used, and anyone can check it. | Smallest thing a watchdog can use alone. Builds the matching and chain write that 2, 3 and 6 reuse. |
+| 2 | fire-origin | For a fire on or near a concession: where and when it was first seen relative to the boundary, and the order it spread in, worked out from the sealed detections. | Answers the dispute companies actually raise ("started outside, spread in"). Needs slice 1's sealed, matched detections, recorded live since 2026-10-16 (O9). The forecast split out to slice 4 at spec (D23). |
 | 3 | complaint-pack | For one fire, a pack with the site, the dates and the basis for attribution (first detection, spread path, map version), plus a public page where anyone checks it against the chain. | Joins 1 and 2 into what the investigator hands to a buyer. The spine of the demo video. |
-| 4 | season-backtest | Replay the 2023 season: for fires that crossed into a concession, how close the spread forecast's arrival time was to the real one, next to a naive baseline. | The credibility number for judges. Needs slice 2's forecast. |
-| 5 | damage-estimate | For a recorded fire, estimate burned area and carbon released. | Covers the economic-impact ask. First to cut if the days run out. |
+| 4 | spread-forecast | For a fire near a concession: where it goes next and when it reaches the boundary, sealed before it arrives. | Needs slice 2's fires. After complaint-pack, which needs only origin and spread. Split from fire-origin (D23). A sealed forecast only counts from when it starts running. |
+| 5 | season-backtest | Replay the 2023 season: for fires that crossed into a concession, how close the spread forecast's arrival time was to the real one, next to a naive baseline. | The credibility number for judges. Needs slice 4's forecast. |
+| 6 | damage-estimate | For a recorded fire, estimate burned area and carbon released. | Covers the economic-impact ask. First to cut if the days run out. |
 
 ## Not doing
 
@@ -78,7 +80,7 @@ flowchart LR
 | O9 | On-chain timestamps only count going forward: a replay of 2023 cannot carry 2023 timestamps | flag | shape | user | Resolved | Record a live fire before 2026-10-24; fall back to a 2023 replay labelled as a replay. Indonesia had fires in Sept 2026 ([Palm Oil Magazine](https://www.palmoilmagazine.com/hot-news/2026/10/02/84-of-indonesias-september-fire-hotspots-found-in-open-access-areas-expert-says/)), but activity may drop as the rains start |
 | O10 | Naming real companies in a public video and repo: a wrong match is a public accusation | flag | shape | user | Resolved | Concession IDs and the source map only. No company names in the demo or the repo |
 | O11 | Which idea to build | question | shape | user | Resolved | Fire watch on fire origin and spread, in the climate data track (D1) |
-| O12 | A spread forecast built in about 3 days beats a naive baseline (fire moves downwind at its recent speed) on 2023 fires | unproven | shape | poc | Handed to fire-origin | — |
+| O12 | A spread forecast built in about 3 days beats a naive baseline (fire moves downwind at its recent speed) on 2023 fires | unproven | shape | poc | Handed to spread-forecast | — |
 | O13 | First detection is close enough to the real start to say "started inside" or "started outside". Satellites pass a few times a day and can miss small fires | unproven | shape | poc | Handed to fire-origin | — |
 
 ## Glossary

@@ -249,3 +249,54 @@ the boundary at zoom 9), open rings sized by fire power (still close into one pa
 around hotspot A), fire-power sizes at every zoom (the patches O9 raised).
 Source: docs/design/system-brief.md
 Status: active
+
+## D23 · 2026-10-16 · Split the spread forecast out of fire-origin
+
+Why: the forecast brings a wind source, a model, a new kind of seal and a check against where the
+fire went: a third area and at least 3 more scenarios, past the slice test's 5 scenarios and 2 areas.
+fire-origin ships alone with where a fire was first seen and how it spread.
+Rejected: keeping the forecast in fire-origin (fails the slice test).
+Source: docs/specs/fire-origin.md
+Status: active
+
+## D24 · 2026-10-16 · Work out where a fire was first seen from sealed detections; no new seals
+
+Why: every detection is sealed within the hour it's recorded, so anyone can redo the reading from
+sealed records and a published rule. A reading changes when a pass grows a fire or joins two, so a
+sealed reading would need sealing again.
+Rejected: sealing each reading (proves what we said, not what the satellite saw, and needs sealing
+again as fires grow or join), sealing each run's list of records (would show a missing record, but
+needs a new record type and recorder work; FIRMS's public archive already lets anyone find one).
+Source: docs/specs/fire-origin.md
+Status: active
+
+## D25 · 2026-10-16 · Same fire when within 1 km and 48 hours of a detection already in it
+
+Why: 1 km allows one missed 375 m pixel, and 48 h allows up to three passes missed under cloud. On
+2026-10-12 to 15, 9 of 737 gaps between passes of one fire went over 50 h. Gives 1,451 fires.
+Rejected: 750 m and 24 h (1,634 fires; splits a fire after one cloudy day, and the second piece
+reads as new, possibly "first seen outside"), 1.5 km and 72 h (1,236 fires; chains separate fires,
+so a big fire's first-seen point can sit far from where it crossed).
+Source: docs/specs/fire-origin.md
+Status: active
+
+## D26 · 2026-10-16 · Say which side a fire was first seen on only beyond 375 m from the edge
+
+Why: 375 m is half the widest VIIRS pixel (scan up to 0.76 km), so a detection farther than that
+has its whole pixel on one side. A call a company can pick apart weakens the grievance. Calls 15 of
+65 boundary crossings on 2026-10-12 to 15; the rest read "too close to the edge to tell". The page
+says "first seen", never "started".
+Rejected: calling by side at any distance (39 of 65 called, but the calls within a pixel can be
+wrong).
+Source: docs/specs/fire-origin.md
+Status: active
+
+## D27 · 2026-10-16 · Flag fires seen on 4 or more passes that never spread past 750 m
+
+Why: a mill's boilers show up on every pass, and a grievance over one would discredit the rest.
+fire-record accepted this risk because fire-origin would flag it (fire-record O4). 5 fires met the
+rule on 2026-10-12 to 15. The note names both a fixed heat source and smouldering peat, since peat
+fires also stay put.
+Rejected: no flag (the risk stays open, and a mill could end up in a complaint).
+Source: docs/specs/fire-origin.md
+Status: active
