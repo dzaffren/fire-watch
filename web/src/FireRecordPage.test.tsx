@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type { ReactElement } from "react";
 import { keccak256, toHex, type Hex } from "viem";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -349,6 +349,12 @@ describe("FireRecordPage", () => {
     expect(source.concession).toHaveBeenLastCalledWith(ID, "2026-10-15", "2026-10-15");
     await screen.findByText("Fires", { selector: "dt" });
     expect(fireRow()).toHaveAttribute("aria-selected", "true");
+
+    // A second change, now from the concession view, to dates that still hold the fire.
+    pick(from(), "2026-10-13");
+
+    expect(source.concession).toHaveBeenLastCalledWith(ID, "2026-10-13", "2026-10-15");
+    await waitFor(() => expect(fireRow()).toHaveAttribute("aria-selected", "true"));
 
     pick(from(), "2026-10-12");
     pick(to(), "2026-10-12");
