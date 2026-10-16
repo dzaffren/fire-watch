@@ -394,3 +394,27 @@ making such a pack (the caveat already travels with the pack), no pack for too-c
 or never-spread fires (the investigator decides what goes in a grievance).
 Source: docs/specs/complaint-pack.md
 Status: active
+
+## D37 · 2026-10-17 · Cut a pack at the newest stored detection's time, carried in its link
+
+Why: a pack must hold what the investigator saw (D33). The fire route reads the newest created_at
+first and groups only detections stored by then, so the fire view and its pack read the same rows.
+The link carries the concession, the fire key and that time, so nothing new is stored.
+Rejected: a packs table (the API reads with a read-only role; a write route open to anyone, D36,
+needs a new role and abuse limits), the time of the click (a recorder run's rows carry the time
+its transaction began, before FIRMS was fetched, so a pack could gain rows committed after the
+click), every record ID in the link (188 IDs make a link of about 12,000 characters).
+Source: docs/specs/complaint-pack.md
+Status: active
+
+## D38 · 2026-10-17 · Read a pack's seals through Multicall3, one call per 500 records
+
+Why: Base Sepolia's public RPC allows 25 calls a second and counts each call in a JSON-RPC batch.
+A batch of 188 seal reads got 25 answers and 163 "25/second request limit reached" errors. One
+aggregate3 call through Multicall3 read all 188 in 545 ms, and 0540's 488 in 505–712 ms
+(2026-10-17).
+Rejected: one sealOf per detection in a batch (rate-limited, as above), batches of 20 a second
+(about 25 s for 0540's 488-detection fire), a batch read on FireRecords (a redeploy, which D19
+rejected).
+Source: docs/specs/complaint-pack.md
+Status: active
