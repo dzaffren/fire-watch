@@ -1,6 +1,6 @@
 # Fire origin
 
-**Version:** v1 · **Status:** Refined · **Type:** Feature · **Project type:** Web UI
+**Version:** v1 · **Status:** Built · **Type:** Feature · **Project type:** Web UI
 
 **Shape doc:** docs/specs/fire-watch/shape.md
 **Depends on:** fire-record
@@ -435,6 +435,8 @@ Recorded as D31, D32.
 | O10 | The replay steps one pass every 240 ms (`--fw-replay-step`), so a 4-pass fire plays in under a second | question | spec p2 | user | Resolved | 2026-10-16: 600 ms a pass, changed through `/design-system` with O9 (D30) |
 | O11 | A fire's key is its first detection's record ID (D32). When a later pass links it to an older fire, the joined fire takes the older key, so a fire view left open answers 404, and complaint-pack can't link to a key and expect it to last | flag | spec p3 | user | Accepted risk | 2026-10-16: the page shows "Couldn't load this fire" with Try again, and Back reloads the fires; joins mid-look are rare. complaint-pack keeps its own copy of a fire rather than linking to the key |
 | O12 | Grouping on every request stays under about 1 s on the 0.25-vCPU container through judging. Measured on a laptop: 24 ms at 1,083 detections, 270 ms at 10,830 | unproven | spec p3 | user | Accepted risk | 2026-10-16: ship as planned and read `group_ms` in the API log after deploy; past about 1 s, the recorder stores each detection's fire key as its own change |
+| O13 | The spec does not say which detection is "first" when a pass has several at the same minute. That choice sets a fire's key (D32) and the distance that scenario 4 measures from ("none more than 483 m from the first") | flag | build | user | Decided alone | Chose: order by time, then lowest latitude, then lowest longitude, as walking-skeleton O13 picks the latest hotspot. It gives the pause 2 preview's key for all 171 fires and the 483 m. Other: highest fire power first, which gives 683 m on scenario 4. Undo: change the sort key in `api/src/firewatch/fires.py` and the rule's step 1. 2026-10-16 |
+| O14 | Adding ID-WOOD-CONCESSION-0332, 0356 and 0372 to `fixtures/concessions/trase-cut.geojson` breaks two loader tests in `api/tests/test_concessions.py`, a file the plan did not name | flag | build | user | Decided alone | Chose: those tests now expect 6 concessions (5 with the 2024 permit skipped). Other: a separate cut file for fire-origin. Undo: revert commit aafae31 and give the e2e and API tests their own cut. 2026-10-16 |
 
 _Never delete this section or its rows. See references/ledger.md._
 
