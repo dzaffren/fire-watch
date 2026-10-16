@@ -169,6 +169,20 @@ describe("FireMap", () => {
     expect(screen.getByRole("button", { name: "Zoom out" })).toHaveClass("fw-btn", "fw-btn--secondary");
   });
 
+  it("puts its overlay, such as the replay, before the zoom buttons in tab order, as it sits left of them", () => {
+    render(
+      <FireMap label="Map">
+        <button type="button">Play the spread, pass by pass</button>
+      </FireMap>,
+    );
+
+    expect(screen.getAllByRole("button").map((b) => b.textContent || b.getAttribute("aria-label"))).toEqual([
+      "Play the spread, pass by pass",
+      "Zoom in",
+      "Zoom out",
+    ]);
+  });
+
   it("frames the watch area at the zoom Google's fitBounds picks", async () => {
     mapSize(991, 536);
     render(<FireMap label="Map" />);
