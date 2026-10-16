@@ -244,6 +244,21 @@ describe("Replay", () => {
     expect(screen.getByText("Pass 2 of 4 · 14 Oct 06:18 UTC")).toBeInTheDocument();
   });
 
+  it("keeps the label as wide as its widest pass, so the track holds still while it plays", () => {
+    // Ten passes 12 h apart, so the pass number and the day both reach two digits.
+    const ten = Array.from({ length: 10 }, (_, i) => Date.parse("2026-10-06T06:00:00Z") / 1000 + i * 43200);
+    const label = () => screen.getByText(/^Pass \d+ of 10/);
+    const { rerender } = render(<Replay times={ten} at={1} onChange={() => {}} />);
+
+    expect(label()).toHaveTextContent("Pass 1 of 10 · 6 Oct 06:00 UTC");
+    expect(label().style.minWidth).toBe("32ch");
+
+    rerender(<Replay times={ten} at={10} onChange={() => {}} />);
+
+    expect(label()).toHaveTextContent("Pass 10 of 10 · 10 Oct 18:00 UTC");
+    expect(label().style.minWidth).toBe("32ch");
+  });
+
   it("plays from the first pass, one pass every --fw-replay-step, and stops on the last", () => {
     render(<ReplayOn times={times} />);
     expect(value()).toMatch(/^Pass 4 of 4/);

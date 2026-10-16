@@ -214,6 +214,9 @@ export function Replay({ times, at, onChange }: ReplayProps) {
   }
 
   const label = `Pass ${at} of ${last}`;
+  const text = (pass: number) => `Pass ${pass} of ${last} · ${detectedShort(times[pass - 1])} UTC`;
+  // Monospaced, so the widest pass's character count holds the track still as the label changes.
+  const widest = Math.max(...times.map((_, i) => text(i + 1).length));
   return (
     <div className="fw-panel replay">
       <button
@@ -239,8 +242,8 @@ export function Replay({ times, at, onChange }: ReplayProps) {
           onChange(Number(e.target.value));
         }}
       />
-      <span className="fw-mono replay-at">
-        {label} · {detectedShort(times[at - 1])} UTC
+      <span className="fw-mono replay-at" style={{ minWidth: `${widest}ch` }}>
+        {text(at)}
       </span>
     </div>
   );
