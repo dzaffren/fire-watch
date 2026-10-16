@@ -32,7 +32,8 @@ def client(db, monkeypatch):
 
 
 def record(
-    url, acquired_at, matches, version=2, lat_e5=-358175, lon_e5=None, frp_e2=520, **sealed
+    url, acquired_at, matches, version=2, lat_e5=-358175, lon_e5=None, frp_e2=520,
+    created_at=None, **sealed
 ):
     """Stores a hotspot with its (concession ID, inside, edge_m) matches; returns its record ID."""
     n = next(_ids)
@@ -49,6 +50,10 @@ def record(
                 sealed.get("tx_hash"), sealed.get("sealed_at"),
             ),
         ).fetchone()
+        if created_at is not None:
+            conn.execute(
+                "UPDATE hotspots SET created_at = %s WHERE id = %s", (created_at, hotspot_id)
+            )
         for concession_id, inside, edge_m in matches:
             conn.execute(
                 "INSERT INTO hotspot_concessions VALUES (%s, %s, %s, %s)",
@@ -277,7 +282,9 @@ def test_fire_has_every_detection_whatever_the_dates(client, db):
         detections[4]: detections[0],
         detections[5]: detections[0],
     }
-    assert concession["fires"] == [{k: v for k, v in fire.items() if k != "hotspots"}]
+    assert concession["fires"] == [
+        {k: v for k, v in fire.items() if k not in ("hotspots", "as_of_unix")}
+    ]
     assert fire["first_seen"] == {"reading": "outside", "inside": False, "edge_m": 954}
     assert fire["first_seen_unix"] == unix("2026-10-13T17:37Z")
     assert fire["inside_from_unix"] == unix("2026-10-15T18:43Z")
@@ -343,6 +350,23 @@ def test_unknown_fire_is_404(client, db):
     ]:
         assert client.get(f"/api/concessions/{concession_id}/fires/{key}").status_code == 404
     assert client.get(f"/api/concessions/{C0540}/fires/{older}").status_code == 200
+
+
+@pytest.mark.parametrize(
+    "newest, as_of",
+    [("2026-10-17T09:00:01.4Z", "2026-10-17T09:00:02Z"), ("2026-10-17T09:00:01Z", "2026-10-17T09:00:01Z")],
+    ids=["part second rounds up", "whole second stays"],
+)
+def test_fire_answers_as_of_the_newest_stored_detection(client, db, newest, as_of):
+    first = record(db, "2026-10-13T17:37Z", [(C0332, False, 954)], created_at="2026-10-14T09:00Z")
+    record(db, "2026-10-16T18:00Z", [(C0540, True, 3099)], created_at=newest)
+    record(db, "2026-10-16T18:00Z", [], version=1, created_at="2026-10-17T10:00Z")
+
+    response = client.get(f"/api/concessions/{C0332}/fires/{first}")
+
+    assert response.status_code == 200
+    assert response.json()["as_of_unix"] == unix(as_of)
+    assert "province" not in response.json()
 
 
 @pytest.mark.parametrize(
