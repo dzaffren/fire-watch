@@ -350,3 +350,47 @@ Rejected: a stored serial fire ID (needs the table D31 rejects), a hash of the f
 (changes with every pass).
 Source: docs/specs/fire-origin.md
 Status: active
+
+## D33 · 2026-10-17 · A pack holds its fire as it stood when made, sealed or not
+
+Why: a grievance must show the buyer what the investigator sent. Fires grow, and a fire loses its
+key when a pass joins it to an older one (fire-origin O11). Of 1,801 fire and concession pairs to
+2026-10-15, 39 grew and 1 lost its key by 2026-10-16 07:22 UTC. Detections that wait for a seal
+stay in and read "Not sealed yet"; the recorder seals within the hour.
+Rejected: a pack that follows the live fire (the buyer could see something the grievance doesn't
+say), a count of newer detections on the pack (one more query, on a pack that records what was
+sent), leaving unsealed detections out (6 of the 0332 fire's 19 waited during the backfill), no
+pack until every detection is sealed (the investigator waits on the recorder).
+Source: docs/specs/complaint-pack.md
+Status: active
+
+## D34 · 2026-10-17 · Only the complaint pack gets its own link, and it prints to PDF
+
+Why: the pack is what the investigator sends a buyer, so it needs a link that opens in any
+browser. A clean print lets a grievance carry it as a PDF. Other views keep their on-page back
+links.
+Rejected: a link for every view with Back stepping out (routing for the whole page, a third area
+that fails the slice test; fire-record O10), the link with no print layout (a grievance sent as a
+document loses the pack), a JSON file of the records (each raw record already opens on the page).
+Source: docs/specs/complaint-pack.md
+Status: active
+
+## D35 · 2026-10-17 · Verify FireRecords on Basescan
+
+Why: a buyer who opens a seal's transaction should read seal(recordId, fingerprint), not raw hex.
+The operator verifies the contract once, with a free Etherscan API key kept in the untracked .env.
+Rejected: leaving it unverified (the transactions a pack links to show raw hex; walking-skeleton
+accepted this only until complaint-pack).
+Source: docs/specs/complaint-pack.md
+Status: active
+
+## D36 · 2026-10-17 · Anyone can make a pack for any fire, with its caveat on top
+
+Why: the site has no login, and everything in a pack is public already: FIRMS detections, Trase
+concession IDs and seals on Base Sepolia. A fire the record can't settle still gets a pack, with
+its caveat directly under the headline, so the buyer reads it first.
+Rejected: packs only with a key (a login the product doesn't have, a third area), a warning before
+making such a pack (the caveat already travels with the pack), no pack for too-close, both-sides
+or never-spread fires (the investigator decides what goes in a grievance).
+Source: docs/specs/complaint-pack.md
+Status: active
