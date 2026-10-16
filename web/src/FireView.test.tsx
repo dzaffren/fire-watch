@@ -161,6 +161,24 @@ describe("FireView", () => {
     expect(rows.filter((r) => r.hasAttribute("aria-selected"))).toHaveLength(1);
   });
 
+  it("lists a large fire's detections 100 at a time", () => {
+    showFire(ONE_HOUR);
+    const rows = () => within(screen.getByRole("table")).getAllByRole("row").slice(1);
+
+    expect(rows()).toHaveLength(100);
+    fireEvent.click(screen.getByRole("button", { name: /^Show 88 more/ }));
+    expect(rows()).toHaveLength(188);
+    expect(screen.queryByRole("button", { name: /^Show \d+ more/ })).toBeNull();
+  });
+
+  it("opens on the page that holds the picked detection, as when coming back from its record", () => {
+    show(ONE_HOUR.id, { kind: "ready", fire: fire(ONE_HOUR) }, { picked: 150 });
+
+    const rows = within(screen.getByRole("table")).getAllByRole("row").slice(1);
+    expect(rows).toHaveLength(188);
+    expect(rows[150]).toHaveAttribute("aria-selected", "true");
+  });
+
   it("goes back to the concession's fires", () => {
     const { onBack } = showFire(OUTSIDE);
 
