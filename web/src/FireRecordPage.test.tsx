@@ -311,6 +311,18 @@ describe("FireRecordPage", () => {
     expect(replay.props.times).toHaveLength(4);
   });
 
+  it("opens a fire on its last pass, framed on its detections plus about 1 km", async () => {
+    await openFire(fixtureSource());
+
+    expect((map().children as ReactElement<{ at: number }>).props.at).toBe(4);
+    // The fire's detections span 112.71672 to 112.73068°E and 2.855 to 2.83405°S.
+    const area = map().area!;
+    expect(area.west).toBeCloseTo(112.70672, 6);
+    expect(area.east).toBeCloseTo(112.74068, 6);
+    expect(area.south).toBeCloseTo(-2.865, 6);
+    expect(area.north).toBeCloseTo(-2.82405, 6);
+  });
+
   it("offers Try again when the fire couldn't load, and loads on retry", async () => {
     const source = fixtureSource();
     vi.mocked(source.fire).mockRejectedValueOnce(new Error("API answered 404"));
