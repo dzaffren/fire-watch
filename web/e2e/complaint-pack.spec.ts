@@ -104,6 +104,31 @@ test("a pack printed while the chain doesn't answer has no buttons on it", async
   }
 });
 
+test("every control on a pack is at least 44 px to tap on a touch screen", async ({ page, browser }) => {
+  const url = await makePack(page);
+  const phone = await browser.newContext({ viewport: { width: 375, height: 800 }, hasTouch: true, isMobile: true });
+  try {
+    const { page: pack } = await openAsBuyer(phone, url);
+    await expect(pack.getByRole("heading", { name: "19 of 19 detections match the chain" })).toBeVisible();
+    const tooSmall = await pack.evaluate(() =>
+      [...document.querySelectorAll<HTMLElement>("a[href], button, summary")]
+        .filter((el) => el.offsetParent)
+        .filter((el) => {
+          el.scrollIntoView({ block: "center" });
+          const r = el.getBoundingClientRect();
+          const x = r.left + r.width / 2;
+          const y = r.top + r.height / 2;
+          const hits = (dy: number) => document.elementFromPoint(x, y + dy)?.closest("a[href], button, summary") === el;
+          return r.width < 44 || !hits(-21) || !hits(21);
+        })
+        .map((el) => el.getAttribute("aria-label") ?? el.textContent?.trim()),
+    );
+    expect(tooSmall).toEqual([]);
+  } finally {
+    await phone.close();
+  }
+});
+
 test("a detection changed after its seal is listed first", async ({ page, browser }) => {
   const url = await makePack(page);
   const [{ frp_e2 }] = await sql<{ frp_e2: number }>(`SELECT frp_e2 FROM hotspots WHERE ${CHANGED}`);
