@@ -86,6 +86,24 @@ test("makes a pack of the 0332 fire and every detection matches the chain", asyn
   }
 });
 
+test("a pack printed while the chain doesn't answer has no buttons on it", async ({ page, browser }) => {
+  const url = await makePack(page);
+  const buyer = await browser.newContext();
+  try {
+    await buyer.route((u) => u.href.startsWith(RPC_URL), (route) => route.abort());
+    const { page: pack } = await openAsBuyer(buyer, url);
+    await expect(pack.getByRole("heading", { name: "Couldn't check 19 of 19 detections" })).toBeVisible();
+    await pack.getByRole("row").filter({ hasText: "Outside, 950 m" }).getByRole("button").click();
+    const checkAgain = pack.getByRole("button", { name: "Check again" });
+    await expect(checkAgain).toHaveCount(2);
+
+    await pack.emulateMedia({ media: "print" });
+    await expect(checkAgain).toHaveCount(0);
+  } finally {
+    await buyer.close();
+  }
+});
+
 test("a detection changed after its seal is listed first", async ({ page, browser }) => {
   const url = await makePack(page);
   const [{ frp_e2 }] = await sql<{ frp_e2: number }>(`SELECT frp_e2 FROM hotspots WHERE ${CHANGED}`);
