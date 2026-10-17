@@ -430,9 +430,9 @@ Recorded as D37, D38.
 
 2026-10-17 · 10 raw findings, 3 survived, 3 fixed.
 
-- correctness · `web/src/ComplaintPack.tsx:94` · a pack reads Checking from its first render, not "0 of 0 detections match the chain" · `a44b818`
-- correctness · `web/src/styles/app.css:203` · a printed pack hides every Check again button · `76a99c9`
-- correctness · `web/src/styles/app.css:186` · the pack foot's Trase link grows to 44 px on a touch screen · `fcf6007`
+- correctness · `web/src/ComplaintPack.tsx:94` · a pack reads Checking from its first render, not "0 of 0 detections match the chain" · `5700991`
+- correctness · `web/src/styles/app.css:203` · a printed pack hides every Check again button · `094d11c`
+- correctness · `web/src/styles/app.css:186` · the pack foot's Trase link grows to 44 px on a touch screen · `0e30dfb`
 
 ## Open items
 
@@ -450,8 +450,8 @@ Recorded as D37, D38.
 | O10 | `forge verify-contract` 1.8.5 with an Etherscan V2 key verifies FireRecords on Basescan for chain 84532. Not run; it needs the user's key | unproven | spec p3 | poc | Resolved | 2026-10-17: yes. The local build matched the deployed bytecode exactly, metadata included. `forge verify-contract … --chain 84532` answered "Pass - Verified", and Etherscan's API returns the FireRecords source, v0.8.28. Forge also sent it to Sourcify. D35 is done |
 | O11 | A pack's detections rest on `created_at`, which is stored, not sealed. Someone with the database owner login could move a row into or out of an old pack, as they could delete one today (fire-origin O7) | flag | spec p3 | user | Accepted risk | 2026-10-17: the same exposure as fire-origin O7; every detection in a pack is still checked against its seal |
 | O12 | The Changes table said one failed seal read titles the check "Couldn't check the detections"; the Interface table said "Couldn't check 6 of 19 detections", from one read per detection | flag | build | user | Decided alone | Chose: any failed Multicall3 read (one per 500 records) marks every detection Couldn't check, titled with the count form, "Couldn't check 19 of 19 detections". Other: the words "Couldn't check the detections", or keep the results of the reads that answered. Undo: change `checkTitle` and the reject branch of the checks effect in `web/src/ComplaintPack.tsx`. 2026-10-17 |
-| O13 | Pause 2 marked a detection with no `tx_hash` Not on chain yet without reading the chain | flag | build | user | Decided alone | Chose: the chain alone decides. A zero seal reads Not on chain yet even when the API sent a `tx_hash`, and a real seal counts even when it sent none. Other: keep pause 2's rule and skip the read for detections with no `tx_hash`. Undo: the `zeroHash` branch of the checks effect in `web/src/ComplaintPack.tsx` (commit 5767ca4). 2026-10-17 |
-| O14 | The review's three `fix` commits (a44b818, 76a99c9, fcf6007) get no CHANGELOG line | flag | review | user | Decided alone | Chose: no Fixed line. Each fixes the pack, which no release has shipped, so the branch's one Added line covers it. Other: a Fixed line for each. Undo: add the lines under `[Unreleased]` › Fixed in `CHANGELOG.md`. 2026-10-17 |
+| O13 | Pause 2 marked a detection with no `tx_hash` Not on chain yet without reading the chain | flag | build | user | Decided alone | Chose: the chain alone decides. A zero seal reads Not on chain yet even when the API sent a `tx_hash`, and a real seal counts even when it sent none. Other: keep pause 2's rule and skip the read for detections with no `tx_hash`. Undo: the `zeroHash` branch of the checks effect in `web/src/ComplaintPack.tsx` (commit 1f0dd20). 2026-10-17 |
+| O14 | The review's three `fix` commits (5700991, 094d11c, 0e30dfb) get no CHANGELOG line | flag | review | user | Decided alone | Chose: no Fixed line. Each fixes the pack, which no release has shipped, so the branch's one Added line covers it. Other: a Fixed line for each. Undo: add the lines under `[Unreleased]` › Fixed in `CHANGELOG.md`. 2026-10-17 |
 
 _Never delete this section or its rows. See references/ledger.md._
 
