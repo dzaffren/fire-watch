@@ -91,7 +91,7 @@ export function ComplaintPack({ source, packRef, initialOpen = null }: Props) {
   const [load, setLoad] = useState<PackLoad>(packRef ? { kind: "loading" } : { kind: "missing" });
   const [attempt, setAttempt] = useState(0);
   const [slow, setSlow] = useState(false);
-  const [checks, setChecks] = useState<Check[]>([]);
+  const [checked, setChecked] = useState<{ pack: PackDetail; checks: Check[] } | null>(null);
   const [checkAttempt, setCheckAttempt] = useState(0);
   const [open, setOpen] = useState<number | null>(initialOpen);
   const [replayAt, setReplayAt] = useState<number | null>(null);
@@ -120,21 +120,28 @@ export function ComplaintPack({ source, packRef, initialOpen = null }: Props) {
   const pack = load.kind === "ready" ? load.pack : null;
   const fps = useMemo(() => pack?.hotspots.map(source.fingerprint) ?? [], [source, pack]);
 
+  // A pack the chain hasn't answered for yet reads Checking, also before the read below starts.
+  const checks = useMemo(
+    () => (pack && checked?.pack === pack ? checked.checks : (pack?.hotspots.map((): Check => ({ state: "checking" })) ?? [])),
+    [pack, checked],
+  );
+
   useEffect(() => {
     if (!pack) return;
     let live = true;
     const all = (check: Check) => pack.hotspots.map(() => check);
-    setChecks(all({ state: "checking" }));
+    setChecked({ pack, checks: all({ state: "checking" }) });
     source.sealsOf(pack.hotspots).then(
       (seals) =>
         live &&
-        setChecks(
-          seals.map((sealed, i): Check => {
+        setChecked({
+          pack,
+          checks: seals.map((sealed, i): Check => {
             if (sealed === zeroHash) return { state: "pending" };
             return sealed === fps[i] ? { state: "matches" } : { state: "mismatch", sealed };
           }),
-        ),
-      () => live && setChecks(all({ state: "error" })),
+        }),
+      () => live && setChecked({ pack, checks: all({ state: "error" }) }),
     );
     return () => {
       live = false;
