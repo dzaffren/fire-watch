@@ -18,3 +18,4 @@
 - Run one API test suite at a time; every worktree shares `firewatch_test` — [one-api-suite-at-a-time](one-api-suite-at-a-time.md)
 - Ask before committing a fixture read from the live database — [live-db-fixtures-need-approval](live-db-fixtures-need-approval.md)
 - Put `~/.foundry/bin` on PATH before the API suite, or `test_record_hotspots.py` errors — [pytest-needs-foundry-on-path](pytest-needs-foundry-on-path.md)
+- Keep each commit subject at 72 characters or fewer as you write it — [commit-subjects-72](commit-subjects-72.md)
