@@ -176,10 +176,23 @@ describe("ComplaintPack", () => {
   });
 
   it("reads Checking on every detection until the chain answers", async () => {
+    // Every text the page ever showed, so a state that lasts one render still counts.
+    const shown: string[] = [];
+    const keep = (records: MutationRecord[]) => {
+      for (const r of records) {
+        if (r.oldValue) shown.push(r.oldValue);
+        r.removedNodes.forEach((n) => n.textContent && shown.push(n.textContent));
+      }
+    };
+    const watch = new MutationObserver(keep);
+    watch.observe(document.body, { childList: true, subtree: true, characterData: true, characterDataOldValue: true });
     render(<ComplaintPack source={sourceOf(packOf(FIRES.outside), vi.fn(() => new Promise<Hex[]>(() => {})))} packRef={refOf(FIRES.outside)} />);
 
     expect(await screen.findByRole("heading", { name: "Checking 19 detections against the chain" })).toBeInTheDocument();
     expect(detectionRows().filter((r) => within(r).queryByText("Checking"))).toHaveLength(19);
+    keep(watch.takeRecords());
+    watch.disconnect();
+    expect(shown.filter((t) => /0 of 0|Matches the chain/.test(t))).toEqual([]);
   });
 
   it("marks every detection Couldn't check when the chain doesn't answer, and checks again", async () => {
