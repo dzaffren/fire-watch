@@ -200,7 +200,7 @@ a.fw-btn { text-decoration: none; }
   .app-top { padding: 0 0 var(--fw-space-3); background: none; }
   .app-main, .app-main--pack { display: block; }
   .rec-col { padding: var(--fw-space-5) 0 0; overflow: visible; }
-  .pack-actions, .replay, .zoom { display: none; }
+  .pack-actions, .rec-act .fw-btn, .replay, .zoom { display: none; }
   .enter { animation: none; }
   .table-box { overflow: visible; }
   .fw-table tr, .fw-kv, .pack-check { break-inside: avoid; }
