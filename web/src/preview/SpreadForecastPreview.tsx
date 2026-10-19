@@ -76,6 +76,16 @@ const centre = (points: Point[]): Point => ({
   lon_e5: Math.round(points.reduce((s, p) => s + p.lon_e5, 0) / points.length),
 });
 
+/** The pass's detection nearest the edge; one inside counts as 0 m (D48, step 2). */
+function nearestToEdge(id: string, pass: HotspotRecord[]): Point {
+  const edge = (h: HotspotRecord) => {
+    const m = h.concessions.find((c) => c.id === id)!;
+    return m.inside ? 0 : m.edge_m;
+  };
+  const h = pass.reduce((best, h) => (edge(h) < edge(best) ? h : best));
+  return { lat_e5: h.lat_e5, lon_e5: h.lon_e5 };
+}
+
 interface Made {
   pass: number;
   made: string;
@@ -85,11 +95,12 @@ interface Made {
   from?: Point[];
 }
 
-/** One made-up forecast after a real pass, running from that pass's detections to the nearest edge. */
+/** One forecast after a real pass, from that pass's detection nearest the edge to the nearest point on it.
+ *  The 0332 fire's times are forecast rule version 1's (D48); the others are made up. */
 function forecast(fire: FireRef, m: Made, forKey: Hex = fire.key): Forecast {
   const hotspots = hotspotsOf(fire);
   const made = at(m.made);
-  const from = m.insideBy ? centre(m.from ?? hotspots.filter((h) => h.pass === m.pass)) : null;
+  const from = m.insideBy ? (m.from ? centre(m.from) : nearestToEdge(fire.id, hotspots.filter((h) => h.pass === m.pass))) : null;
   const record_id = keccak256(toHex(`forecast:${fire.id}:${forKey}:${made}`));
   return {
     record_id,
@@ -116,8 +127,8 @@ function forecastsFor(fire: FireRef, waiting: boolean): Forecast[] {
   if (fire.key === FIRE.outside.key) {
     const outcome = (o: Forecast["outcome"]) => (waiting ? { outcome: "waiting" as const } : { outcome: o, outcomeAt: seenInside(fire) });
     return [
-      forecast(fire, { pass: 3, made: "2026-10-14T20:00:00", insideBy: "2026-10-15T18:00:00", ...outcome("seen_inside") }),
-      forecast(fire, { pass: 2, made: "2026-10-14T09:00:00", insideBy: "2026-10-15T06:00:00", ...outcome("seen_inside") }),
+      forecast(fire, { pass: 3, made: "2026-10-14T20:00:00", insideBy: "2026-10-15T05:20:00", ...outcome("seen_inside") }),
+      forecast(fire, { pass: 2, made: "2026-10-14T09:00:00", insideBy: "2026-10-15T06:18:00", ...outcome("seen_inside") }),
       forecast(fire, { pass: 1, made: "2026-10-13T20:00:00", insideBy: null, ...outcome("seen_inside") }),
     ];
   }
@@ -153,8 +164,8 @@ function makeSource(state: State): FireRecordSource {
   const stored = (fire: FireRef) =>
     forecastsFor(fire, waiting).map((f, i) => {
       sealed.set(f.record_id, forecastFingerprint(f));
-      // Scenario 4: the stored forecast time moved from 18:00 to 18:40 after its seal.
-      if (state === "mismatch" && i === 0) return { ...f, inside_by_unix: f.inside_by_unix! + 40 * 60 };
+      // Scenario 4: the stored forecast time moved from 05:20 to 18:40 after its seal.
+      if (state === "mismatch" && i === 0) return { ...f, inside_by_unix: at("2026-10-15T18:40:00") };
       if (state === "pending" && i === 0) return { ...f, tx_hash: null, sealed_at: null };
       return f;
     });
