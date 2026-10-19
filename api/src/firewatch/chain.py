@@ -93,6 +93,10 @@ class Chain:
         block = self._block(receipt.blockNumber)
         return bytes(tx_hash), datetime.fromtimestamp(block.timestamp, timezone.utc)
 
+    def now(self) -> datetime:
+        """The latest block's time: the clock every seal is stamped with (D50)."""
+        return datetime.fromtimestamp(self._block("latest").timestamp, timezone.utc)
+
     def balance_eth(self) -> float:
         return float(Web3.from_wei(self.w3.eth.get_balance(self.account.address), "ether"))
 
@@ -128,7 +132,7 @@ class Chain:
                 low = mid + 1
         return low
 
-    def _block(self, number: int):
+    def _block(self, number: int | str):
         """Block `number`, giving a lagging RPC node a few seconds to catch up."""
         for attempt in range(BLOCK_TRIES):
             try:

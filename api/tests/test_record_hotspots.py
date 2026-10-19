@@ -8,6 +8,7 @@ import sys
 import threading
 import time
 import urllib.request
+from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
@@ -18,6 +19,7 @@ from psycopg.rows import dict_row
 from web3 import Web3
 
 from firewatch import concessions, record_hotspots
+from firewatch.chain import Chain
 from firewatch.fingerprint import fingerprint_v2, record_fields_v2
 
 ROOT = Path(__file__).parents[2]
@@ -210,6 +212,14 @@ def assert_sealed(contract, row):
     assert sealed_fp == fingerprint_v2(**record_fields_v2(row, row["concessions"]))
     receipt = contract.w3.eth.get_transaction_receipt(row["tx_hash"])
     assert receipt.status == 1 and receipt.to == contract.address
+
+
+def test_chain_now_is_the_latest_block_time(anvil):
+    later = anvil.eth.get_block("latest").timestamp + 3600
+    anvil.provider.make_request("evm_mine", [later])
+    chain = Chain(anvil.provider.endpoint_uri, "0x" + "00" * 20, ANVIL_KEY)
+
+    assert chain.now() == datetime.fromtimestamp(later, timezone.utc)
 
 
 def test_keeps_a_and_b_drops_c(funded, firms):
