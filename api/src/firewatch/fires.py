@@ -21,6 +21,8 @@ The rule, so anyone can redo it from the stored detections:
 8. When the fire was first seen less than 48 hours after recording started, recorded before
    gives the whole hours between, rounded down.
 
+`stored()` groups the detections stored by a given time, as the API and the recorder both need.
+
 Candidate pairs come from a 0.01 degree grid: a detection is checked against the 3 by 3 cells
 around its own. Across Indonesia a cell is at least 1.09 km wide, so no pair within 1 km is
 missed.
@@ -29,6 +31,7 @@ missed.
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from math import asin, cos, radians, sin, sqrt
+from time import perf_counter
 
 RULE_VERSION = 1
 EARTH_RADIUS_M = 6_371_008.8
@@ -41,6 +44,18 @@ NEVER_SPREAD_PASSES = 4
 NEVER_SPREAD_M = 750
 RECORDED_BEFORE = timedelta(hours=48)
 CELL_E5 = 1000
+
+RECORDING_STARTED = """
+SELECT min(acquired_at) AS started FROM hotspots h
+WHERE h.fingerprint_version = 2 AND (%(as_of)s::timestamptz IS NULL OR h.created_at <= %(as_of)s)
+"""
+CONCESSION_DETECTIONS = """
+SELECT h.record_id, h.lat_e5, h.lon_e5, h.acquired_at, m.inside, m.edge_m
+FROM hotspots h
+JOIN hotspot_concessions m ON m.hotspot_id = h.id AND m.concession_id = %(id)s
+WHERE h.fingerprint_version = 2
+  AND (%(as_of)s::timestamptz IS NULL OR h.created_at <= %(as_of)s)
+"""
 
 
 @dataclass(frozen=True)
@@ -169,3 +184,14 @@ def group(detections, recording_started: datetime | None) -> list[Fire]:
         _fire([ordered[i] for i in members], recording_started)
         for members in sorted(_components(ordered))
     ]
+
+
+def stored(conn, concession_id: str, as_of: datetime | None) -> tuple[list[Fire], int]:
+    """Every fire near the concession from the detections stored by as_of (all when None),
+    and the milliseconds grouping took."""
+    params = {"id": concession_id, "as_of": as_of}
+    started = conn.execute(RECORDING_STARTED, params).fetchone()["started"]
+    rows = conn.execute(CONCESSION_DETECTIONS, params).fetchall()
+    began = perf_counter()
+    grouped = group([Detection(**row) for row in rows], started)
+    return grouped, round((perf_counter() - began) * 1000)
