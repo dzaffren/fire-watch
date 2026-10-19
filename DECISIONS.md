@@ -595,3 +595,13 @@ fingerprint once (a new fingerprint version, for a seal that proves only that th
 since 2026).
 Source: docs/specs/season-backtest.md
 Status: active
+
+## D56 · 2026-10-19 · Leave out of the 2023 counts the forecasts whose 48 hours end in 2024
+
+Why: 15 of 20,277 forecasts are made after 2023-12-29 18:00 UTC, and their 48 hours plus D50's 6
+end past the 2023 file. The CSV lists them as "ends after 2023".
+Rejected: reading FIRMS's 2024 file for its first 3 days (a second pinned download of about 20 MB
+for 15 forecasts), judging them on 2023's passes only (a fire seen inside on 1 Jan would wrongly
+read "not seen inside").
+Source: docs/specs/season-backtest.md
+Status: active
