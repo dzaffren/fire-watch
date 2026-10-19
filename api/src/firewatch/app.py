@@ -6,7 +6,6 @@ import math
 import os
 from dataclasses import asdict
 from datetime import date, datetime, time, timezone
-from time import perf_counter
 from typing import Annotated
 
 import psycopg
@@ -27,10 +26,6 @@ MAX_DAYS = 31
 # About 50 m: enough to draw the boundary, a fraction of the full file's points.
 SIMPLIFY_DEGREES = 0.0005
 
-RECORDING_STARTED = """
-SELECT min(acquired_at) AS started FROM hotspots h
-WHERE h.fingerprint_version = 2 AND (%(as_of)s::timestamptz IS NULL OR h.created_at <= %(as_of)s)
-"""
 # Rounded up, so the cut keeps the newest detection whatever its fraction of a second.
 LATEST_STORED = """
 SELECT ceil(extract(epoch FROM max(created_at)))::bigint AS as_of
@@ -63,13 +58,6 @@ FROM hotspots h
 JOIN hotspot_concessions m ON m.hotspot_id = h.id AND m.concession_id = %(id)s
 WHERE h.fingerprint_version = 2 AND h.acquired_at >= %(start)s AND h.acquired_at <= %(end)s
 ORDER BY h.acquired_at DESC, h.frp_e2 DESC, h.lat_e5, h.lon_e5
-"""
-CONCESSION_DETECTIONS = """
-SELECT h.record_id, h.lat_e5, h.lon_e5, h.acquired_at, m.inside, m.edge_m
-FROM hotspots h
-JOIN hotspot_concessions m ON m.hotspot_id = h.id AND m.concession_id = %(id)s
-WHERE h.fingerprint_version = 2
-  AND (%(as_of)s::timestamptz IS NULL OR h.created_at <= %(as_of)s)
 """
 FIRE_HOTSPOTS = """
 SELECT h.*,
@@ -158,19 +146,6 @@ def _rings(boundary: dict) -> list:
     return [ring for polygon in boundary["coordinates"] for ring in polygon]
 
 
-def _group(
-    conn, concession_id: str, as_of: datetime | None
-) -> tuple[list[fires.Fire], int]:
-    """Every fire near the concession from the detections stored by as_of (all when None),
-    and the milliseconds grouping took."""
-    params = {"id": concession_id, "as_of": as_of}
-    started = conn.execute(RECORDING_STARTED, params).fetchone()["started"]
-    rows = conn.execute(CONCESSION_DETECTIONS, params).fetchall()
-    began = perf_counter()
-    grouped = fires.group([fires.Detection(**row) for row in rows], started)
-    return grouped, round((perf_counter() - began) * 1000)
-
-
 def _fire(fire: fires.Fire) -> dict:
     return {
         "key": _hex(fire.key),
@@ -210,7 +185,7 @@ def create_app(allowed_origin: str) -> FastAPI:
     def list_concessions(start: From, end: To):
         params = _range(start, end)
         with connect() as conn:
-            started = conn.execute(RECORDING_STARTED, {"as_of": None}).fetchone()["started"]
+            started = conn.execute(fires.RECORDING_STARTED, {"as_of": None}).fetchone()["started"]
             rows = conn.execute(CONCESSION_COUNTS, params).fetchall()
         log.info("served concessions from=%s to=%s count=%d", start, end, len(rows))
         return {
@@ -230,7 +205,7 @@ def create_app(allowed_origin: str) -> FastAPI:
                 raise HTTPException(status_code=404, detail="No such concession")
             # Records first: a detection stored between the two reads is then in the grouping.
             rows = conn.execute(CONCESSION_HOTSPOTS, params).fetchall()
-            grouped, group_ms = _group(conn, concession_id, None)
+            grouped, group_ms = fires.stored(conn, concession_id, None)
             newest = {
                 bytes(f["fire_key"]): f for f in conn.execute(NEWEST_FORECASTS, params)
             }
@@ -290,7 +265,7 @@ def create_app(allowed_origin: str) -> FastAPI:
                 if site is None:
                     raise HTTPException(status_code=404, detail="No such concession")
             # An unknown concession has no detections, so no fire.
-            grouped, group_ms = _group(
+            grouped, group_ms = fires.stored(
                 conn, concession_id, datetime.fromtimestamp(as_of, timezone.utc)
             )
             found = next((fire for fire in grouped if fire.key == wanted), None)
