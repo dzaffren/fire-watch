@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import type { Hex } from "viem";
-import type { ConcessionDetail, ConcessionListing, FireDetail, HotspotRecord } from "./api";
+import { zeroHash, type Hex } from "viem";
+import type { ConcessionDetail, ConcessionListing, FireDetail, Forecast, HotspotRecord } from "./api";
 import { ConcessionList, type ListLoad } from "./ConcessionList";
 import { ConcessionView, type DetailLoad } from "./ConcessionView";
 import { DateRange, daysBefore } from "./DateRange";
 import { FireMap } from "./FireMap";
+import { ForecastPanel, type ForecastCheck } from "./ForecastPanel";
 import { fireArea, fireDots, FireView, passTimes, Replay, type FireLoad } from "./FireView";
 import { count, detectedShort, location } from "./format";
 import { ChevronLeftIcon, ExternalIcon } from "./icons";
@@ -19,6 +20,9 @@ export interface FireRecordSource {
   packHref(id: string, fire: FireDetail): string;
   sealOf(record: HotspotRecord): Promise<Hex>;
   fingerprint(record: HotspotRecord): Hex;
+  /** Each forecast's sealed fingerprint and seal time, in order, in one read; zero for one not sealed yet. */
+  forecastSeals?(forecasts: Forecast[]): Promise<{ fingerprint: Hex; sealedAt: number }[]>;
+  forecastFingerprint?(forecast: Forecast): Hex;
 }
 
 export type View =
@@ -54,6 +58,9 @@ export function FireRecordPage({ source, today, initialView, initialDates }: Pro
   const [fireAttempt, setFireAttempt] = useState(0);
   // The replay's pass; null shows every pass.
   const [replayAt, setReplayAt] = useState<number | null>(null);
+  const [forecastPick, setForecastPick] = useState(0);
+  const [forecastSeals, setForecastSeals] = useState<{ fire: FireDetail; seals: { fingerprint: Hex; sealedAt: number }[] | null } | null>(null);
+  const [forecastAttempt, setForecastAttempt] = useState(0);
   const openId = view.kind === "list" ? null : view.id;
   const fireKey = view.kind === "fire" || view.kind === "hotspot" ? view.key : null;
 
@@ -97,6 +104,7 @@ export function FireRecordPage({ source, today, initialView, initialDates }: Pro
     let live = true;
     setFire({ kind: "loading" });
     setReplayAt(null);
+    setForecastPick(0);
     source.fire(openId, fireKey).then(
       (f) => live && setFire({ kind: "ready", fire: f }),
       () => live && setFire({ kind: "error" }),
@@ -117,6 +125,40 @@ export function FireRecordPage({ source, today, initialView, initialDates }: Pro
     [openFire, view.kind, at],
   );
   const fp = useMemo(() => record && source.fingerprint(record), [source, record]);
+  const forecasts = useMemo(() => openFire?.forecasts ?? [], [openFire]);
+  const forecastFps = useMemo(() => (source.forecastFingerprint ? forecasts.map(source.forecastFingerprint) : []), [source, forecasts]);
+
+  // Every forecast of the fire in one chain read, as a pack reads its detections (D38).
+  useEffect(() => {
+    if (!openFire || !forecasts.length || !source.forecastSeals) return;
+    let live = true;
+    setForecastSeals(null);
+    source.forecastSeals(forecasts).then(
+      (seals) => live && setForecastSeals({ fire: openFire, seals }),
+      () => live && setForecastSeals({ fire: openFire, seals: null }),
+    );
+    return () => {
+      live = false;
+    };
+  }, [source, openFire, forecasts, forecastAttempt]);
+
+  const forecastChecks = useMemo((): ForecastCheck[] => {
+    const read = forecastSeals?.fire === openFire ? forecastSeals : undefined;
+    return forecasts.map((f, i) => {
+      if (!read) return { check: { state: f.tx_hash ? "checking" : "pending" }, sealedAt: null };
+      if (!read.seals) return { check: { state: "error" }, sealedAt: null };
+      const { fingerprint, sealedAt } = read.seals[i];
+      if (fingerprint === zeroHash) return { check: { state: "pending" }, sealedAt: null };
+      if (fingerprint !== forecastFps[i]) return { check: { state: "mismatch", sealed: fingerprint }, sealedAt };
+      return { check: { state: "matches" }, sealedAt };
+    });
+  }, [forecasts, forecastSeals, openFire, forecastFps]);
+
+  // The pass a forecast followed, as the replay counts them.
+  const passOf = (f: Forecast) => Math.max(1, times.filter((t) => t <= f.after_pass_unix).length);
+  const picked = forecasts[forecastPick];
+  const forecastLine =
+    view.kind === "fire" && picked?.from && picked.crossing && at >= passOf(picked) ? { from: picked.from, to: picked.crossing } : null;
 
   useEffect(() => {
     if (!record?.tx_hash || !fp) return;
@@ -139,6 +181,7 @@ export function FireRecordPage({ source, today, initialView, initialDates }: Pro
     if (view.kind === "fire") mapLabel += `, pass ${at} of ${times.length} shown`;
   }
   if (record) mapLabel += `, the detection at ${location(record.lat_e5, record.lon_e5)} marked`;
+  if (forecastLine) mapLabel += ", with the picked forecast's line to where it crosses the edge";
 
   const allFireDots = useMemo(() => openFire?.hotspots.map((h) => ({ ...h, first: h.pass === 1 })), [openFire]);
 
@@ -208,6 +251,21 @@ export function FireRecordPage({ source, today, initialView, initialDates }: Pro
                 id={view.id}
                 load={fire.kind === "ready" && !openFire ? { kind: "loading" } : fire}
                 packHref={openFire ? source.packHref(view.id, openFire) : null}
+                forecast={
+                  openFire && (
+                    <ForecastPanel
+                      fire={openFire}
+                      checks={forecastChecks}
+                      fingerprints={forecastFps}
+                      picked={forecastPick}
+                      onPick={(i) => {
+                        setForecastPick(i);
+                        setReplayAt(passOf(forecasts[i]));
+                      }}
+                      onCheckAgain={() => setForecastAttempt((n) => n + 1)}
+                    />
+                  )
+                }
                 picked={view.picked ?? null}
                 onBack={() => setView({ kind: "concession", id: view.id, picked: view.key })}
                 onPick={(index) => setView({ kind: "hotspot", id: view.id, key: view.key, index })}
@@ -255,6 +313,7 @@ export function FireRecordPage({ source, today, initialView, initialDates }: Pro
           selected={record && view.kind === "hotspot" ? view.index : null}
           area={fireKey ? area : undefined}
           fire={fireKey !== null}
+          forecast={forecastLine}
           onSelect={onMapSelect}
         >
           {view.kind === "fire" && times.length > 1 && <Replay times={times} at={at} onChange={setReplayAt} />}

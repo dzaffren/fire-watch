@@ -38,6 +38,18 @@ const STATUS: Record<Exclude<Check["state"], "error">, { chip: string; icon: Rea
   },
 };
 
+/** A record's check in a list: the status label alone, or "Couldn't check". */
+export function Chip({ check }: { check: Check }) {
+  if (check.state === "error") return <span className="none">Couldn't check</span>;
+  const { chip, icon, label } = STATUS[check.state];
+  return (
+    <span className={`fw-chip ${chip}`}>
+      {icon}
+      {label}
+    </span>
+  );
+}
+
 const shortFingerprint = (fp: Hex) => shortHash(fp.slice(2), 10, 6);
 
 interface Props {

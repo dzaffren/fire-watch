@@ -145,6 +145,25 @@ button.fw-link { margin: 0; padding: 0; border: 0; background: none; font: inher
 }
 .replay-track:focus-visible { outline: var(--fw-focus-ring) solid var(--fw-accent); outline-offset: 4px; border-radius: 2px; }
 
+/* Spread forecast: the picked forecast in full, then every forecast for the fire (docs/specs/spread-forecast.md) */
+.forecast h2 { font-size: var(--fw-text-lg); font-weight: var(--fw-weight-semibold); }
+.forecast-outcome { margin: 0; font-weight: var(--fw-weight-medium); }
+.forecast-none { margin: 0; }
+.forecast-chip { margin-top: var(--fw-space-1); }
+.forecast details { border-top: var(--fw-border) solid var(--fw-line); padding-top: var(--fw-space-3); font-size: var(--fw-text-sm); }
+.forecast details + details { border-top: 0; padding-top: 0; }
+.forecast summary { cursor: pointer; color: var(--fw-accent); font-weight: var(--fw-weight-medium); min-height: var(--fw-space-5); }
+.forecast summary:hover { color: var(--fw-accent-hover); }
+.forecast details p { margin: var(--fw-space-2) 0 0; }
+.forecast details .fw-link { display: inline; }
+.forecast details .fw-link svg { vertical-align: -2px; margin-left: var(--fw-space-1); }
+.forecast pre {
+  margin: var(--fw-space-2) 0 0; padding: var(--fw-space-3); background: var(--fw-bg);
+  border-radius: var(--fw-radius-control); font: var(--fw-text-xs) / 1.55 var(--fw-font-mono); white-space: pre-wrap;
+}
+.forecast details[open] > :not(summary) { animation: fw-enter var(--fw-dur) var(--fw-ease) both; }
+.legend-forecast { border-top: 1.5px dashed var(--fw-accent); }
+
 /* Complaint pack: one fire as it stood when the pack was made, for a grievance (docs/specs/complaint-pack.md) */
 .app-main--pack { grid-template-columns: minmax(440px, 560px) minmax(0, 1fr); }
 .pack { gap: var(--fw-space-6); }
@@ -176,7 +195,7 @@ a.fw-btn { text-decoration: none; }
   .zoom .fw-btn { width: var(--fw-touch-target); }
   .row-open td { height: var(--fw-touch-target); }
   .back { min-height: var(--fw-touch-target); }
-  .rec summary, .fire-reading summary { padding-block: calc((var(--fw-touch-target) - var(--fw-space-5)) / 2); }
+  .rec summary, .fire-reading summary, .forecast summary { padding-block: calc((var(--fw-touch-target) - var(--fw-space-5)) / 2); }
   .replay-play { width: var(--fw-touch-target); }
   .replay-track { height: var(--fw-touch-target); }
   /* Grow the inline transaction link's tap area to the touch target without moving the row */

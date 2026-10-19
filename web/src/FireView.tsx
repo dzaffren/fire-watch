@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useState, type CSSProperties } from "react";
+import { Fragment, useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import type { FireDetail, HotspotRecord } from "./api";
 import type { Dot } from "./FireMap";
 import type { Area } from "./maps";
@@ -56,13 +56,15 @@ interface Props {
   id: string;
   load: FireLoad;
   packHref: string | null;
+  /** The fire's forecasts, between where it was first seen and its detections. */
+  forecast?: ReactNode;
   picked: number | null;
   onBack: () => void;
   onPick: (index: number) => void;
   onRetry: () => void;
 }
 
-export function FireView({ id, load, packHref, picked, onBack, onPick, onRetry }: Props) {
+export function FireView({ id, load, packHref, forecast, picked, onBack, onPick, onRetry }: Props) {
   const [shown, setShown] = useState(() => (picked === null ? PAGE : Math.ceil((picked + 1) / PAGE) * PAGE));
 
   return (
@@ -96,6 +98,8 @@ export function FireView({ id, load, packHref, picked, onBack, onPick, onRetry }
       )}
 
       {load.kind === "ready" && <Reading id={id} fire={load.fire} packHref={packHref} />}
+
+      {load.kind === "ready" && forecast}
 
       {load.kind === "ready" && (
         <>
