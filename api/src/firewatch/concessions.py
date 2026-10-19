@@ -34,13 +34,13 @@ ON CONFLICT (id) DO UPDATE SET
 """
 
 
-def download(client: httpx.Client | None = None) -> bytes:
+def download(url: str = URL, sha256: str = SHA256, client: httpx.Client | None = None) -> bytes:
     client = client or httpx.Client(timeout=300, follow_redirects=True)
-    response = client.get(URL)
+    response = client.get(url)
     response.raise_for_status()
     digest = hashlib.sha256(response.content).hexdigest()
-    if digest != SHA256:
-        raise ValueError(f"{URL} has changed: sha256 {digest}, expected {SHA256}")
+    if digest != sha256:
+        raise ValueError(f"{url} has changed: sha256 {digest}, expected {sha256}")
     return response.content
 
 

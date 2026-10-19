@@ -68,5 +68,5 @@ def test_rejects_a_changed_file():
         return httpx.Response(200, content=TRASE_CUT.read_bytes())
 
     with pytest.raises(ValueError, match="sha256"):
-        download(httpx.Client(transport=httpx.MockTransport(handler)))
+        download(client=httpx.Client(transport=httpx.MockTransport(handler)))
     assert seen == [URL]
