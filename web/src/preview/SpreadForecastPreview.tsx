@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { keccak256, toHex, zeroHash, type Hex } from "viem";
 import type { FireDetail, Forecast, HotspotRecord, Point, Ring } from "../api";
+import { forecastFingerprint } from "../fingerprint";
 import { FireRecordPage, type FireRecordSource, type View } from "../FireRecordPage";
 import { passTimes } from "../FireView";
 import { enrich, fingerprintOf, FIRES, fireHotspots, fixture, iso, never, param, syncPreview, THEMES, wait, WAIT_MS, type Theme } from "./fixture";
@@ -104,6 +105,7 @@ function forecast(fire: FireRef, m: Made, forKey: Hex = fire.key): Forecast {
   const record_id = keccak256(toHex(`forecast:${fire.id}:${forKey}:${made}`));
   return {
     record_id,
+    concession_id: fire.id,
     fire_key: forKey,
     after_pass_unix: passTimes(hotspots)[m.pass - 1],
     made_unix: made,
@@ -118,9 +120,6 @@ function forecast(fire: FireRef, m: Made, forKey: Hex = fire.key): Forecast {
     outcome_unix: m.outcomeAt ?? null,
   };
 }
-
-const forecastFingerprint = (f: Forecast): Hex =>
-  keccak256(toHex(JSON.stringify([f.fire_key, f.after_pass_unix, f.made_unix, f.until_unix, f.inside_by_unix, f.from, f.crossing, f.rule_version])));
 
 function forecastsFor(fire: FireRef, waiting: boolean): Forecast[] {
   const seenInside = (f: FireRef) => passTimes(hotspotsOf(f))[3];
