@@ -200,10 +200,10 @@ export function ForecastPanel({ fire, checks, fingerprints, picked, now, onPick,
                     <td>
                       <button className="row-btn" type="button" onClick={() => onPick(i)}>
                         {detectedShort(row.made_unix)}
+                        <span className="sub forecast-chip">
+                          <Chip check={checks[i]?.check ?? { state: "checking" }} />
+                        </span>
                       </button>
-                      <span className="sub forecast-chip">
-                        <Chip check={checks[i]?.check ?? { state: "checking" }} />
-                      </span>
                     </td>
                     <td>
                       {forecastShort(row)}

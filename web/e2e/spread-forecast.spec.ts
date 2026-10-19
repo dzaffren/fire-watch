@@ -47,7 +47,7 @@ test("forecasts the 0332 fire inside after its third pass, and the next day's pa
   );
 
   await expect(page.getByText("3 forecasts for this fire, newest first.")).toBeVisible();
-  await page.getByRole("button", { name: "13 Oct 20:00" }).click();
+  await page.getByRole("button", { name: /^13 Oct 20:00/ }).click();
 
   const first = page.getByRole("region", { name: "Not forecast to be seen inside by 15 Oct 20:00 UTC" });
   await expect(first.getByText("Matches the chain")).toBeVisible();
@@ -56,4 +56,39 @@ test("forecasts the 0332 fire inside after its third pass, and the next day's pa
     "aria-valuetext",
     "Pass 1 of 4, 2026-10-13 17:37 UTC",
   );
+});
+
+test("every forecast control is at least 44 px to tap on a touch screen", async ({ browser }) => {
+  const phone = await browser.newContext({ viewport: { width: 375, height: 800 }, hasTouch: true, isMobile: true });
+  const page = await phone.newPage();
+  await page.route("https://maps.googleapis.com/**", (route) =>
+    route.fulfill({ path: FAKE_GOOGLE_MAPS, contentType: "text/javascript" }),
+  );
+
+  await page.goto("/");
+  await page.getByLabel("From").fill("2026-10-12");
+  await page.getByLabel("To").fill("2026-10-15");
+  await page.getByRole("button", { name: /^ID-WOOD-CONCESSION-0332/ }).click();
+  await page.getByRole("row").filter({ hasText: "13 Oct 17:37" }).getByRole("button").click();
+  const panel = page.getByRole("region", { name: "Forecast to be seen inside by about 15 Oct 05:20 UTC" });
+  await expect(panel.getByText("Matches the chain")).toBeVisible();
+  await panel.getByText("How this is worked out").click();
+  await panel.getByText("Show the raw forecast").click();
+  await expect(panel.getByRole("link", { name: /^Forecast rule, version 1, in full/ })).toBeVisible();
+
+  const tooSmall = await page.evaluate(() =>
+    [...document.querySelectorAll<HTMLElement>("a[href], button, summary")]
+      .filter((el) => el.offsetParent)
+      .filter((el) => {
+        el.scrollIntoView({ block: "center" });
+        const r = el.getBoundingClientRect();
+        const x = r.left + r.width / 2;
+        const y = r.top + r.height / 2;
+        const hits = (dy: number) => document.elementFromPoint(x, y + dy)?.closest("a[href], button, summary") === el;
+        return r.width < 44 || !hits(-21) || !hits(21);
+      })
+      .map((el) => el.getAttribute("aria-label") ?? el.textContent?.trim()),
+  );
+  expect(tooSmall).toEqual([]);
+  await phone.close();
 });

@@ -465,14 +465,14 @@ describe("FireRecordPage", () => {
     await openFire(forecastSource());
     const replay = () => map().children as ReactElement<{ at: number }>;
 
-    fireEvent.click(screen.getByRole("button", { name: "14 Oct 09:00" }));
+    fireEvent.click(screen.getByRole("button", { name: /^14 Oct 09:00/ }));
 
     expect(screen.getByRole("heading", { name: "Forecast to be seen inside by about 15 Oct 06:18 UTC" })).toBeInTheDocument();
     expect(replay().props.at).toBe(2);
     expect(map().forecast).toEqual({ from: second.from, to: second.crossing });
 
     // The forecast after the first pass said not, so it has no line.
-    fireEvent.click(screen.getByRole("button", { name: "13 Oct 20:00" }));
+    fireEvent.click(screen.getByRole("button", { name: /^13 Oct 20:00/ }));
 
     expect(replay().props.at).toBe(1);
     expect(map().forecast).toBeNull();
