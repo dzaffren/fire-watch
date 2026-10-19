@@ -1,6 +1,6 @@
 # Spread forecast
 
-**Version:** v1 · **Status:** Draft · **Type:** Feature · **Project type:** Web UI
+**Version:** v1 · **Status:** Refined · **Type:** Feature · **Project type:** Web UI
 
 **Shape doc:** docs/specs/fire-watch/shape.md
 **Depends on:** fire-origin
@@ -89,7 +89,7 @@ stateDiagram-v2
 
 | Forecast said | In its 48 hours | Reads |
 | ------------- | --------------- | ----- |
-| Seen inside by about a time | A pass sees the fire inside | "Seen inside 15 Oct 18:43 UTC, 43 minutes after the forecast time" |
+| Seen inside by about a time | A pass sees the fire inside | "Seen inside 15 Oct 18:43 UTC, 13 hours 23 minutes after the forecast time" |
 | Seen inside by about a time | No pass sees it inside | "Not seen inside within 48 hours" |
 | Not within 48 hours | A pass sees the fire inside | "Seen inside 16 Oct 18:21 UTC. Not forecast." |
 | Not within 48 hours | No pass sees it inside | "Not seen inside, as forecast" |
@@ -108,18 +108,20 @@ Scenario: A fire outside gets a sealed forecast after a pass
   When that run finishes
   Then the fire has a forecast for ID-WOOD-CONCESSION-0332, made 2026-10-14 20:00 UTC,
     sealed on Base Sepolia in the same run
-  And the forecast gives the time the fire is forecast to be seen inside and where it crosses
-    the edge, or reads "Not forecast to be seen inside by 16 Oct 20:00 UTC"
-  And the fire view lists it first, above the forecasts made after the 2026-10-13 17:37 and
-    2026-10-14 06:18 UTC passes
+  And it reads "Forecast to be seen inside by about 15 Oct 05:20 UTC", crossing the edge at
+    2.84194°S, 112.71793°E
+  And the fire view lists it first, above the forecasts made after the 2026-10-13 17:37 UTC pass,
+    "Not forecast to be seen inside by 15 Oct 20:00 UTC", and the 2026-10-14 06:18 UTC pass,
+    "Forecast to be seen inside by about 15 Oct 06:18 UTC"
   And each forecast reads "Matches the chain"
 
-Scenario: A forecast that came true was sealed before the fire was seen inside
+Scenario: A fire forecast inside is seen inside after the forecast's seal
   Given the 0332 fire's forecast from scenario 1 was sealed 2026-10-14 20:02 UTC
-  And it reads "Forecast to be seen inside by about 15 Oct 18:00 UTC"
+  And it reads "Forecast to be seen inside by about 15 Oct 05:20 UTC"
   When the recorder stores the 2026-10-15 18:43 UTC pass, with detections inside 405 and 804 m
     from the edge
-  Then the forecast reads "Seen inside 15 Oct 18:43 UTC, 43 minutes after the forecast time"
+  Then the forecast reads "Seen inside 15 Oct 18:43 UTC, 13 hours 23 minutes after the forecast
+    time"
   And "Sealed 22 hours 41 minutes before the pass that saw it inside"
   And the recorder makes no more forecasts for this fire and ID-WOOD-CONCESSION-0332
 
@@ -138,7 +140,7 @@ Scenario: Forecasts that turned out wrong stay listed
 
 Scenario: A forecast changed after its seal
   Given the 0332 fire's forecast from scenario 2, sealed
-  And its forecast time is changed in the database from 2026-10-15 18:00 to 18:40 UTC
+  And its forecast time is changed in the database from 2026-10-15 05:20 to 18:40 UTC
   When anyone opens the 0332 fire
   Then that forecast reads "Does not match the chain"
   And the fire's other forecasts still read "Matches the chain"
@@ -153,8 +155,8 @@ Scenario: A fire that joins another fire before it is seen inside
   And no later pass of the joined fire counts as this forecast's arrival
 ```
 
-Scenario 1's forecast comes from the rule chosen at pause 3, and its exact reading is written in
-then. Scenarios 2 to 5 give the forecast in their Given, so they hold whatever the rule says.
+Scenarios 1 and 2 read forecast rule version 1 (D48) on the real detections of the 0332 fire.
+Scenarios 3 and 5 give the forecast in their Given, so they hold whatever the rule says.
 
 ## Scope
 
@@ -216,13 +218,13 @@ the forecast and its outcome, and pick an earlier forecast to see the fire as it
 | Step | Left column | Map |
 | ---- | ----------- | --- |
 | Concession | As fire-origin, plus "Forecast inside: 1 fire within 48 hours" in the details when any fire has one. Fires forecast to be seen inside come first, then the largest (D45); the note above the table says so. In the fires table, "Forecast inside by about 16 Oct 18:00" under Where first seen | As fire-origin |
-| Fire | As fire-origin, then the forecast panel: the forecast as its title ("Forecast to be seen inside by about 15 Oct 18:00 UTC"), its chain status, the outcome in medium weight, one line on its seal, then Made (with the pass it followed), Checked against, Crosses the edge, Fingerprint, Transaction, and two disclosures: "How this is worked out" and "Show the raw forecast". With 2 or more forecasts: "3 forecasts for this fire, newest first. Pick one to see the fire as it stood then." and a table: Made (UTC) with its chain status under it, and Forecast with its outcome under it. Then the detections, unchanged | As fire-origin, plus the picked forecast's line: the detections guideline's spread forecast mark, a dashed accent line from where it runs to where it crosses the edge. It shows while the replay is at or after the pass the forecast followed. A crossing mark sits on the edge where the line ends, added to the detections guideline through `/design-system` before `/build` (D47). The legend adds "Spread forecast, to where it crosses the edge" while the line shows |
+| Fire | As fire-origin, then the forecast panel: the forecast as its title ("Forecast to be seen inside by about 15 Oct 05:20 UTC"), its chain status, the outcome in medium weight, one line on its seal, then Made (with the pass it followed), Checked against, Crosses the edge, Fingerprint, Transaction, and two disclosures: "How this is worked out" and "Show the raw forecast". With 2 or more forecasts: "3 forecasts for this fire, newest first. Pick one to see the fire as it stood then." and a table: Made (UTC) with its chain status under it, and Forecast with its outcome under it. Then the detections, unchanged | As fire-origin, plus the picked forecast's line: the detections guideline's spread forecast mark, a dashed accent line from where it runs to where it crosses the edge. It shows while the replay is at or after the pass the forecast followed. A crossing mark sits on the edge where the line ends, added to the detections guideline through `/design-system` before `/build` (D47). The legend adds "Spread forecast, to where it crosses the edge" while the line shows |
 | Record | Unchanged | Unchanged |
 
 | State | What shows |
 | ----- | ---------- |
 | Waiting | "Waiting until 16 Oct 20:00 UTC" |
-| Came true | "Seen inside 15 Oct 18:43 UTC, 43 minutes after the forecast time", then "Sealed 22 hours 41 minutes before the pass that saw it inside, by Base Sepolia's clock." |
+| Seen inside, as forecast | "Seen inside 15 Oct 18:43 UTC, 13 hours 23 minutes after the forecast time", then "Sealed 22 hours 41 minutes before the pass that saw it inside, by Base Sepolia's clock." |
 | Came, not forecast | "Seen inside 15 Oct 18:43 UTC. Not forecast." |
 | Said inside, stayed out | "Not seen inside within 48 hours" |
 | Said no, stayed out | "Not seen inside, as forecast" |
@@ -277,6 +279,270 @@ because no real fire has done it. Drift check passed over the 12 files written, 
 used exist in `docs/design/design-system/tokens/`. `tsc -b` is clean and the 121 web unit tests
 pass.
 
+## Technical plan
+
+### Approach
+
+The hourly recorder job makes, seals and checks the forecasts. After it stores a run's detections,
+it reads Base Sepolia's latest block time as "now". It groups each concession that the run touched,
+or that holds a waiting forecast, with fire rule version 1 (D25). Then it does three things:
+
+- It stores the outcome of each waiting forecast that the fire as it now stands decides (D44, D50).
+- It makes one forecast for each fire that got a new pass and is not yet seen inside, with forecast
+  rule version 1 (D48).
+- It seals the new forecasts as fingerprint version 3, before the run's detection seals (D49).
+
+The API adds the forecasts to the fire route and ranks the concession route's fires (D45). The page
+is the pause 2 code, already in `web/src`, plus the real chain read and the crossing mark.
+
+Relies on: D7, D9, D15, D17, D19, D20, D21, D24–D27, D31, D38, D39–D47, D48–D50.
+
+**Forecast rule, version 1** (D48), written out in `api/src/firewatch/forecast.py` so anyone can
+redo it:
+
+1. Take the fire, by fire rule version 1, from every detection near the concession stored so far.
+2. The newest pass's distance is its detection nearest the edge: the edge distance when it is
+   outside, 0 when it is inside. A fire with a detection inside and more than 375 m from the edge
+   is seen inside and gets no forecast.
+3. The advance rate: for each newest-pass detection, take the distance to the nearest detection on
+   an earlier pass of the fire. Divide the largest of these by the hours from the first detection
+   of the pass before to the first detection of the newest pass. A one-pass fire has no rate.
+4. With a rate over 0, it needs (distance + 375 m) / rate hours to be seen inside. When that is 48
+   or fewer, it is forecast to be seen inside by the newest pass's time plus those hours. The hours
+   are rounded to the nearest 12, with 12 at the least.
+5. Otherwise, a fire within 375 m of the edge is forecast to be seen inside 12 hours after its
+   newest pass.
+6. Otherwise, it is not forecast to be seen inside within 48 hours of the forecast.
+7. A forecast inside runs from the detection in step 2 to the nearest point on the concession's
+   edge. That is where it is forecast to cross.
+
+On 2026-10-12 to 16 there were 2,007 forecast moments, and 41 fires were seen inside within 48
+hours. The rule forecast 482 of the moments inside. All 41 arrivals were among them, and 441 of the
+482 did not come in. The 17 arrivals that the advance rate timed were a median 1.0 hour off. The
+other 24 were timed only to the next pass, and the median across all 41 was 11.7 hours off.
+
+```mermaid
+flowchart TB
+    subgraph job["record-hotspots job, hourly"]
+        S[store new detections] -- "touched concessions" --> G["fires.group, rule version 1"]
+        G -- "fire as it stands" --> O["forecast.outcome: waiting forecasts"]
+        G -- "fires with a new pass" --> M["forecast.make: rule version 1"]
+        M -- "new forecasts" --> SF[seal forecasts first]
+        SF -- "then" --> SD[seal detections]
+    end
+    DB[("Neon: hotspots, forecasts")]
+    C["FireRecords, Base Sepolia"]
+    A["firewatch-api: fire and concession routes"]
+    W["fire view: ForecastPanel"]
+    O -- "UPDATE outcome" --> DB
+    M -- "INSERT forecasts" --> DB
+    SF -- "seal(recordId, fingerprint v3)" --> C
+    A -- "SELECT, read-only role" --> DB
+    W -- "GET fire with forecasts" --> A
+    W -- "one Multicall3 read of every forecast's seal" --> C
+```
+
+Only the job writes and seals; the API reads; the browser checks each forecast against the chain
+itself.
+
+```mermaid
+sequenceDiagram
+    participant J as record-hotspots job
+    participant D as Neon
+    participant C as Base Sepolia
+    participant B as browser
+    participant A as API
+    J->>D: store the 0332 fire's 14 Oct 17:20 pass (4 detections)
+    J->>C: latest block time: 2026-10-14 20:00
+    J->>D: group 0332; the fire is 32 m outside, advancing 69 m/h
+    J->>D: INSERT forecast: inside by about 15 Oct 05:20, crossing 2.84194°S 112.71793°E
+    J->>C: seal(recordId, fingerprint v3), sealed 20:02
+    J->>C: seal the pass's detections
+    B->>A: GET /api/concessions/ID-WOOD-CONCESSION-0332/fires/<key>
+    A-->>B: the fire, and its 3 forecasts newest first
+    B->>C: Multicall3: sealOf for each forecast
+    C-->>B: fingerprints and seal times, "Matches the chain"
+    J->>D: next day: store the 15 Oct 18:43 pass, 2 detections more than 375 m inside
+    J->>D: UPDATE outcome: seen inside 15 Oct 18:43, after the 20:02 seal
+```
+
+The run makes and seals the forecast. The page reads it and checks its seal. A later run stores the
+pass that decides it.
+
+### Changes
+
+| File | What | Why |
+| ---- | ---- | --- |
+| `api/migrations/003_forecasts.up.sql` (new), `003_forecasts.down.sql` (new) | Table `forecasts`, as in Data; `GRANT SELECT` to `firewatch_reader` when it exists, as `002_fire_record.up.sql` does. Down drops the table | Scenarios 1–5 |
+| `api/src/firewatch/forecast.py` (new) | The rule above, `RULE_VERSION = 1`. `make(fire, concession_id, now, crossing)` returns a forecast or none; `crossing` is a callable that asks PostGIS for `ST_ClosestPoint(ST_Boundary(boundary), point)` on the full boundary. `outcome(forecast, fire, now)` works as follows. When the fire holding the forecast's key detection has another key, it returns `joined`. When the fire has a detection inside, more than 375 m from the edge, taken after the forecast's pass and at or before the seal, it returns `seen_before_seal`. When that detection comes after the seal and by the forecast's end, it returns `seen_inside`. When now is 6 hours past the end, it returns `not_seen_inside`. Otherwise it returns none. Pure functions, no I/O (D18: no shapely) | Scenarios 1–3, 5; D44 |
+| `api/src/firewatch/fingerprint.py:43` | `TYPES_V3` and `forecast_fingerprint()`: version 3, concession ID, fire key, pass, made, until and forecast times (0 for "not"), the two points as whole numbers times 100,000 (0 for "not"), rule version | Scenario 4; D49 |
+| `api/src/firewatch/chain.py` | `now()`: the latest block's time | D50 |
+| `api/src/firewatch/record_hotspots.py` | `INSERT` (`:63`) also returns `record_id`; `store()` (`:109`) returns the new rows. `main()` (`:154`) builds `Chain` straight after storing and takes `now` from it. New `_forecast()` groups each concession touched or with a waiting forecast, stores outcomes, inserts forecasts `ON CONFLICT DO NOTHING`, and commits. Its errors go into the run's `error` but don't stop sealing. New `_seal_forecasts()` runs before `_seal()` (`:135`) within the same 40 minutes. `COUNT_UNSEALED` (`:78`) adds forecasts. The log line adds `forecasts=`, `forecasts_sealed=`, `outcomes=` and `forecast_ms=` | Scenarios 1–3, 5; D49, D50 |
+| `api/src/firewatch/app.py` | `fire()` (`:233`) adds `forecasts`: those for the concession whose `fire_key` is one of the fire's record IDs, newest first, each with `concession_id`. It also adds `forecasts_from_unix`, the earliest `made_at`. A pack (`as_of`) gets none (D43). `concession()` (`:199`) gives each fire `forecast_inside_by_unix`: its newest forecast, when it has the fire's own key, still waits and says inside. It ranks those fires first, then as today (`:210`, D45). `RECORDER` (`:81`) counts unsealed forecasts too. The logs add `forecasts=` | Scenarios 1–5; D45 |
+| `api/tests/test_forecast.py` (new) | The 0332 fire after each of its 3 passes reads as scenario 1 (not; 15 Oct 06:18; 15 Oct 05:20); the rate's 48 h edge and the 12 h rounding; a one-pass fire within 375 m reads next pass; one 400 m out reads not; outcomes: seen inside (scenario 2), not seen, as forecast and not, joined (scenario 5's real detections), seen before the seal, and a join and an arrival in one run reads joined | Scenarios 1–3, 5 |
+| `api/tests/test_record_hotspots.py` | A run makes and seals forecasts before detections; a second run stores the outcome; a rerun adds no forecast; a forecast error still seals detections and fills `error`; the 40-minute cap covers forecast seals | Scenarios 1, 2 |
+| `api/tests/test_app.py` | Forecasts on the fire route, a joined fire's included; none on a pack; forecast-inside fires ranked first with `forecast_inside_by_unix`; health counts unsealed forecasts; reuses `record()` (`:34`) | Scenarios 1, 3, 5 |
+| `api/tests/test_migrations.py` | `003_forecasts` in up, down, up; the reader can read `forecasts` | Data |
+| `api/tests/test_fingerprint.py`, `fixtures/fingerprint-vectors.json` | Version 3 vectors, shared with the page | Scenario 4 |
+| `README.md` | The operator's steps: `migrate up` before merge, then the job image by digest after it | Rollout |
+| `web/src/fingerprint.ts`, `fingerprint.test.ts` | `forecastFingerprint()`, version 3, against the shared vectors | Scenario 4 |
+| `web/src/chain.ts:30` | `sealsWithTime()`: each seal's fingerprint and seal time, one Multicall3 call per 500; `sealsOf` maps it to fingerprints | Scenario 2; D7, D38 |
+| `web/src/api.ts:164` | `Forecast` gains `concession_id`; `apiSource` adds `forecastSeals` and `forecastFingerprint` | Scenarios 1–4 |
+| `web/src/` (pause 2) | `ForecastPanel`, `FireView`, `FireMap`, `ConcessionView`, `FireRecordPage`, `format.ts`, `app.css`: already written. Two additions: after its end, a waiting forecast reads "Waiting for the last passes before 16 Oct 20:00 UTC"; and `FireMap` draws the crossing mark as `/design-system` defines it (D47) | Scenarios 1–5 |
+| `web/src/*.test.ts(x)` | New `ForecastPanel.test.tsx` covers the 13 states of pause 2. `ConcessionView.test.tsx` adds the count, the marker and the order note. `FireMap.test.tsx` checks that the line and mark draw only at or after their pass. `FireRecordPage.test.tsx` checks that a pick moves the replay and the forecasts are read in one call. `format.test.ts` adds `duration` | Pause 2 states |
+| `web/e2e/global-setup.ts:94`, `web/e2e/spread-forecast.spec.ts` (new) | anvil starts at 2026-10-13 19:00 UTC (`--timestamp`, checked on 2026-10-19). Four recorder runs follow at chain times 13 Oct 20:00, 14 Oct 09:00, 14 Oct 20:00 and 15 Oct 21:00. For each run, `evm_setNextBlockTimestamp` sets the time and the FIRMS fixture server answers the rows up to that run's pass. The end state holds the same 44 records as today | E2E |
+
+Reusing: `fires.group()`, `distance_m()`, the `CONCESSION_DETECTIONS` query, `connect()`, `Chain`,
+the recorder's lock, budget and receipt waiting, `_record()` and `_hex()`, `sealsOf`'s Multicall3
+call, the `record()` and `client` pytest fixtures, and the e2e harness with its anvil, FIRMS server
+and fake map.
+
+### Data
+
+```mermaid
+erDiagram
+    CONCESSIONS ||--o{ FORECASTS : "concession_id"
+    HOTSPOTS ||..o{ FORECASTS : "fire_key is a record_id"
+    FORECASTS {
+        bytea record_id "unique, keys the seal"
+        text concession_id
+        bytea fire_key
+        timestamptz after_pass_at "unique with concession_id, fire_key"
+        timestamptz made_at
+        timestamptz until_at
+        timestamptz inside_by_at "null: not forecast"
+        integer from_lat_e5
+        integer from_lon_e5
+        integer crossing_lat_e5
+        integer crossing_lon_e5
+        smallint rule_version
+        bytea tx_hash
+        timestamptz sealed_at
+        text outcome "waiting until decided"
+        timestamptz outcome_at
+    }
+```
+
+**Migration:** expand only: one new table, nothing existing changes, so there is no backfill or
+switch. No contract step follows.
+**Reverse:** `003_forecasts.down.sql` drops `forecasts`; `test_up_down_up` runs it. The old API and
+job never read the table, so either can run with it in place.
+
+### Earn-it
+
+| Added | Triggered by |
+| ----- | ------------ |
+| `forecasts` table | Scenarios 1–5: a forecast must exist before its outcome, and its seal names it |
+| `forecast.py` | D48: the rule in one module anyone can read and rerun |
+| Fingerprint version 3 | Scenario 4: a changed forecast must read "Does not match the chain" |
+| Stored outcome | D50: a join and an arrival told apart by which came first |
+| `Chain.now()` | D50: the forecast's clock is the seals' clock; the e2e stages past runs with it |
+| Unsealed forecasts in health | Risk: a stalled forecast seal loses its evidence; D20's check then fails |
+| `sealsWithTime()` | Scenario 2: "sealed before the pass" uses the chain's time (D7) |
+| Four e2e runs with anvil's clock | E2E: scenarios 1 and 2 need a forecast made before the pass that decides it |
+
+Cut: wind data (D48), a forecast job of its own (D49), a cache, a new contract (D19), shapely
+(D18), a feature flag.
+
+### Non-functionals
+
+|                      |                                                                               |
+| -------------------- | ----------------------------------------------------------------------------- |
+| **Load**             | About 420 forecasts a day, from 2,080 forecast moments on 2026-10-12 to 16. Each is a seal at 5.8 s (recorder runs since 2026-10-16), about 40 minutes of sealing a day across 24 runs. The wallet holds 0.0353 ETH after 11,403 transactions, enough for about 86,000 more seals. The API adds one indexed query per fire and concession view |
+| **Breaks first**     | Seal time. At 10×, 4,200 forecasts a day are about 6.8 hours of sealing, and detection seals fall behind on busy days. Then: a batch seal contract, which D19 rejected for now |
+| **Security surface** | No new route; the fire and concession GETs grow. The read-only role gets `SELECT` on `forecasts`. The job's wallet key and its reach don't change (D15, D21). Inputs: stored detections, the concession boundary, the chain's block time. Stores public data only: no names (shape O10) |
+| **Proof it works**   | The job logs `recorded fetched=… new=… forecasts=142 forecasts_sealed=142 outcomes=37 forecast_ms=4100`; the API logs `served fire id=… forecasts=3`; `/api/health` counts unsealed forecasts; the live fire view shows a forecast with "Matches the chain" |
+| **Rollout**          | No flag. In order: the operator runs `migrate up`; merge to main (Deploy ships the API, then the page); the operator points the job at the merged image by digest (D21). Until then the page reads "No forecasts for this fire yet." Rollback: the job to its previous digest, the API and page to the previous sha; `migrate down` only if the table must go |
+
+### Test plan
+
+| Scenario | Test | Command |
+| -------- | ---- | ------- |
+| 1. Sealed forecast after a pass | `test_forecast.py::test_0332_after_each_pass`; `test_record_hotspots.py::test_run_makes_and_seals_forecasts_first`; `spread-forecast.spec.ts` | `cd api && uv run pytest`; `cd web && pnpm e2e` |
+| 2. Seen inside after the seal | `test_forecast.py::test_seen_inside_after_the_seal`; `test_record_hotspots.py::test_next_run_stores_the_outcome`; `spread-forecast.spec.ts`; `ForecastPanel.test.tsx` "reads seen inside and how long before it was sealed" | all three |
+| 3. Wrong forecasts stay listed | `test_forecast.py::test_not_forecast_but_seen_inside`, `::test_forecast_inside_but_not_seen`; `ForecastPanel.test.tsx` | `cd api && uv run pytest`; `cd web && pnpm test` |
+| 4. Changed after its seal | `test_fingerprint.py` and `fingerprint.test.ts` version 3 vectors; `ForecastPanel.test.tsx` "hides a changed forecast's outcome" | both |
+| 5. Joined first | `test_forecast.py::test_0341_joined_before_seen_inside`; `test_app.py::test_fire_lists_forecasts_of_fires_that_joined_it` | `cd api && uv run pytest` |
+| Ranking and marker (D45) | `test_app.py::test_concession_ranks_forecast_inside_fires_first`; `ConcessionView.test.tsx` | both |
+| Migration | `test_migrations.py::test_up_down_up` | `cd api && uv run pytest` |
+| Earlier slices still work | `fire-record.spec.ts`, `fire-origin.spec.ts`, `complaint-pack.spec.ts` on the four-run setup | `cd web && pnpm e2e` |
+
+pytest and e2e need `docker compose up -d --wait db` and `~/.foundry/bin` on `PATH`. Run one API
+suite at a time.
+
+**E2E:** `web/e2e/spread-forecast.spec.ts` "forecasts the 0332 fire inside after its third pass,
+and the next day's pass sees it inside after the seal". It sets 2026-10-12 to 2026-10-15 and opens
+ID-WOOD-CONCESSION-0332. It opens the fire first seen 13 Oct 17:37 and sees "Forecast to be seen
+inside by about 15 Oct 05:20 UTC" with "Matches the chain". It then sees "Seen inside 15 Oct 18:43
+UTC, 13 hours 23 minutes after the forecast time". It picks the 13 Oct 20:00 forecast and sees
+"Seen inside 15 Oct 18:43 UTC. Not forecast."
+
+### Chunks
+
+| Chunk | Scenarios | Files owned |
+| ----- | --------- | ----------- |
+| A | 1–5 (job, rule, API) | `api/`, `fixtures/`, `README.md` |
+| B | 1–5 (page), e2e | `web/` |
+
+Before `/build`: `/design-system` adds the crossing mark to the detections guideline (D47).
+A and B run in parallel. B builds against the shapes in `web/src/api.ts` and reads the
+version 3 vectors that A owns in `fixtures/`. Its fingerprint test and e2e pass once A is in.
+Each lockfile sits inside its chunk's folder, and neither chunk adds a dependency. Ship A to the job
+first: forecasts count only from their seal.
+
+### Risks
+
+| Risk | Mitigation |
+| ---- | ---------- |
+| 441 of 482 "inside" forecasts on 2026-10-12 to 16 did not come in, and D45 lists those fires first, so a buyer may discount the warnings | Every forecast stays listed with its outcome (D41); season-backtest publishes the rate on 2023 (D42) |
+| The rule was chosen on the week it was measured on | season-backtest measures it on 2023 against the baseline (D42) |
+| Forecasts start only after two hand steps, `migrate up` and the job's image (D21); each day's delay loses that day's forecasts | Ship chunk A first; README steps; do both on the day it merges |
+| A newer fire lit inside within 1 km joins the forecast's fire, which then reads "seen inside" | Same fire by D25, as fire-origin O4 accepted; the fire view shows each pass |
+| A pass's rows split across two runs: the forecast used the first run's rows, and redoing it from all of them can differ | One forecast per pass (unique key); the forecast keeps its pass and made times; rare |
+| Forecast seals go first, so detection seals wait longer on busy days | About 14 minutes a pass run; health counts both; D20's check fails on a stall |
+| The e2e moves from one recorder run to four with anvil's clock, under three existing specs | The same 44 records at the end; all four e2e specs run |
+
+### Decisions to record
+
+```
+## D48 · 2026-10-19 · Forecast rule version 1: the fire's advance to the nearest edge, else 375 m means the next pass
+
+Why: on 2026-10-12 to 16, of 2,007 forecast moments with 41 fires seen inside within 48 hours, it
+forecast 482 inside: all 41 came in, 441 did not. The 17 timed by the fire's advance were a median
+1.0 hour off. It uses only sealed detections and the concession's edge, so anyone can redo it. It
+was chosen on the week it was measured on; season-backtest measures it on 2023 (D42).
+Rejected: the advance rate alone (24 of the 41 missed), within 375 m alone (timed only to the next
+pass, a median 11.7 hours off), a wind-driven rule (wind isn't sealed, so it can't be redone from
+the chain, and the baseline it is measured against already moves downwind).
+Source: docs/specs/spread-forecast.md
+Status: active
+
+## D49 · 2026-10-19 · Make and seal forecasts in the recorder job, first in each run, as fingerprint version 3
+
+Why: only the recorder wallet seals (D9), and a forecast's seal time is its evidence, so it goes
+before the run's detection seals. About 420 forecasts a day at 5.8 s a seal fit the 40-minute run
+(D19). Version 3 ABI-encodes the concession, fire key, pass, made, until and forecast times, the
+two points and the rule version as whole numbers, so Python and TypeScript produce identical bytes
+(D17).
+Rejected: a forecast job of its own (a second job holding the wallet key), the API (read-only, no
+key, D21), sealing detections first (a forecast could wait behind the backlog), a new contract (a
+redeploy, D19), hashing JSON (D17).
+Source: docs/specs/spread-forecast.md
+Status: active
+
+## D50 · 2026-10-19 · Store each forecast's outcome when a run decides it, by the chain's clock
+
+Why: a run checks waiting forecasts against the fire as it then stands, so a join and an arrival
+are told apart by which came first (D44); once decided, an outcome never changes. The run takes
+"now" from Base Sepolia's latest block, the clock the seals use. It closes a forecast 6 hours after
+its 48 have ended, because FIRMS rows can arrive late.
+Rejected: working outcomes out in the API on each request (regrouping the concession as of each
+pass after the seal, several times per fire view), the job's own clock (a second clock beside the
+seals', and the e2e could not stage past runs without a test hook).
+Source: docs/specs/spread-forecast.md
+Status: active
+```
+
 ## Open items
 
 | ID | What | Type | Raised at | Owner | Status | Answer |
@@ -297,6 +563,10 @@ pass.
 | O13 | The fires table ranks largest first (D28), so 0332's one fire forecast to come in sits 18th of 34 | question | spec p2 | user | Resolved | 2026-10-19: fires forecast to be seen inside come first, then the largest (D45, supersedes D28) |
 | O14 | Whether the concession list marks concessions with a fire forecast to come in | question | spec p2 | user | Resolved | 2026-10-19: not in this slice; the concession view shows them (D46) |
 
+| O15 | Which forecast rule ships as version 1. On 2026-10-12 to 16, 2,007 moments, 41 seen inside: the advance rate, else 375 m, forecast 482 inside (41 came, 0 missed; median time error 11.7 h, 1.0 h for the 17 the rate timed); the rate alone 221 (17 came, 24 missed); 375 m alone 343 (38 came, 3 missed; 11.7 h). Each warns falsely about 9 times in 10, and D45 lists those fires first | question | spec p3 | user | Resolved | 2026-10-19: the advance rate to the nearest edge, else 375 m means the next pass (D48) |
+| O16 | Where a forecast's outcome is worked out: stored by the recorder once decided, or by the API on each request | question | spec p3 | user | Resolved | 2026-10-19: the recorder stores it, by the chain's clock (D50) |
+| O17 | The recorder can group every touched concession and make its forecasts within its 40-minute run on 0.25 vCPU. On a laptop, about 170 concessions take under 30 ms each | unproven | spec p3 | user | Accepted risk | 2026-10-19: build as planned and read `forecast_ms` in the job log after deploy. If it passes a few minutes, group only the concessions with new detections |
+
 _Never delete this section or its rows. See references/ledger.md._
 
 ## Glossary
@@ -316,3 +586,12 @@ _Never delete this section or its rows. See references/ledger.md._
 - **FIRMS** — NASA's free service that publishes satellite fire detections.
 - **anvil** — a local test blockchain the e2e test seals on.
 - **e2e** — end-to-end: one test that walks the whole slice as a user would.
+- **Lockfile** — the file that pins the exact version of every dependency.
+- **Backfill** — filling a new column or table from the data already there.
+- **Advance rate** — how far a fire's newest pass reached past its earlier detections, per hour.
+- **ABI-encode** — the chain's fixed byte layout for values, so two languages hash the same bytes.
+- **Multicall3** — a contract that answers many contract reads in one call.
+- **PostGIS** — the Postgres extension that measures distances and shapes on the map.
+- **Block time** — the time Base Sepolia stamps on each block; a seal's time is its block's.
+- **Digest** — the fixed fingerprint of a container image, so a re-pushed tag can't change it.
+- **vCPU** — one virtual processor core; the job gets a quarter of one.
