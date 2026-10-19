@@ -9,6 +9,9 @@ const ID = "ID-WOOD-CONCESSION-0332";
 const BIG = "ID-WOOD-CONCESSION-0540";
 // The 0540 fire of scenario 4, 28th largest of its 120.
 const STILL_INDEX = 27;
+// A 0332 fire, as the preview forecasts it inside by about 16 Oct 18:00 UTC.
+const FORECAST_KEY = "0x4800376bcbf81c91d61ed2a53ccce068b7805eb81d6ac7029e639ccaa781d2ea";
+const FORECAST_INSIDE_BY = Date.parse("2026-10-16T18:00:00Z") / 1000;
 
 // Real VIIRS NOAA-20 detections from 2026-10-12 to 15, grouped into fires, largest first; see the preview.
 const fixture = raw as unknown as { detail: Record<string, ConcessionDetail> };
@@ -61,6 +64,29 @@ describe("ConcessionView", () => {
     expect(cells(bodyRows()[4])[1]).toHaveTextContent(/^Outside, 950 mInside from 15 Oct 18:43$/);
     expect(cells(bodyRows()[5])[1]).toHaveTextContent(/^Too close to tell30 m outside the edge$/);
     expect(cells(bodyRows()[1])[1]).toHaveTextContent(/^Both sides of the edge$/);
+  });
+
+  it("leaves the forecast count out when no fire is forecast inside", () => {
+    show(ready());
+
+    expect(screen.queryByText("Forecast inside", { selector: "dt" })).toBeNull();
+    expect(screen.queryByText(/^Forecast inside by about/)).toBeNull();
+  });
+
+  it("counts the fires forecast inside, lists them first and says so, and marks when", () => {
+    const d = fixture.detail[ID];
+    const forecastIn = { ...d.fires.find((f) => f.key === FORECAST_KEY)!, forecast_inside_by_unix: FORECAST_INSIDE_BY };
+    const fires = [forecastIn, ...d.fires.filter((f) => f.key !== FORECAST_KEY)];
+    show({ kind: "ready", detail: { ...d, fires } });
+
+    expect(kv("Forecast inside")).toHaveTextContent(/^1 fire within 48 hours$/);
+    expect(
+      screen.getByText(
+        "Detections within 1 km and 48 hours of each other count as one fire. Fires forecast to be seen inside come first, then the largest.",
+      ),
+    ).toBeInTheDocument();
+    expect(cells(bodyRows()[0])[1]).toHaveTextContent(/Forecast inside by about 16 Oct 18:00$/);
+    expect(screen.getAllByText(/^Forecast inside by about/)).toHaveLength(1);
   });
 
   it("marks a fire that never spread", () => {
