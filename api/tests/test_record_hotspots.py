@@ -400,6 +400,26 @@ def test_next_run_stores_the_outcome(clocked, firms):
     assert made["sealed_at"] < made["outcome_at"]
 
 
+def test_a_quiet_concession_closes_its_forecast_after_48_hours(clocked, firms):
+    contract, env = clocked
+    firms.csv = passes("2026-10-13,1737", "2026-10-14,618", "2026-10-14,1720")
+    at_chain_time(contract, "2026-10-14T20:00")
+    assert run_recorder(env).returncode == 0
+    # No new rows, so only the waiting forecast brings 0332 into the run.
+    at_chain_time(contract, "2026-10-17T01:59")
+    assert run_recorder(env).returncode == 0
+    (waiting,) = forecasts(env["DATABASE_URL"])
+    assert waiting["outcome"] == "waiting"
+    at_chain_time(contract, "2026-10-17T02:00")
+
+    result = run_recorder(env)
+
+    assert result.returncode == 0, result.stderr
+    assert FORECAST_LOG.search(result.stdout).groups()[:3] == ("0", "0", "1")
+    (made,) = forecasts(env["DATABASE_URL"])
+    assert (made["outcome"], made["outcome_at"]) == ("not_seen_inside", None)
+
+
 def test_forecast_error_still_seals_detections(funded, firms, monkeypatch, capsys):
     contract, env = funded
     for name, value in env.items():
