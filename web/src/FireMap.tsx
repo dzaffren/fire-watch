@@ -19,6 +19,8 @@ const radius = (frp_e2: number) => (frp_e2 < 500 ? 3 : frp_e2 <= 2000 ? 4.5 : 6.
 const FIRE_POWER_ZOOM = 12;
 const CROWDED_RADIUS = 1.5;
 const RING_RADIUS = 7;
+// Provisional until /design-system defines the crossing mark (D47): a surface ring, smaller than the selected one.
+const CROSSING_RADIUS = 5;
 // The detections guideline's first-seen diamond: an 8 px square turned 45 degrees.
 const DIAMOND_HALF = 4 * Math.SQRT2;
 const HIT_PX = 10;
@@ -173,7 +175,8 @@ function createLayer(OverlayView: typeof google.maps.OverlayView): Layer {
       const start = line && this.pixel(line.from.lon_e5 / 1e5, line.from.lat_e5 / 1e5);
       const end = line && this.pixel(line.to.lon_e5 / 1e5, line.to.lat_e5 / 1e5);
       if (start && end) {
-        ctx.strokeStyle = themeColour("--fw-accent");
+        const accent = themeColour("--fw-accent");
+        ctx.strokeStyle = accent;
         ctx.lineWidth = 1.5;
         ctx.setLineDash([5, 4]);
         ctx.beginPath();
@@ -181,6 +184,13 @@ function createLayer(OverlayView: typeof google.maps.OverlayView): Layer {
         ctx.lineTo(...end);
         ctx.stroke();
         ctx.setLineDash([]);
+        ctx.fillStyle = themeColour("--fw-surface");
+        ctx.strokeStyle = accent;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(end[0], end[1], CROSSING_RADIUS, 0, 2 * Math.PI);
+        ctx.fill();
+        ctx.stroke();
       }
       if (this.data.selected !== null) {
         const dot = this.data.dots[this.data.selected];
