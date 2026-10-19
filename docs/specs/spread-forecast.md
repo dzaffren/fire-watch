@@ -504,44 +504,7 @@ first: forecasts count only from their seal.
 
 ### Decisions to record
 
-```
-## D48 · 2026-10-19 · Forecast rule version 1: the fire's advance to the nearest edge, else 375 m means the next pass
-
-Why: on 2026-10-12 to 16, of 2,007 forecast moments with 41 fires seen inside within 48 hours, it
-forecast 482 inside: all 41 came in, 441 did not. The 17 timed by the fire's advance were a median
-1.0 hour off. It uses only sealed detections and the concession's edge, so anyone can redo it. It
-was chosen on the week it was measured on; season-backtest measures it on 2023 (D42).
-Rejected: the advance rate alone (24 of the 41 missed), within 375 m alone (timed only to the next
-pass, a median 11.7 hours off), a wind-driven rule (wind isn't sealed, so it can't be redone from
-the chain, and the baseline it is measured against already moves downwind).
-Source: docs/specs/spread-forecast.md
-Status: active
-
-## D49 · 2026-10-19 · Make and seal forecasts in the recorder job, first in each run, as fingerprint version 3
-
-Why: only the recorder wallet seals (D9), and a forecast's seal time is its evidence, so it goes
-before the run's detection seals. About 420 forecasts a day at 5.8 s a seal fit the 40-minute run
-(D19). Version 3 ABI-encodes the concession, fire key, pass, made, until and forecast times, the
-two points and the rule version as whole numbers, so Python and TypeScript produce identical bytes
-(D17).
-Rejected: a forecast job of its own (a second job holding the wallet key), the API (read-only, no
-key, D21), sealing detections first (a forecast could wait behind the backlog), a new contract (a
-redeploy, D19), hashing JSON (D17).
-Source: docs/specs/spread-forecast.md
-Status: active
-
-## D50 · 2026-10-19 · Store each forecast's outcome when a run decides it, by the chain's clock
-
-Why: a run checks waiting forecasts against the fire as it then stands, so a join and an arrival
-are told apart by which came first (D44); once decided, an outcome never changes. The run takes
-"now" from Base Sepolia's latest block, the clock the seals use. It closes a forecast 6 hours after
-its 48 have ended, because FIRMS rows can arrive late.
-Rejected: working outcomes out in the API on each request (regrouping the concession as of each
-pass after the seal, several times per fire view), the job's own clock (a second clock beside the
-seals', and the e2e could not stage past runs without a test hook).
-Source: docs/specs/spread-forecast.md
-Status: active
-```
+Recorded as D48, D49, D50.
 
 ## Open items
 
