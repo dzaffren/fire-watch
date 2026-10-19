@@ -52,6 +52,34 @@ it a path and it loads that file as is. `record-hotspots` reads `DATABASE_URL`,
 environment; `load-concessions` needs only `DATABASE_URL`. Keep them in the untracked `.env` at
 the repo root; `--env-file ../.env` loads it, since `uv run` doesn't on its own.
 
+## Redo the 2023 replay
+
+The forecast panel's 2023 numbers are `fixtures/backtest/2023.json`, and every forecast behind
+them is in `fixtures/backtest/2023-forecasts.csv`. To redo both on the compose database:
+
+```sh
+docker compose up -d --wait db
+cd api && DATABASE_URL=postgresql://firewatch:firewatch@127.0.0.1:55432/firewatch uv run backtest-2023
+git diff --stat ../fixtures/backtest
+```
+
+`backtest-2023` downloads FIRMS's 2023 VIIRS NOAA-20 file for Indonesia and Trase's concession
+map. It stops if either file's sha256 has changed. The FIRMS file's sha256 is
+`99969d975480ab57a129b02502b4b968ced195dc2c7fcaf947eb693ef7010fd7`. It loads the map into the
+database, replays 2023 as the hourly recorder would have run it, and writes both files over the
+committed ones. It takes about 2 minutes. An empty `git diff` means you got the
+same bytes.
+
+The same bytes come out on the compose database's PostGIS 3.5, the version Neon runs. Another
+PostGIS or GEOS version can move an edge distance by a metre.
+
+`--firms <path>` and `--map <path>` read saved copies instead. `--out <dir>` writes somewhere else.
+The downwind guess reads its wind from `fixtures/backtest/2023-wind.csv`. `--fetch-wind` fetches it
+again from Open-Meteo, 35 seconds between requests, in about 10 minutes.
+
+Wind data by [Open-Meteo.com](https://open-meteo.com/): ERA5 hourly reanalysis from the
+Copernicus Climate Change Service, under CC BY 4.0.
+
 ## First deploy
 
 1. **Neon:** create a free project. Put its owner URL in `.env` as `DATABASE_URL`, run the
