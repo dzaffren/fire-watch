@@ -22,7 +22,8 @@ detections in 2023, and 42,682 of them are within 5 km of a concession. A scratc
 version 1 over 2023 made 20,277 forecasts. It used a 3-hour FIRMS lag and had no baseline yet.
 
 - In 135 forecasts, a pass saw the fire inside within 48 hours. Rule version 1 said "inside" for 123.
-- 3,753 of its 3,876 decided "inside" forecasts did not come in.
+- 3,751 of its 3,874 decided "inside" forecasts did not come in. That leaves out the 15 whose 48 hours
+  end in 2024 (O8).
 - For the arrivals it warned of, it was a median 11.7 hours off.
 
 Those numbers mean little alone. They need a naive guess beside them, worked out the same way.
@@ -166,6 +167,70 @@ the next whole hour.
 - Scoring where the fire crosses the edge: not planned (D44).
 - Burned area and carbon: damage-estimate, slice 6.
 
+## Interface
+
+The forecast panel gets a block between the forecast's facts and "How this is worked out". The
+block is titled "How this rule did on 2023, replayed" and holds a three-row table: rule version 1
+next to the downwind guess. The page calls the baseline "Downwind guess". "How this is worked out"
+gains the replay's method, a table of every count, and two links. The record still comes first
+(D2), and the concession view and the pack don't change (D43, D46).
+
+```mermaid
+flowchart LR
+    C["Concession: the fires table"] -- "picks a fire" --> F["Fire: forecast panel"]
+    F -- "reads the 2023 block under the forecast's facts" --> F
+    F -- "opens How this is worked out" --> D["method, every count, two links"]
+    D -- "Every 2023 forecast, as CSV" --> G["fixtures/backtest/2023-forecasts.csv on GitHub"]
+    D -- "Redo the 2023 replay" --> M["README, the command"]
+```
+
+The investigator opens a fire and reads its forecast, then sees how the same rule did on 2023.
+The disclosure gives every count and links to the forecasts and the command.
+
+| Part | What shows |
+| ---- | ---------- |
+| Block title | "How this rule did on 2023, replayed" |
+| Block table | Columns: "In 2023", "Rule version 1", "Downwind guess". Rows: "Arrivals warned of" (123 of 135), "Warnings that didn't come in" (3,751 of 3,874), "Median hours off" (11.7 h). A method that warned of none reads "None warned of" for hours off |
+| Under the table | "A replay of 2023, run in 2026. Nothing in it was sealed in 2023." |
+| "How this is worked out", added after the two existing paragraphs | "The 2023 replay runs this rule, and a downwind guess, at every moment the recorder would have forecast in 2023. It reads FIRMS's 2023 VIIRS NOAA-20 archive for Indonesia and the same concession map. The downwind guess moves the fire with ERA5's hourly wind, at the rate it advanced since the pass before. A fire seen on one pass has no rate, so the guess says no." and "Both forecast at the same moments, and only passes after a forecast was made count. A warning is a forecast that the fire is seen inside." |
+| Counts table | Columns: "Forecasts", "Rule version 1", "Downwind guess". Rows: "Warnings that came in", "Warnings that didn't come in", "Arrivals missed", "Said no, and stayed out", then across both columns: "Not checked: joined another fire first", "Not checked: seen inside before it was made", "Not counted: its 48 hours end after 2023", "Forecasts made", each as "246, the same for both" |
+| Links | "Every 2023 forecast, as CSV" and "Redo the 2023 replay", above the existing "Forecast rule, version 1, in full" |
+
+| State | What shows |
+| ----- | ---------- |
+| A forecast by rule version 1, in any of spread-forecast's states | The block, and the additions to "How this is worked out" |
+| A forecast changed after its seal | The same. The block is about the rule, not this forecast |
+| A forecast by a rule version with no replay | No block and no additions |
+| No forecasts | Unchanged: one line, no block |
+| Checking, or couldn't reach the chain | The same as the first row. The replay needs no chain read |
+
+There is no loading or error state of its own. The page holds the totals, so the block needs no
+request.
+
+**The page expects** (pause 3 settles where the totals come from): `Backtest` and `BacktestTotals`
+in `web/src/api.ts`, and an optional `backtest` on `FireRecordSource`, which `FireRecordPage` hands
+to `ForecastPanel`. The links point at `fixtures/backtest/2023-forecasts.csv` and the README's
+"Redo the 2023 replay" section on GitHub, and pause 3 confirms both paths.
+
+**Motion tier:** 1. The block enters with the panel, and the disclosure opens as it does today
+(`--fw-dur`). The block has no motion of its own.
+
+**Components used:** `fw-panel`, a section `h3` as in the pack, `table-box` with `fw-table`,
+`fw-help`, `fw-link` with the external icon, and the disclosure from the record panel. There is no
+new component and no new token. `app.css` adds `.forecast-backtest` and row-header rules from
+existing tokens.
+
+**Design system:** Fire Watch, `docs/design/design-system/` (D2, D4).
+
+**Preview:** real components in `web/src`: `ForecastPanel` (the block and the additions),
+`FireRecordPage` (hands `backtest` to the panel) and `api.ts` (the types). Run `cd web && pnpm dev`
+and open `http://localhost:5173/?preview=season-backtest`. Pickers switch between 4 states and the
+themes, and `&state=none&theme=dark` links straight to one. The totals come from the scratch replay
+of 2023, with ERA5 wind from Open-Meteo. The 2026 forecasts, seals and transactions are the
+spread-forecast preview's, which are made up. Drift check passed over the 6 files written. All 8
+tokens the new CSS uses exist in `docs/design/design-system/tokens/`. `tsc -b` is clean, and the
+156 web unit tests pass. At 390 px with the disclosure open, the page has no sideways scroll.
+
 ## Open items
 
 | ID | What | Type | Raised at | Owner | Status | Answer |
@@ -185,6 +250,7 @@ _Never delete this section or its rows. See references/ledger.md._
 
 - **Backtest / replay**: running a forecast over a past season to see how it would have done.
 - **Naive baseline**: the simplest guess, used to show a forecast adds something.
+- **Downwind guess**: the page's name for the naive baseline (D51).
 - **Arrival**: a forecast moment after which a pass saw the fire inside within 48 hours.
 - **Seen inside**: a detection inside the concession, more than 375 m from its edge (D26).
 - **Advance rate**: how far a fire's newest pass reached past its earlier detections, per hour.
