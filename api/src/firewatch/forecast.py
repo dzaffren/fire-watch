@@ -21,10 +21,18 @@ The rule, so anyone can redo it from the stored detections and the concession's 
 7. A forecast inside runs from the detection in step 2 to the nearest point on the concession's
    edge. That is where it is forecast to cross.
 
-A forecast is made now and runs 48 hours from then.
+A forecast is made now and runs 48 hours from then. Its outcome reads the fire, as grouped now,
+that holds the forecast's key detection. The first of these that holds decides it (D44):
+
+1. The fire has another key: the forecast's fire joined an older fire before it was seen inside.
+2. The fire's inside from is at or before the seal, or the forecast is not sealed yet: it was seen
+   inside before the seal.
+3. The fire's inside from is at or before the forecast's end: it was seen inside.
+4. Now is 6 hours or more past the forecast's end: it was not seen inside.
+5. Otherwise it is still waiting.
 """
 
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from math import floor
@@ -105,3 +113,19 @@ def make(
         crossing_lon_e5=end[1],
         rule_version=RULE_VERSION,
     )
+
+
+def outcome(
+    forecast: Mapping, fire: fires.Fire, now: datetime
+) -> tuple[str, datetime | None] | None:
+    if fire.key != forecast["fire_key"]:
+        return ("joined", None)
+    seen = fire.inside_from
+    sealed_at = forecast["sealed_at"]
+    if seen is not None and (sealed_at is None or seen <= sealed_at):
+        return ("seen_before_seal", seen)
+    if seen is not None and seen <= forecast["until_at"]:
+        return ("seen_inside", seen)
+    if now >= forecast["until_at"] + SETTLE:
+        return ("not_seen_inside", None)
+    return None
