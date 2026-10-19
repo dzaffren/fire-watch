@@ -1,10 +1,75 @@
 import type { Hex } from "viem";
-import type { FireDetail, Forecast } from "./api";
-import { detected, detectedShort, duration, gap, location, plural, shortHash } from "./format";
+import type { Backtest, BacktestTotals, FireDetail, Forecast } from "./api";
+import { count, detected, detectedShort, duration, gap, location, plural, shortHash } from "./format";
 import { ExternalIcon } from "./icons";
 import { Chip, type Check } from "./RecordPanel";
 
 const RULE_URL = "https://github.com/dzaffren/fire-watch/blob/main/api/src/firewatch/forecast.py";
+const BACKTEST_CSV_URL = "https://github.com/dzaffren/fire-watch/blob/main/fixtures/backtest/2023-forecasts.csv";
+const BACKTEST_REDO_URL = "https://github.com/dzaffren/fire-watch/blob/main/README.md#redo-the-2023-replay";
+
+const hoursOff = (t: BacktestTotals) => (t.median_hours_off === null ? "None warned of" : `${t.median_hours_off.toFixed(1)} h`);
+
+/** How the forecast's rule did on the 2023 replay, next to the downwind guess (D53, D54). */
+function BacktestSummary({ b }: { b: Backtest }) {
+  const arrivals = b.rule.warned + b.rule.missed;
+  const rows: [string, (t: BacktestTotals) => string][] = [
+    ["Arrivals warned of", (t) => `${count(t.warned)} of ${count(arrivals)}`],
+    ["Warnings that didn't come in", (t) => `${count(t.did_not_come_in)} of ${count(t.warned + t.did_not_come_in)}`],
+    ["Median hours off", hoursOff],
+  ];
+  return (
+    <div className="forecast-backtest">
+      <h3 id="h-backtest">How this rule did on 2023, replayed</h3>
+      <div className="table-box">
+        <table className="fw-table" aria-labelledby="h-backtest">
+          <thead>
+            <tr><th scope="col">In 2023</th><th scope="col">Rule version {b.rule_version}</th><th scope="col">Downwind guess</th></tr>
+          </thead>
+          <tbody>
+            {rows.map(([label, cell]) => (
+              <tr key={label}><th scope="row">{label}</th><td>{cell(b.rule)}</td><td>{cell(b.downwind)}</td></tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="fw-help">A replay of 2023, run in 2026. Nothing in it was sealed in 2023.</p>
+    </div>
+  );
+}
+
+/** Every count of the 2023 replay, for "How this is worked out" (D53, D55). */
+function BacktestCounts({ b }: { b: Backtest }) {
+  const each: [string, keyof BacktestTotals][] = [
+    ["Warnings that came in", "warned"],
+    ["Warnings that didn't come in", "did_not_come_in"],
+    ["Arrivals missed", "missed"],
+    ["Said no, and stayed out", "stayed_out"],
+  ];
+  const both: [string, number][] = [
+    ["Not checked: joined another fire first", b.joined],
+    ["Not checked: seen inside before it was made", b.seen_before_made],
+    ["Not counted: its 48 hours end after 2023", b.ends_after_2023],
+    ["Forecasts made", b.forecasts],
+  ];
+  return (
+    <div className="table-box">
+      <table className="fw-table" aria-label="Every count of the 2023 replay">
+        <thead>
+          <tr><th scope="col">Forecasts</th><th scope="col">Rule version {b.rule_version}</th><th scope="col">Downwind guess</th></tr>
+        </thead>
+        <tbody>
+          {each.map(([label, key]) => (
+            <tr key={key}><th scope="row">{label}</th><td>{count(b.rule[key] ?? 0)}</td><td>{count(b.downwind[key] ?? 0)}</td></tr>
+          ))}
+          {both.map(([label, n]) => (
+            <tr key={label}><th scope="row">{label}</th><td colSpan={2}>{count(n)}, the same for both</td></tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
 
 /** A forecast's chain check, with the seal's time by Base Sepolia's clock once it is read. */
 export interface ForecastCheck {
@@ -81,12 +146,14 @@ interface Props {
   picked: number;
   /** Unix seconds, to tell a waiting forecast whose 48 hours have ended. */
   now: number;
+  /** The 2023 replay of a rule; shown for a forecast made by that rule. */
+  backtest?: Backtest | null;
   onPick: (index: number) => void;
   onCheckAgain: () => void;
 }
 
 /** The fire view's forecasts: the picked one in full, then every one, newest first (D41). */
-export function ForecastPanel({ fire, checks, fingerprints, picked, now, onPick, onCheckAgain }: Props) {
+export function ForecastPanel({ fire, checks, fingerprints, picked, now, backtest, onPick, onCheckAgain }: Props) {
   const forecasts = fire.forecasts ?? [];
   if (!forecasts.length) return <p className="fw-help forecast-none enter">{noneLine(fire)}</p>;
 
@@ -95,6 +162,7 @@ export function ForecastPanel({ fire, checks, fingerprints, picked, now, onPick,
   const state = checks[at] ?? { check: { state: "checking" }, sealedAt: null };
   const fp = fingerprints[at];
   const seal = sealLine(f, state);
+  const replayed = backtest && backtest.rule_version === f.rule_version ? backtest : null;
 
   return (
     <>
@@ -159,6 +227,7 @@ export function ForecastPanel({ fire, checks, fingerprints, picked, now, onPick,
             )}
           </dd>
         </dl>
+        {replayed && <BacktestSummary b={replayed} />}
         <details>
           <summary>How this is worked out</summary>
           <p className="fw-help">
@@ -170,6 +239,33 @@ export function ForecastPanel({ fire, checks, fingerprints, picked, now, onPick,
             Each forecast is sealed in the run that makes it, and every one stays listed here, right or wrong. Only
             passes after its seal count. A forecast whose fire joins another fire first is not checked.
           </p>
+          {replayed && (
+            <>
+              <p className="fw-help">
+                The 2023 replay runs this rule, and a downwind guess, at every moment the recorder would have forecast
+                in 2023. It reads FIRMS's 2023 VIIRS NOAA-20 archive for Indonesia and the same concession map. The
+                downwind guess moves the fire with ERA5's hourly wind, at the rate it advanced since the pass before. A
+                fire seen on one pass has no rate, so the guess says no.
+              </p>
+              <p className="fw-help">
+                Both forecast at the same moments, and only passes after a forecast was made count. A warning is a
+                forecast that the fire is seen inside.
+              </p>
+              <BacktestCounts b={replayed} />
+              <p className="fw-help">
+                <a className="fw-link" href={BACKTEST_CSV_URL} target="_blank" rel="noopener">
+                  Every 2023 forecast, as CSV
+                  <ExternalIcon />
+                </a>
+              </p>
+              <p className="fw-help">
+                <a className="fw-link" href={BACKTEST_REDO_URL} target="_blank" rel="noopener">
+                  Redo the 2023 replay
+                  <ExternalIcon />
+                </a>
+              </p>
+            </>
+          )}
           <p className="fw-help">
             <a className="fw-link" href={RULE_URL} target="_blank" rel="noopener">
               Forecast rule, version {f.rule_version}, in full

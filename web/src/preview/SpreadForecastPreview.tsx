@@ -18,7 +18,7 @@ const FORECASTS_FROM = at("2026-10-13T09:00:00");
 // Pass 3 of the 0332 fire: the world of scenario 1, before its 15 Oct pass saw it inside.
 const WAITING_AS_OF = at("2026-10-14T20:30:00");
 // The other states, while the waiting fire's forecast made 15 Oct 21:00 has its 48 hours to run.
-const AS_OF = at("2026-10-16T00:00:00");
+export const AS_OF = at("2026-10-16T00:00:00");
 const SEAL_AFTER_S = 120;
 const HORIZON_S = 48 * 3600;
 
@@ -49,7 +49,7 @@ const STATES = {
   none: "No forecasts: seen inside on its first pass (0356)",
   before: "No forecasts: before forecasting began (0332)",
 } as const;
-type State = keyof typeof STATES;
+export type State = keyof typeof STATES;
 
 const records = new Map(
   Object.entries(fixture.detail).map(([id, d]) => [id, d.hotspots.map((h) => enrich(h, false))] as const),
@@ -159,7 +159,7 @@ function forecastsFor(fire: FireRef, waiting: boolean): Forecast[] {
   return [];
 }
 
-function makeSource(state: State): FireRecordSource {
+export function makeSource(state: State): FireRecordSource {
   const waiting = state === "waiting" || state === "pending";
   const sealed = new Map<Hex, Hex>();
   const stored = (fire: FireRef) =>
@@ -226,7 +226,7 @@ function makeSource(state: State): FireRecordSource {
   };
 }
 
-function initialView(state: State): View {
+export function initialView(state: State): View {
   if (state === "concession") return { kind: "concession", id: FIRE.waiting.id };
   if (state === "stayedOut" || state === "joined" || state === "before") return { kind: "fire", ...FIRE[state] };
   if (state === "none") return { kind: "fire", ...FIRE.inside };
