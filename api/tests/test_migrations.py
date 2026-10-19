@@ -3,6 +3,7 @@ import psycopg
 from firewatch import migrate
 
 FIRE_RECORD_TABLES = {"concessions", "hotspot_concessions", "recorder_runs"}
+READER_TABLES = FIRE_RECORD_TABLES | {"forecasts"}
 
 
 def _tables(url):
@@ -32,16 +33,21 @@ def _applied(url):
 
 
 def _assert_up(url):
-    assert {"hotspots", *FIRE_RECORD_TABLES} <= _tables(url)
+    assert {"hotspots", *READER_TABLES} <= _tables(url)
     assert {"fingerprint_version", "map_version"} <= _hotspot_columns(url)
     assert _postgis(url)
-    assert _applied(url) == ["001_hotspots", "002_fire_record"]
+    assert _applied(url) == ["001_hotspots", "002_fire_record", "003_forecasts"]
 
 
 def test_up_down_up(database_url):
     migrate.up(database_url)
     migrate.up(database_url)
     _assert_up(database_url)
+
+    assert migrate.down(database_url) == "003_forecasts"
+    assert "forecasts" not in _tables(database_url)
+    assert FIRE_RECORD_TABLES <= _tables(database_url)
+    assert _applied(database_url) == ["001_hotspots", "002_fire_record"]
 
     assert migrate.down(database_url) == "002_fire_record"
     assert not FIRE_RECORD_TABLES & _tables(database_url)
@@ -66,7 +72,7 @@ def test_reader_role_can_read_the_new_tables(database_url):
     try:
         migrate.up(database_url)
         with psycopg.connect(database_url) as conn:
-            for table in FIRE_RECORD_TABLES:
+            for table in READER_TABLES:
                 assert conn.execute(
                     "SELECT has_table_privilege('firewatch_reader', %s, 'SELECT')", (table,)
                 ).fetchone() == (True,)
