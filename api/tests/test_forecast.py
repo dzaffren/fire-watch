@@ -9,9 +9,9 @@ from firewatch.forecast import (
     RULE_VERSION,
     SETTLE,
     Forecast,
-    _rounded_h,
     make,
     outcome,
+    rounded_h,
 )
 
 SCENARIOS = json.loads(
@@ -177,7 +177,7 @@ def test_rate_hours_round_to_the_nearest_12():
     assert inside_by_h(two_passes(LAT_E5_999_6_M, 2525)) == 24
     assert inside_by_h(two_passes(LAT_E5_999_6_M, 2725)) == 36
     # Haversine distances never land on a half exactly, so the halves go straight to the rounding.
-    assert [_rounded_h(h) for h in (6, 18, 30, 42)] == [12, 24, 36, 48]
+    assert [rounded_h(h) for h in (6, 18, 30, 42)] == [12, 24, 36, 48]
 
 
 def test_one_pass_within_375_m_reads_the_next_pass():
