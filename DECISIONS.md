@@ -605,3 +605,45 @@ for 15 forecasts), judging them on 2023's passes only (a fire seen inside on 1 J
 read "not seen inside").
 Source: docs/specs/season-backtest.md
 Status: active
+
+## D57 · 2026-10-19 · Replay 2023 as the hourly recorder would have run, each pass stored 3 hours after it was taken
+
+Why: a forecast counts only against passes after it was made (D44), so a replay needs a made time.
+FIRMS takes 2 to 3 hours, and lags of 1 to 4 hours gave identical outcomes on 2023. Each
+detection's ID is the sha256 of its place and time, so every run gives the same fires and CSV.
+Rejected: forecasting at the pass itself (no recorder can, as FIRMS publishes hours later), each
+row's real publish time (the archive doesn't carry it), random record IDs as the recorder makes
+(fire keys, and so the CSV, would change on each run).
+Source: docs/specs/season-backtest.md
+Status: active
+
+## D58 · 2026-10-19 · Commit the replay's ERA5 wind, fetched once from Open-Meteo
+
+Why: the result must come out the same on every run, and a weather service can change or refuse.
+Open-Meteo serves ERA5 free, with credit, and refused the 15th request when they came 2 s apart.
+The wind for 9,322 paths, 2023's moments with a rate, sits in the repo where review sees it.
+Rejected: Copernicus directly (an account, a key and a NetCDF reader), fetching on every run (rate
+limits, and a changed source would change the result).
+Source: docs/specs/season-backtest.md
+Status: active
+
+## D59 · 2026-10-19 · Bundle the committed 2023 totals into the page
+
+Why: the numbers change only when the replay is redone and committed, so the page needs no
+request, and no loading or error state. The e2e runs the command on a cut, then reads the committed
+totals on the page.
+Rejected: an API route (the API's image doesn't carry the fixtures; a route for one fixed file), a
+static file fetched at run time (a loading and an error state for fixed numbers), a build switch so
+the e2e shows the cut's totals (an env var only a test uses).
+Source: docs/specs/season-backtest.md
+Status: active
+
+## D60 · 2026-10-19 · The downwind guess forecasts on rule version 1's terms, but downwind
+
+Why: only the direction should differ. The guess uses rule version 1's advance rate, every newest
+pass detection, and its rounding to the nearest 12 hours. Exact hours made it 17.1 hours off
+against 11.7, from rounding alone.
+Rejected: exact hours from the detection nearest the edge (measures the rounding, not the
+direction).
+Source: docs/specs/season-backtest.md
+Status: active
