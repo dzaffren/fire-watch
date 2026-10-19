@@ -309,7 +309,7 @@ worst-first ranking (D14).
 Rejected: newest first (one-pass fires fill the top rows), boundary-crossing fires first (a two-part
 order that is harder to explain in one line).
 Source: docs/specs/fire-origin.md
-Status: active
+Status: superseded by D45
 
 ## D29 · 2026-10-16 · Tint the inside of a concession with --fw-concession on every map
 
@@ -480,5 +480,35 @@ Rejected: counting any pass stored after the seal (credits an arrival seen befor
 checking against the joined fire (the 0341 fire 2,501 m out would read "seen inside" with none of
 its own detections inside), scoring the crossing point's distance too (one more number to define
 and test).
+Source: docs/specs/spread-forecast.md
+Status: active
+
+## D45 · 2026-10-19 · Rank a concession's fires forecast to come in first, then largest first
+
+Why: the investigator opens a concession to see which fire is about to come in; ranked largest
+first, 0332's one such fire sat 18th of 34. Each group stays largest first, as D28 set: on
+ID-WOOD-CONCESSION-0332, newest first put one-pass fires (18 of 34) on top, and largest first
+matches the concession list's worst-first ranking (D14).
+Rejected: largest first alone (a fire forecast to come in can sit far down the list), newest
+first (one-pass fires fill the top rows, D28).
+Supersedes: D28
+Source: docs/specs/spread-forecast.md
+Status: active
+
+## D46 · 2026-10-19 · Show forecasts on the concession view, not on the concession list
+
+Why: the investigator opens a concession to see its forecasts, so the API change stays in the
+fire and concession routes.
+Rejected: marking concessions on the list (the list query gains a count of waiting forecasts).
+Source: docs/specs/spread-forecast.md
+Status: active
+
+## D47 · 2026-10-19 · Mark where a forecast says a fire crosses the edge
+
+Why: near the edge the forecast line is a few pixels long: 0332's 14 Oct 20:00 forecast ran about
+100 m and 0540's about 190 m, and 28 of the 31 arrivals on 2026-10-12 to 15 came from within
+500 m. A mark on the edge reads at any zoom. /design-system adds it to the detections guideline
+before /build.
+Rejected: the dashed line alone (the crossing reads off the map only for a fire far out).
 Source: docs/specs/spread-forecast.md
 Status: active
