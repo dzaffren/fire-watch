@@ -4,6 +4,7 @@ import {
   detected,
   detectedShort,
   distance,
+  duration,
   firePower,
   firstSeenLine,
   firstSeenShort,
@@ -52,6 +53,20 @@ describe("format", () => {
     expect(gap(A_UNIX, "2026-10-14T09:05:00Z")).toBe("2 h 47 min");
     expect(gap(A_UNIX, "2026-10-14T06:30:00Z")).toBe("12 min");
     expect(gap(A_UNIX, "2026-10-15T08:30:00Z")).toBe("1 d 2 h");
+  });
+
+  it("gives a duration in words for a sentence, to the minute under 48 hours", () => {
+    // Scenario 2: sealed 14 Oct 20:02, seen inside 15 Oct 18:43; forecast 05:20.
+    expect(duration(22 * 3600 + 41 * 60)).toBe("22 hours 41 minutes");
+    expect(duration(13 * 3600 + 23 * 60)).toBe("13 hours 23 minutes");
+    expect(duration(-(13 * 3600 + 23 * 60))).toBe("13 hours 23 minutes");
+    expect(duration(120)).toBe("2 minutes");
+    expect(duration(60)).toBe("1 minute");
+    expect(duration(3600)).toBe("1 hour");
+    expect(duration(3600 + 60)).toBe("1 hour 1 minute");
+    expect(duration(47 * 3600 + 59 * 60)).toBe("47 hours 59 minutes");
+    expect(duration(48 * 3600)).toBe("2 days");
+    expect(duration(49 * 3600 + 30 * 60)).toBe("2 days 1 hour");
   });
 
   it("reads where a fire was first seen against the edge", () => {
