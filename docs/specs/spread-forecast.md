@@ -188,10 +188,94 @@ then. Scenarios 2 to 5 give the forecast in their Given, so they hold whatever t
 - Accuracy against a baseline, and forecasts for past fires — season-backtest, labelled as a
   replay (O1, O8).
 - Scoring where the fire crosses the edge — not planned (O11).
+- Marking concessions with a fire forecast to come in on the concession list — not planned (O14).
 - Alerts when a fire is forecast to come in, by email or push — not planned.
 - Fires that burn more than 5 km from every concession — never recorded (D13).
 - Other satellites — not planned (fire-origin).
 - Company names — not planned (shape O10).
+
+## Interface
+
+The fire view gains a forecast panel between where the fire was first seen and its detections. The
+panel shows one forecast in full, the newest by default. Under it, a table lists every forecast for
+the fire, newest first. The concession view marks fires whose waiting forecast says they come in.
+Record first, map second, as before (D2).
+
+```mermaid
+flowchart LR
+    C["Concession: Forecast inside, 1 fire; the fires table"] -- "picks the 15 Oct 18:43 fire" --> F["Fire: first seen, forecast panel, forecasts table, detections"]
+    F -- "picks a forecast row: the replay moves to its pass" --> F
+    F -- "picks a detection" --> R[Detection record]
+    R -- "Fire first seen 13 Oct 17:37" --> F
+    F -- "Fires in ID-WOOD-CONCESSION-0332" --> C
+```
+
+The investigator opens a concession, sees which fire is forecast to come in, and opens it. They read
+the forecast and its outcome, and pick an earlier forecast to see the fire as it stood then.
+
+| Step | Left column | Map |
+| ---- | ----------- | --- |
+| Concession | As fire-origin, plus "Forecast inside: 1 fire within 48 hours" in the details when any fire has one. Fires forecast to be seen inside come first, then the largest (D45); the note above the table says so. In the fires table, "Forecast inside by about 16 Oct 18:00" under Where first seen | As fire-origin |
+| Fire | As fire-origin, then the forecast panel: the forecast as its title ("Forecast to be seen inside by about 15 Oct 18:00 UTC"), its chain status, the outcome in medium weight, one line on its seal, then Made (with the pass it followed), Checked against, Crosses the edge, Fingerprint, Transaction, and two disclosures: "How this is worked out" and "Show the raw forecast". With 2 or more forecasts: "3 forecasts for this fire, newest first. Pick one to see the fire as it stood then." and a table: Made (UTC) with its chain status under it, and Forecast with its outcome under it. Then the detections, unchanged | As fire-origin, plus the picked forecast's line: the detections guideline's spread forecast mark, a dashed accent line from where it runs to where it crosses the edge. It shows while the replay is at or after the pass the forecast followed. A crossing mark sits on the edge where the line ends, added to the detections guideline through `/design-system` before `/build` (D47). The legend adds "Spread forecast, to where it crosses the edge" while the line shows |
+| Record | Unchanged | Unchanged |
+
+| State | What shows |
+| ----- | ---------- |
+| Waiting | "Waiting until 16 Oct 20:00 UTC" |
+| Came true | "Seen inside 15 Oct 18:43 UTC, 43 minutes after the forecast time", then "Sealed 22 hours 41 minutes before the pass that saw it inside, by Base Sepolia's clock." |
+| Came, not forecast | "Seen inside 15 Oct 18:43 UTC. Not forecast." |
+| Said inside, stayed out | "Not seen inside within 48 hours" |
+| Said no, stayed out | "Not seen inside, as forecast" |
+| Joined | "Joined another fire before it was seen inside. Not checked." Made adds ", for a fire that later joined this one" |
+| Seen before the seal | "Seen inside on a pass before this forecast was sealed. Not checked." |
+| Changed after its seal | Chip "Does not match the chain"; the outcome reads "Changed after its seal, so its outcome isn't shown."; Sealed fingerprint and Fingerprint now, as in the record panel |
+| Not on chain yet | Chip "Not on chain yet"; "Not on the chain yet. The recorder seals each forecast in the run that makes it." |
+| Checking | Chip "Checking"; "Reading its seal from Base Sepolia." |
+| Couldn't reach the chain | "Couldn't reach Base Sepolia to check the forecasts." and Check again |
+| No forecasts, seen inside at once | "No forecasts. This fire was seen inside on its first pass, so there was nothing to forecast." |
+| No forecasts, before forecasting | "No forecasts. Fire Watch began forecasting on 2026-10-13 09:00 UTC, and makes one only after a pass that leaves a fire not yet seen inside." with the real start time |
+
+**Fixed copy.** "How this is worked out": "After each satellite pass, Fire Watch forecasts whether a
+fire not yet seen inside the concession will be seen inside within 48 hours, and when. Seen inside
+means a detection inside, more than 375 m from the edge, half the widest VIIRS pixel." and "Each
+forecast is sealed in the run that makes it, and every one stays listed here, right or wrong. Only
+passes after its seal count. A forecast whose fire joins another fire first is not checked." Then
+a link, "Forecast rule, version 1, in full". Pause 3 names the file it opens.
+
+**Chain check.** The page reads every forecast's seal in one Multicall3 read when the fire opens,
+as a pack reads its detections (D38). "Sealed … before the pass that saw it inside" uses the seal's
+time from the chain, not the API's `sealed_at`, so the server can't move it (D7).
+
+**The page expects** (pause 3 settles it): `GET /api/concessions/<id>/fires/<key>` adds
+`forecasts`, newest first, each as `Forecast` in `web/src/api.ts`, and `forecasts_from_unix`. Each
+fire in `GET /api/concessions/<id>` adds `forecast_inside_by_unix`. The chain read returns each
+forecast's fingerprint and seal time.
+
+**Motion tier:** 2 for the replay only, as fire-origin set it. The forecast line steps with the
+replay and has no motion of its own. The panel enters and swaps at tier 1 (`--fw-dur`).
+
+**Components used:** `fw-panel`, `fw-kv`, `fw-table` (with the selected row), `fw-chip` (all four
+states, through the record panel's `Chip`, now shared with the pack), `fw-help`, `fw-link`,
+`fw-btn`, `fw-mono`, the disclosure from the record panel, and from the detections guideline: the
+spread forecast mark, fire dots, older-to-newer opacity, first-seen diamonds, the concession edge
+with its inside tint, and the replay timeline. One new map marker, the crossing mark, comes through
+`/design-system` before `/build` (D47); the preview doesn't draw it yet. No new token.
+
+**Design system:** Fire Watch, `docs/design/design-system/` (D2, D4, D22, D29, D30).
+
+**Preview:** real components in `web/src`: `ForecastPanel` (new), `FireView` (a forecast slot),
+`FireMap` (the line and its legend row), `ConcessionView` (the count and the marker),
+`FireRecordPage` (the chain read, the picked forecast, the replay jump) and `api.ts` (the types).
+Run `cd web && pnpm dev` and open `http://localhost:5173/?preview=spread-forecast`. Pickers at the
+top switch between 11 states and themes; `&state=hit&theme=dark` links straight to one. The
+detections are the fire-origin fixture's real VIIRS NOAA-20 rows from 2026-10-12 to 15. The
+forecasts, seals and transactions are made up, as if forecasting began 2026-10-13 09:00 UTC. Each
+forecast runs from the centre of its pass to the nearest point on the edge. Scenario 3 shows on the
+real 0540 fire that came within 192 m and stayed out, and scenario 5 on the real 0332 fire that two
+outside detections joined on 13 Oct 17:37. The "seen before the seal" state isn't in the preview,
+because no real fire has done it. Drift check passed over the 12 files written, and all 19 tokens
+used exist in `docs/design/design-system/tokens/`. `tsc -b` is clean and the 121 web unit tests
+pass.
 
 ## Open items
 
@@ -208,6 +292,10 @@ then. Scenarios 2 to 5 give the forecast in their Given, so they hold whatever t
 | O9 | A pass can be acquired before a forecast's seal but stored after it. NOAA-20 sometimes passes twice about 100 minutes apart (0361: 2026-10-14 17:20 and 19:00 UTC), and FIRMS takes 2 to 3 hours. None of the 31 arrivals came that way. Does such a pass count toward the forecast? | question | spec p1 | user | Resolved | 2026-10-19: no. Only passes taken after the seal count. Such a forecast reads "Seen inside on a pass before this forecast was sealed. Not checked." and counts neither way (D44) |
 | O10 | A fire not yet seen inside can join an older fire before it is seen inside on its own: 28 times from 2026-10-16 to 18, often a fire already inside. Checked against the joined fire, its forecast would read "seen inside" with none of its own detections inside. Example: the 0341 fire of scenario 5 | question | spec p1 | user | Resolved | 2026-10-19: the forecast closes, not checked, and counts neither way, here and in season-backtest (D44) |
 | O11 | Whether the point where a forecast says the fire crosses the edge is scored, or only the time | question | spec p1 | user | Resolved | 2026-10-19: drawn on the map, not scored. Only the time is scored, as the shape says (D44) |
+
+| O12 | Near the edge the forecast line is a few pixels long: 0332's 14 Oct 20:00 forecast runs about 100 m, 0540's about 190 m. Where it crosses can't be read off the map. A mark would be a new map marker in the design system | question | spec p2 | user | Resolved | 2026-10-19: add a crossing mark on the edge through `/design-system` before `/build`; `FireMap` follows it (D47) |
+| O13 | The fires table ranks largest first (D28), so 0332's one fire forecast to come in sits 18th of 34 | question | spec p2 | user | Resolved | 2026-10-19: fires forecast to be seen inside come first, then the largest (D45, supersedes D28) |
+| O14 | Whether the concession list marks concessions with a fire forecast to come in | question | spec p2 | user | Resolved | 2026-10-19: not in this slice; the concession view shows them (D46) |
 
 _Never delete this section or its rows. See references/ledger.md._
 
