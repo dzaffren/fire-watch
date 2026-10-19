@@ -54,6 +54,14 @@ def concession(concession_id):
     ]
 
 
+SEEN = {d.record_id: d.acquired_at for d in concession(C0332)}
+
+
+def stored_when_seen(record_id):
+    """As if each fixture detection was stored the moment it was seen."""
+    return SEEN[record_id]
+
+
 def fire_holding(key, at, concession_id=C0332):
     fires = group([d for d in concession(concession_id) if d.acquired_at <= at], STARTED)
     (fire,) = [f for f in fires if key in {d.record_id for d in f.detections}]
@@ -196,13 +204,14 @@ def forecast_0332(made):
 
 
 def sealed(forecast, sealed_at):
-    return {**asdict(forecast), "sealed_at": sealed_at}
+    """The forecast as stored, made and stored at once, then sealed at sealed_at."""
+    return {**asdict(forecast), "created_at": forecast.made_at, "sealed_at": sealed_at}
 
 
 def test_seen_inside_after_the_seal():
     forecast = sealed(forecast_0332("2026-10-14T20:00"), utc("2026-10-14T20:02"))
     now = utc("2026-10-15T21:00")
-    assert outcome(forecast, fire_holding(KEY_0332, now), now) == (
+    assert outcome(forecast, fire_holding(KEY_0332, now), now, stored_when_seen) == (
         "seen_inside",
         utc("2026-10-15T18:43"),
     )
@@ -213,7 +222,7 @@ def test_not_forecast_but_seen_inside():
     assert forecast.inside_by_at is None
     now = utc("2026-10-15T21:00")
     fire = fire_holding(KEY_0332, now)
-    assert outcome(sealed(forecast, utc("2026-10-13T20:02")), fire, now) == (
+    assert outcome(sealed(forecast, utc("2026-10-13T20:02")), fire, now, stored_when_seen) == (
         "seen_inside",
         utc("2026-10-15T18:43"),
     )
@@ -225,13 +234,19 @@ def test_forecast_inside_but_not_seen():
     # The fire as it stood after its third pass, before anything saw it inside.
     fire = fire_holding(KEY_0332, utc("2026-10-14T20:00"))
     waiting = sealed(forecast, utc("2026-10-14T20:02"))
-    assert outcome(waiting, fire, utc("2026-10-17T01:59")) is None
-    assert outcome(waiting, fire, utc("2026-10-17T02:00")) == ("not_seen_inside", None)
+    assert outcome(waiting, fire, utc("2026-10-17T01:59"), stored_when_seen) is None
+    assert outcome(waiting, fire, utc("2026-10-17T02:00"), stored_when_seen) == (
+        "not_seen_inside",
+        None,
+    )
     # Seen inside 15 Oct 18:43, after a forecast that ended at 18:00.
     ended = {**waiting, "until_at": utc("2026-10-15T18:00")}
     came_in = fire_holding(KEY_0332, utc("2026-10-15T21:00"))
-    assert outcome(ended, came_in, utc("2026-10-15T23:59")) is None
-    assert outcome(ended, came_in, utc("2026-10-16T00:00")) == ("not_seen_inside", None)
+    assert outcome(ended, came_in, utc("2026-10-15T23:59"), stored_when_seen) is None
+    assert outcome(ended, came_in, utc("2026-10-16T00:00"), stored_when_seen) == (
+        "not_seen_inside",
+        None,
+    )
 
 
 def test_seen_before_the_seal():
@@ -239,11 +254,11 @@ def test_seen_before_the_seal():
     now = utc("2026-10-15T21:00")
     fire = fire_holding(KEY_0332, now)
     for sealed_at in [utc("2026-10-15T18:43"), None]:
-        assert outcome(sealed(forecast, sealed_at), fire, now) == (
+        assert outcome(sealed(forecast, sealed_at), fire, now, stored_when_seen) == (
             "seen_before_seal",
             utc("2026-10-15T18:43"),
         )
-    assert outcome(sealed(forecast, utc("2026-10-15T18:42")), fire, now) == (
+    assert outcome(sealed(forecast, utc("2026-10-15T18:42")), fire, now, stored_when_seen) == (
         "seen_inside",
         utc("2026-10-15T18:43"),
     )
@@ -258,7 +273,10 @@ def test_joined_before_seen_inside():
     joined = fire_holding(YOUNG_0332, now)
     assert joined.key == OLDER_0332
     assert joined.inside_from == utc("2026-10-13T06:37")
-    assert outcome(sealed(forecast, utc("2026-10-13T09:02")), joined, now) == ("joined", None)
+    assert outcome(sealed(forecast, utc("2026-10-13T09:02")), joined, now, stored_when_seen) == (
+        "joined",
+        None,
+    )
 
 
 def test_join_and_arrival_in_one_run_reads_joined():
@@ -273,4 +291,28 @@ def test_join_and_arrival_in_one_run_reads_joined():
     (fire,) = group([older, young, link, arrival], None)
     assert fire.inside_from == arrival.acquired_at
     now = T0 + timedelta(hours=12)
-    assert outcome(sealed(forecast, T0 + timedelta(hours=2)), fire, now) == ("joined", None)
+    stored = {d.record_id: d.acquired_at for d in (older, young, link, arrival)}
+    assert outcome(sealed(forecast, T0 + timedelta(hours=2)), fire, now, stored.get) == (
+        "joined",
+        None,
+    )
+
+
+def test_a_late_row_of_its_own_pass_is_not_a_join():
+    first = det(1, minutes=6, edge_m=300)
+    (fire,) = group([first], None)
+    forecast = sealed(make(fire, "C", T0 + timedelta(hours=2), at_edge), T0 + timedelta(hours=2))
+    # Seen at T0 on the same pass, 300 m from first, but stored only after the forecast.
+    late = det(2, lat_e5=270, minutes=0, edge_m=200)
+    (fire,) = group([first, late], None)
+    assert (fire.key, fire.passes) == (late.record_id, 1)
+    stored = {first.record_id: T0 + timedelta(hours=1), late.record_id: T0 + timedelta(hours=3)}
+    now = T0 + timedelta(hours=4)
+    assert outcome(forecast, fire, now, stored.get) is None
+    arrival = det(3, lat_e5=540, minutes=720, inside=True, edge_m=400)
+    (fire,) = group([first, late, arrival], None)
+    stored[arrival.record_id] = T0 + timedelta(hours=13)
+    assert outcome(forecast, fire, T0 + timedelta(hours=13), stored.get) == (
+        "seen_inside",
+        arrival.acquired_at,
+    )

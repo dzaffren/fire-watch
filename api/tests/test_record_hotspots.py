@@ -420,6 +420,28 @@ def test_a_quiet_concession_closes_its_forecast_after_48_hours(clocked, firms):
     assert (made["outcome"], made["outcome_at"]) == ("not_seen_inside", None)
 
 
+def test_a_late_row_of_a_forecast_pass_neither_joins_nor_forecasts_again(clocked, firms):
+    contract, env = clocked
+    first_pass = passes("2026-10-13,1737")
+    firms.csv = first_pass
+    at_chain_time(contract, "2026-10-13T20:00")
+    assert run_recorder(env).returncode == 0
+    (before,) = forecasts(env["DATABASE_URL"])
+    # The same 17:37 pass, 200 m south of the fire's first detection, so it sorts first and
+    # becomes the fire's key.
+    late = first_pass.splitlines(keepends=True)[1].replace("-2.8517,", "-2.8535,", 1)
+    firms.csv = first_pass + late
+    at_chain_time(contract, "2026-10-13T21:00")
+
+    result = run_recorder(env)
+
+    assert result.returncode == 0, result.stderr
+    assert logged(result.stdout)[2] == 1
+    assert FORECAST_LOG.search(result.stdout).groups()[:3] == ("0", "0", "0")
+    assert forecasts(env["DATABASE_URL"]) == [before]
+    assert before["outcome"] == "waiting"
+
+
 def test_forecast_error_still_seals_detections(funded, firms, monkeypatch, capsys):
     contract, env = funded
     for name, value in env.items():

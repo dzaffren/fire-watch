@@ -19,6 +19,9 @@ CREATE TABLE forecasts (
     outcome text NOT NULL DEFAULT 'waiting'
         CHECK (outcome IN ('waiting', 'seen_inside', 'not_seen_inside', 'joined', 'seen_before_seal')),
     outcome_at timestamptz,
+    -- By the database's clock, as hotspots.created_at is: a fire key that moves to a
+    -- detection stored after this is the same fire, not a join.
+    created_at timestamptz NOT NULL DEFAULT now(),
     UNIQUE (concession_id, fire_key, after_pass_at)
 );
 

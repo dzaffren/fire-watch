@@ -75,11 +75,11 @@ WHERE concession_id = %(id)s AND fire_key = ANY(%(keys)s)
 ORDER BY made_at DESC, id DESC
 """
 FORECASTS_FROM = "SELECT min(made_at) AS started FROM forecasts"
-# Each fire key's newest forecast near the concession.
-NEWEST_FORECASTS = """
-SELECT DISTINCT ON (fire_key) fire_key, inside_by_at, outcome
-FROM forecasts WHERE concession_id = %(id)s
-ORDER BY fire_key, made_at DESC, id DESC
+# The concession's forecasts, oldest first, but those of fires that joined an older one (D44).
+CONCESSION_FORECASTS = """
+SELECT fire_key, inside_by_at, outcome FROM forecasts
+WHERE concession_id = %(id)s AND outcome <> 'joined'
+ORDER BY made_at, id
 """
 RECORDER = """
 SELECT n.finished_at AS last_run_at,
@@ -206,11 +206,12 @@ def create_app(allowed_origin: str) -> FastAPI:
             # Records first: a detection stored between the two reads is then in the grouping.
             rows = conn.execute(CONCESSION_HOTSPOTS, params).fetchall()
             grouped, group_ms = fires.stored(conn, concession_id, None)
-            newest = {
-                bytes(f["fire_key"]): f for f in conn.execute(NEWEST_FORECASTS, params)
-            }
+            made = conn.execute(CONCESSION_FORECASTS, params).fetchall()
         fire_of = {d.record_id: fire for fire in grouped for d in fire.detections}
         shown = {fire_of[row["record_id"]].key for row in rows}
+        # Each fire's newest forecast, on whichever of its detections it was keyed: a late row
+        # of its first pass can since have become the fire's key.
+        newest = {fire_of[bytes(f["fire_key"])].key: f for f in made}
         # When the fire's newest forecast still waits and says it comes in (D39).
         inside_by = {
             key: f["inside_by_at"]

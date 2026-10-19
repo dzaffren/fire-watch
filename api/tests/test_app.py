@@ -445,6 +445,9 @@ def test_concession_ranks_forecast_inside_fires_first(client, db):
     in_big = fire("2026-10-12T18:00Z", -320000, size=2)
     said_no = fire("2026-10-13T18:00Z", -330000)
     decided = fire("2026-10-14T06:18Z", -340000)
+    # A late row of its pass sorted first and became the fire's key after its forecast was made.
+    keyed = fire("2026-10-14T18:00Z", -350000)
+    moved = record(db, "2026-10-14T18:00Z", [(C0540, False, 1500)], lat_e5=-350100, lon_e5=10600000)
     forecast(db, C0540, in_small, "2026-10-13T06:18Z", "2026-10-13T09:00Z", "2026-10-14T06:00Z")
     forecast(db, C0540, in_big, "2026-10-12T18:00Z", "2026-10-12T20:00Z", "2026-10-13T18:00Z")
     forecast(db, C0540, said_no, "2026-10-13T06:18Z", "2026-10-13T09:00Z", "2026-10-14T06:00Z")
@@ -453,10 +456,12 @@ def test_concession_ranks_forecast_inside_fires_first(client, db):
         db, C0540, decided, "2026-10-14T06:18Z", "2026-10-14T09:00Z", "2026-10-14T18:00Z",
         outcome="not_seen_inside",
     )
+    forecast(db, C0540, keyed, "2026-10-14T18:00Z", "2026-10-14T20:00Z", "2026-10-15T06:00Z")
 
     fires = client.get(f"/api/concessions/{C0540}", params=RANGE).json()["fires"]
 
     assert [(f["key"], f["forecast_inside_by_unix"]) for f in fires] == [
+        (moved, unix("2026-10-15T06:00Z")),
         (in_big, unix("2026-10-13T18:00Z")),
         (in_small, unix("2026-10-14T06:00Z")),
         (biggest, None),
