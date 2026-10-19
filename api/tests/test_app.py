@@ -16,6 +16,7 @@ C0275, C0332, C0377, C0540 = (
     f"ID-WOOD-CONCESSION-{n}" for n in ("0275", "0332", "0377", "0540")
 )
 RANGE = {"from": "2026-10-11", "to": "2026-10-14"}
+DETAIL_ONLY = ("hotspots", "as_of_unix", "forecasts", "forecasts_from_unix")
 _ids = itertools.count(1)
 
 
@@ -59,6 +60,31 @@ def record(
                 "INSERT INTO hotspot_concessions VALUES (%s, %s, %s, %s)",
                 (hotspot_id, concession_id, inside, edge_m),
             )
+    return "0x" + record_id.hex()
+
+
+def forecast(
+    url, concession_id, fire_key, after_pass_at, made_at, inside_by_at=None, outcome="waiting",
+    **sealed
+):
+    """Stores a forecast for the fire keyed fire_key, inside by inside_by_at or not; returns its
+    record ID."""
+    n = next(_ids)
+    record_id = bytes([n]) * 32
+    points = (-310200, 11281200, -310150, 11281210) if inside_by_at else (None,) * 4
+    with psycopg.connect(url) as conn:
+        conn.execute(
+            "INSERT INTO forecasts (record_id, concession_id, fire_key, after_pass_at, made_at,"
+            " until_at, inside_by_at, from_lat_e5, from_lon_e5, crossing_lat_e5, crossing_lon_e5,"
+            " rule_version, tx_hash, sealed_at, outcome, outcome_at)"
+            " VALUES (%s, %s, %s, %s, %s, %s::timestamptz + interval '48 hours', %s, %s, %s, %s,"
+            " %s, 1, %s, %s, %s, %s)",
+            (
+                record_id, concession_id, bytes.fromhex(fire_key[2:]), after_pass_at, made_at,
+                made_at, inside_by_at, *points, sealed.get("tx_hash"), sealed.get("sealed_at"),
+                outcome, sealed.get("outcome_at"),
+            ),
+        )
     return "0x" + record_id.hex()
 
 
@@ -222,6 +248,7 @@ def test_concession_lists_fires_largest_first_with_fire_keys(client, db):
         "outside_from_unix": None,
         "never_spread": False,
         "recorded_before_h": None,
+        "forecast_inside_by_unix": None,
     }
     assert {h["record_id"]: h["fire_key"] for h in body["hotspots"]} == {
         **{r: largest[0] for r in largest},
@@ -283,8 +310,12 @@ def test_fire_has_every_detection_whatever_the_dates(client, db):
         detections[5]: detections[0],
     }
     assert concession["fires"] == [
-        {k: v for k, v in fire.items() if k not in ("hotspots", "as_of_unix")}
+        {
+            **{k: v for k, v in fire.items() if k not in DETAIL_ONLY},
+            "forecast_inside_by_unix": None,
+        }
     ]
+    assert (fire["forecasts"], fire["forecasts_from_unix"]) == ([], None)
     assert fire["first_seen"] == {"reading": "outside", "inside": False, "edge_m": 954}
     assert fire["first_seen_unix"] == unix("2026-10-13T17:37Z")
     assert fire["inside_from_unix"] == unix("2026-10-15T18:43Z")
@@ -333,6 +364,105 @@ def test_fire_detections_oldest_first_with_pass(client, db):
         ],
         "pass": 1,
     }
+
+
+def test_fire_lists_its_forecasts_newest_first(client, db):
+    first = record(db, "2026-10-13T17:37Z", [(C0332, False, 954)], lat_e5=-310000, lon_e5=11281000)
+    record(db, "2026-10-14T06:18Z", [(C0332, False, 731)], lat_e5=-310100, lon_e5=11281100)
+    record(db, "2026-10-14T17:20Z", [(C0332, False, 32)], lat_e5=-310200, lon_e5=11281200)
+    elsewhere = record(db, "2026-10-13T06:18Z", [(C0377, False, 500)], lat_e5=-400000)
+    forecast(db, C0377, elsewhere, "2026-10-13T06:18Z", "2026-10-13T09:00Z")
+    forecast(db, C0377, first, "2026-10-13T17:37Z", "2026-10-13T20:00Z")
+    said_no = forecast(db, C0332, first, "2026-10-13T17:37Z", "2026-10-13T20:00Z")
+    said_06_18 = forecast(
+        db, C0332, first, "2026-10-14T06:18Z", "2026-10-14T09:00Z", "2026-10-15T06:18Z"
+    )
+    newest = forecast(
+        db, C0332, first, "2026-10-14T17:20Z", "2026-10-14T20:00Z", "2026-10-15T05:20Z",
+        tx_hash=b"\xef" * 32, sealed_at="2026-10-14T20:02Z",
+    )
+
+    fire = client.get(f"/api/concessions/{C0332}/fires/{first}").json()
+
+    assert [f["record_id"] for f in fire["forecasts"]] == [newest, said_06_18, said_no]
+    assert fire["forecasts_from_unix"] == unix("2026-10-13T09:00Z")
+    assert fire["forecasts"][0] == {
+        "record_id": newest,
+        "concession_id": C0332,
+        "fire_key": first,
+        "after_pass_unix": unix("2026-10-14T17:20Z"),
+        "made_unix": unix("2026-10-14T20:00Z"),
+        "until_unix": unix("2026-10-16T20:00Z"),
+        "inside_by_unix": unix("2026-10-15T05:20Z"),
+        "from": {"lat_e5": -310200, "lon_e5": 11281200},
+        "crossing": {"lat_e5": -310150, "lon_e5": 11281210},
+        "rule_version": 1,
+        "tx_hash": "0x" + "ef" * 32,
+        "sealed_at": "2026-10-14T20:02:00Z",
+        "outcome": "waiting",
+        "outcome_unix": None,
+    }
+    assert {k: fire["forecasts"][2][k] for k in ("inside_by_unix", "from", "crossing")} == {
+        "inside_by_unix": None, "from": None, "crossing": None,
+    }
+
+
+def test_fire_lists_forecasts_of_fires_that_joined_it(client, db):
+    older = record(db, "2026-10-13T06:00Z", [(C0332, False, 900)], lat_e5=-310000, lon_e5=11281000)
+    newer = record(db, "2026-10-14T06:00Z", [(C0332, False, 2501)], lat_e5=-311400, lon_e5=11281000)
+    joined = forecast(
+        db, C0332, newer, "2026-10-14T06:00Z", "2026-10-14T09:00Z", outcome="joined"
+    )
+    record(db, "2026-10-14T18:00Z", [(C0332, False, 1185)], lat_e5=-310700, lon_e5=11281000)
+
+    fire = client.get(f"/api/concessions/{C0332}/fires/{older}").json()
+
+    assert [(f["record_id"], f["fire_key"], f["outcome"]) for f in fire["forecasts"]] == [
+        (joined, newer, "joined"),
+    ]
+
+
+def test_pack_has_no_forecasts(client, db):
+    first = record(db, "2026-10-13T17:37Z", [(C0332, False, 954)], created_at="2026-10-14T09:00Z")
+    forecast(db, C0332, first, "2026-10-13T17:37Z", "2026-10-13T20:00Z")
+
+    pack = client.get(
+        f"/api/concessions/{C0332}/fires/{first}", params={"as_of": unix("2026-10-14T09:00Z")}
+    ).json()
+
+    assert "forecasts" not in pack and "forecasts_from_unix" not in pack
+
+
+def test_concession_ranks_forecast_inside_fires_first(client, db):
+    def fire(at, lat_e5, size=1):
+        return [
+            record(db, at, [(C0540, False, 1500)], lat_e5=lat_e5, lon_e5=10600000 + i)
+            for i in range(size)
+        ][0]
+
+    biggest = fire("2026-10-12T06:18Z", -300000, size=3)
+    in_small = fire("2026-10-13T06:18Z", -310000)
+    in_big = fire("2026-10-12T18:00Z", -320000, size=2)
+    said_no = fire("2026-10-13T18:00Z", -330000)
+    decided = fire("2026-10-14T06:18Z", -340000)
+    forecast(db, C0540, in_small, "2026-10-13T06:18Z", "2026-10-13T09:00Z", "2026-10-14T06:00Z")
+    forecast(db, C0540, in_big, "2026-10-12T18:00Z", "2026-10-12T20:00Z", "2026-10-13T18:00Z")
+    forecast(db, C0540, said_no, "2026-10-13T06:18Z", "2026-10-13T09:00Z", "2026-10-14T06:00Z")
+    forecast(db, C0540, said_no, "2026-10-13T18:00Z", "2026-10-13T20:00Z")
+    forecast(
+        db, C0540, decided, "2026-10-14T06:18Z", "2026-10-14T09:00Z", "2026-10-14T18:00Z",
+        outcome="not_seen_inside",
+    )
+
+    fires = client.get(f"/api/concessions/{C0540}", params=RANGE).json()["fires"]
+
+    assert [(f["key"], f["forecast_inside_by_unix"]) for f in fires] == [
+        (in_big, unix("2026-10-13T18:00Z")),
+        (in_small, unix("2026-10-14T06:00Z")),
+        (biggest, None),
+        (decided, None),
+        (said_no, None),
+    ]
 
 
 def test_unknown_fire_is_404(client, db):
@@ -395,7 +525,9 @@ def test_pack_leaves_out_detections_stored_after_it(client, db):
 
     assert made["as_of_unix"] == unix("2026-10-16T09:00Z")
     assert (live["passes"], live["detections"]) == (4, 4)
-    assert {k: pack[k] for k in made} == made
+    assert {k: pack[k] for k in made if k not in DETAIL_ONLY[2:]} == {
+        k: v for k, v in made.items() if k not in DETAIL_ONLY[2:]
+    }
 
 
 def test_pack_keeps_its_key_after_a_join_to_an_older_fire(client, db):
@@ -420,7 +552,9 @@ def test_pack_keeps_its_key_after_a_join_to_an_older_fire(client, db):
 
     assert live.status_code == 404
     assert pack.status_code == 200
-    assert {k: pack.json()[k] for k in made} == made
+    assert {k: pack.json()[k] for k in made if k not in DETAIL_ONLY[2:]} == {
+        k: v for k, v in made.items() if k not in DETAIL_ONLY[2:]
+    }
 
 
 def test_pack_has_its_concession_map_and_rule(client, db):
@@ -477,6 +611,12 @@ def test_health_reports_last_run(client, db):
     record(db, "2026-10-14T06:18Z", [(C0540, True, 3099)])
     record(db, "2026-10-14T06:18Z", [(C0540, True, 3099)])
     record(db, "2026-10-12T06:18Z", [], version=1)
+    key = record(db, "2026-10-14T06:18Z", [(C0540, False, 300)], lat_e5=-300000)
+    forecast(db, C0540, key, "2026-10-14T06:18Z", "2026-10-14T09:00Z")
+    forecast(
+        db, C0540, key, "2026-10-14T05:00Z", "2026-10-14T08:00Z",
+        tx_hash=b"\x02" * 32, sealed_at="2026-10-14T08:02Z",
+    )
     with psycopg.connect(db) as conn:
         for started, finished, sealed, error in [
             ("2026-10-14T07:00Z", "2026-10-14T07:03:10Z", 71, None),
@@ -499,7 +639,7 @@ def test_health_reports_last_run(client, db):
             "last_run_ok": False,
             "last_ok_at": "2026-10-14T07:03:10Z",
             "last_sealed": 0,
-            "unsealed": 2,
+            "unsealed": 4,
         },
     }
 

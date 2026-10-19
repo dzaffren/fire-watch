@@ -1,4 +1,5 @@
-"""Read-only API: pulpwood concessions, their hotspot records and fires, and a health check."""
+"""Read-only API: pulpwood concessions, their hotspot records, fires and forecasts, and a health
+check."""
 
 import logging
 import math
@@ -17,6 +18,7 @@ from fastapi.responses import JSONResponse
 from firewatch import fires
 from firewatch.concessions import MAP_VERSION
 from firewatch.db import connect
+from firewatch.fingerprint import forecast_fields
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s:     %(message)s")
 log = logging.getLogger("firewatch.app")
@@ -78,13 +80,26 @@ SELECT h.*,
 FROM hotspots h
 WHERE h.record_id = ANY(%(record_ids)s)
 """
+# Every forecast for the concession made for one of these fire keys, newest first (D41).
+FORECASTS = """
+SELECT * FROM forecasts
+WHERE concession_id = %(id)s AND fire_key = ANY(%(keys)s)
+ORDER BY made_at DESC, id DESC
+"""
+FORECASTS_FROM = "SELECT min(made_at) AS started FROM forecasts"
+# Each fire key's newest forecast near the concession.
+NEWEST_FORECASTS = """
+SELECT DISTINCT ON (fire_key) fire_key, inside_by_at, outcome
+FROM forecasts WHERE concession_id = %(id)s
+ORDER BY fire_key, made_at DESC, id DESC
+"""
 RECORDER = """
 SELECT n.finished_at AS last_run_at,
        CASE WHEN n.id IS NOT NULL THEN n.error IS NULL END AS last_run_ok,
        (SELECT max(finished_at) FROM recorder_runs WHERE error IS NULL) AS last_ok_at,
        n.sealed AS last_sealed,
        (SELECT count(*) FROM hotspots WHERE fingerprint_version = 2 AND tx_hash IS NULL)
-           AS unsealed
+           + (SELECT count(*) FROM forecasts WHERE tx_hash IS NULL) AS unsealed
 FROM (SELECT) AS one
 LEFT JOIN LATERAL (
     SELECT * FROM recorder_runs ORDER BY finished_at DESC, id DESC LIMIT 1
@@ -171,6 +186,17 @@ def _fire(fire: fires.Fire) -> dict:
     }
 
 
+def _forecast(row) -> dict:
+    return {
+        "record_id": _hex(row["record_id"]),
+        **forecast_fields(row),
+        "tx_hash": _hex(row["tx_hash"]),
+        "sealed_at": _iso(row["sealed_at"]),
+        "outcome": row["outcome"],
+        "outcome_unix": _unix(row["outcome_at"]),
+    }
+
+
 def create_app(allowed_origin: str) -> FastAPI:
     app = FastAPI(title="Fire Watch API")
     app.add_middleware(
@@ -205,16 +231,29 @@ def create_app(allowed_origin: str) -> FastAPI:
             # Records first: a detection stored between the two reads is then in the grouping.
             rows = conn.execute(CONCESSION_HOTSPOTS, params).fetchall()
             grouped, group_ms = _group(conn, concession_id, None)
+            newest = {
+                bytes(f["fire_key"]): f for f in conn.execute(NEWEST_FORECASTS, params)
+            }
         fire_of = {d.record_id: fire for fire in grouped for d in fire.detections}
         shown = {fire_of[row["record_id"]].key for row in rows}
+        # When the fire's newest forecast still waits and says it comes in (D39).
+        inside_by = {
+            key: f["inside_by_at"]
+            for key, f in newest.items()
+            if f["outcome"] == "waiting" and f["inside_by_at"] is not None
+        }
+        # Fires forecast to be seen inside first, then the largest (D45).
         listed = sorted(
             (fire for fire in grouped if fire.key in shown),
-            key=lambda f: (-len(f.detections), -f.first_seen_at.timestamp(), f.key),
+            key=lambda f: (
+                f.key not in inside_by, -len(f.detections), -f.first_seen_at.timestamp(), f.key
+            ),
         )
         inside = sum(1 for row in rows if row["inside_here"])
         log.info(
-            "served concession id=%s hotspots=%d fires=%d group_ms=%d",
-            concession_id, len(rows), len(listed), group_ms,
+            "served concession id=%s hotspots=%d fires=%d forecast_inside=%d group_ms=%d",
+            concession_id, len(rows), len(listed), sum(f.key in inside_by for f in listed),
+            group_ms,
         )
         return {
             "id": found["id"],
@@ -226,7 +265,10 @@ def create_app(allowed_origin: str) -> FastAPI:
             "hotspots": [
                 {**_record(row), "fire_key": _hex(fire_of[row["record_id"]].key)} for row in rows
             ],
-            "fires": [_fire(fire) for fire in listed],
+            "fires": [
+                {**_fire(fire), "forecast_inside_by_unix": _unix(inside_by.get(fire.key))}
+                for fire in listed
+            ],
         }
 
     @app.get("/api/concessions/{concession_id}/fires/{key}")
@@ -256,10 +298,20 @@ def create_app(allowed_origin: str) -> FastAPI:
                 raise HTTPException(status_code=404, detail="No such fire")
             ids = [d.record_id for d in found.detections]
             rows = conn.execute(FIRE_HOTSPOTS, {"record_ids": ids}).fetchall()
+            # A pack doesn't carry forecasts (D43). A fire lists those of fires that joined it.
+            forecasts = {}
+            if site is None:
+                made = conn.execute(FORECASTS, {"id": concession_id, "keys": ids}).fetchall()
+                started = conn.execute(FORECASTS_FROM).fetchone()["started"]
+                forecasts = {
+                    "forecasts": [_forecast(row) for row in made],
+                    "forecasts_from_unix": _unix(started),
+                }
         by_id = {row["record_id"]: row for row in rows}
         log.info(
-            "served fire id=%s key=%s as_of=%d detections=%d passes=%d group_ms=%d",
-            concession_id, key, as_of, len(ids), found.passes, group_ms,
+            "served fire id=%s key=%s as_of=%d detections=%d passes=%d forecasts=%d group_ms=%d",
+            concession_id, key, as_of, len(ids), found.passes,
+            len(forecasts.get("forecasts", [])), group_ms,
         )
         pack = {} if site is None else {
             "concession_id": site["id"],
@@ -271,6 +323,7 @@ def create_app(allowed_origin: str) -> FastAPI:
         return {
             **_fire(found),
             "as_of_unix": as_of,
+            **forecasts,
             **pack,
             "hotspots": [
                 {**_record(by_id[record_id]), "pass": number}
