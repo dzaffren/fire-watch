@@ -21,13 +21,15 @@ export const forecastLine = (f: Forecast) =>
 const forecastShort = (f: Forecast) =>
   f.inside_by_unix === null ? `Not inside by ${detectedShort(f.until_unix)}` : `Inside by about ${detectedShort(f.inside_by_unix)}`;
 
-/** How the forecast turned out, from the passes after its seal (D44); none for a changed one. */
-function outcomeLine(f: Forecast, check: Check, short = false): string {
+/** How the forecast turned out, from the passes after its seal (D44); none for a changed one. After
+ *  its end it waits up to 6 hours more for passes taken before then, until the recorder closes it. */
+function outcomeLine(f: Forecast, check: Check, now: number, short = false): string {
   if (check.state === "mismatch") return short ? "Changed after its seal" : "Changed after its seal, so its outcome isn't shown.";
   const at = f.outcome_unix ?? 0;
   const utc = short ? "" : " UTC";
   switch (f.outcome) {
     case "waiting":
+      if (now >= f.until_unix) return `Waiting for the last passes before ${detectedShort(f.until_unix)}${utc}`;
       return `Waiting until ${detectedShort(f.until_unix)}${utc}`;
     case "seen_inside": {
       if (f.inside_by_unix === null) return `Seen inside ${detectedShort(at)}${utc}. Not forecast.`;
@@ -77,12 +79,14 @@ interface Props {
   checks: ForecastCheck[];
   fingerprints: Hex[];
   picked: number;
+  /** Unix seconds, to tell a waiting forecast whose 48 hours have ended. */
+  now: number;
   onPick: (index: number) => void;
   onCheckAgain: () => void;
 }
 
 /** The fire view's forecasts: the picked one in full, then every one, newest first (D41). */
-export function ForecastPanel({ fire, checks, fingerprints, picked, onPick, onCheckAgain }: Props) {
+export function ForecastPanel({ fire, checks, fingerprints, picked, now, onPick, onCheckAgain }: Props) {
   const forecasts = fire.forecasts ?? [];
   if (!forecasts.length) return <p className="fw-help forecast-none enter">{noneLine(fire)}</p>;
 
@@ -99,7 +103,7 @@ export function ForecastPanel({ fire, checks, fingerprints, picked, onPick, onCh
           <h2 id="h-forecast">{forecastLine(f)}</h2>
           <Chip check={state.check} />
         </div>
-        <p className="forecast-outcome">{outcomeLine(f, state.check)}</p>
+        <p className="forecast-outcome">{outcomeLine(f, state.check, now)}</p>
         {seal && <p className="fw-help rec-note">{seal}</p>}
         {state.check.state === "error" && (
           <div className="rec-act">
@@ -203,7 +207,7 @@ export function ForecastPanel({ fire, checks, fingerprints, picked, onPick, onCh
                     </td>
                     <td>
                       {forecastShort(row)}
-                      <span className="sub">{outcomeLine(row, checks[i]?.check ?? { state: "checking" }, true)}</span>
+                      <span className="sub">{outcomeLine(row, checks[i]?.check ?? { state: "checking" }, now, true)}</span>
                     </td>
                   </tr>
                 ))}

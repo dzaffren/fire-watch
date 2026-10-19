@@ -17,6 +17,8 @@ const at = (text: string) => Date.parse(`${text}Z`) / 1000;
 const FORECASTS_FROM = at("2026-10-13T09:00:00");
 // Pass 3 of the 0332 fire: the world of scenario 1, before its 15 Oct pass saw it inside.
 const WAITING_AS_OF = at("2026-10-14T20:30:00");
+// The other states, while the waiting fire's forecast made 15 Oct 21:00 has its 48 hours to run.
+const AS_OF = at("2026-10-16T00:00:00");
 const SEAL_AFTER_S = 120;
 const HORIZON_S = 48 * 3600;
 
@@ -268,6 +270,7 @@ export default function SpreadForecastPreview() {
         today={fixture.today}
         initialView={initialView(state)}
         initialDates={{ from: fixture.from, to: fixture.to }}
+        now={state === "waiting" || state === "pending" ? WAITING_AS_OF : AS_OF}
       />
     </div>
   );

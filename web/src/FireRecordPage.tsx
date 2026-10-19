@@ -40,9 +40,11 @@ interface Props {
   today: string;
   initialView?: View;
   initialDates?: { from: string; to: string };
+  /** Unix seconds; the clock by default, fixed by the preview and tests. */
+  now?: number;
 }
 
-export function FireRecordPage({ source, today, initialView, initialDates }: Props) {
+export function FireRecordPage({ source, today, initialView, initialDates, now = Date.now() / 1000 }: Props) {
   const [dates, setDates] = useState(initialDates ?? { from: daysBefore(today, DEFAULT_DAYS - 1), to: today });
   const [view, setView] = useState<View>(initialView ?? { kind: "list" });
   const [list, setList] = useState<ListLoad>({ kind: "loading" });
@@ -258,6 +260,7 @@ export function FireRecordPage({ source, today, initialView, initialDates }: Pro
                       checks={forecastChecks}
                       fingerprints={forecastFps}
                       picked={forecastPick}
+                      now={now}
                       onPick={(i) => {
                         setForecastPick(i);
                         setReplayAt(passOf(forecasts[i]));
