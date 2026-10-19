@@ -71,6 +71,7 @@ WIND_URL = "https://archive-api.open-meteo.com/v1/archive"
 # Open-Meteo refused the 15th request when they came 2 seconds apart (D58).
 WIND_POINTS = 100
 WIND_PAUSE_S = 35
+WIND_TRIES = 3
 TIME = "%Y-%m-%dT%H:%MZ"
 COLUMNS = [
     "concession_id", "fire_first_seen_at", "fire_latitude", "fire_longitude", "after_pass_at",
@@ -245,12 +246,28 @@ def read_wind(path: Path) -> dict[tuple[int, int, datetime], tuple[float, float]
     }
 
 
-def fetch_wind(needed: set[tuple[int, int, datetime]], client: httpx.Client) -> dict:
-    """ERA5's wind at each needed grid point and hour, from Open-Meteo, a month at a time."""
+def _ask_wind(client: httpx.Client, params: dict) -> list[dict]:
+    for attempt in range(1, WIND_TRIES + 1):
+        try:
+            response = client.get(WIND_URL, params=params)
+            response.raise_for_status()
+            body = response.json()
+            return body if isinstance(body, list) else [body]
+        # A JSON error too: Open-Meteo once ended a 2 MB answer at 83 KB.
+        except (httpx.HTTPError, ValueError) as e:
+            if attempt == WIND_TRIES:
+                raise
+            print(f"wind request {attempt} failed, trying again: {e}", file=sys.stderr, flush=True)
+            time.sleep(WIND_PAUSE_S)
+
+
+def fetch_wind(needed: set[tuple[int, int, datetime]], client: httpx.Client, path: Path) -> dict:
+    """ERA5's wind at each needed grid point and hour, from Open-Meteo, a month at a time. Each
+    answer is saved to path at once, and the hours path already holds aren't asked again."""
+    wind = {key: w for key, w in read_wind(path).items() if key in needed}
     by_month: dict[str, set] = {}
-    for key in needed:
+    for key in needed - wind.keys():
         by_month.setdefault(f"{key[2]:%Y-%m}", set()).add(key)
-    wind = {}
     asked = 0
     for month in sorted(by_month):
         keys = by_month[month]
@@ -261,9 +278,9 @@ def fetch_wind(needed: set[tuple[int, int, datetime]], client: httpx.Client) -> 
             if asked:
                 time.sleep(WIND_PAUSE_S)
             asked += 1
-            response = client.get(
-                WIND_URL,
-                params={
+            places = _ask_wind(
+                client,
+                {
                     "latitude": ",".join(f"{lat / 1e5:.2f}" for lat, _ in part),
                     "longitude": ",".join(f"{lon / 1e5:.2f}" for _, lon in part),
                     "start_date": f"{min(hours):%Y-%m-%d}",
@@ -274,9 +291,7 @@ def fetch_wind(needed: set[tuple[int, int, datetime]], client: httpx.Client) -> 
                     "models": "era5",
                 },
             )
-            response.raise_for_status()
-            body = response.json()
-            for (lat, lon), place in zip(part, body if isinstance(body, list) else [body]):
+            for (lat, lon), place in zip(part, places):
                 h = place["hourly"]
                 for t, speed, from_deg in zip(
                     h["time"], h["wind_speed_10m"], h["wind_direction_10m"]
@@ -284,6 +299,7 @@ def fetch_wind(needed: set[tuple[int, int, datetime]], client: httpx.Client) -> 
                     key = (lat, lon, datetime.fromisoformat(t).replace(tzinfo=timezone.utc))
                     if key in keys and speed is not None and from_deg is not None:
                         wind[key] = (speed, from_deg)
+            write_wind(path, wind)
             print(f"wind {month} points={len(part)} requests={asked}", file=sys.stderr, flush=True)
     return wind
 
@@ -416,8 +432,7 @@ def main(argv: list[str] | None = None, client: httpx.Client | None = None) -> i
         made = [r for cid in sorted(found) for r in replay(cid, found[cid])]
         needed = wind_needed(made)
         if args.fetch_wind:
-            wind = fetch_wind(needed, client or httpx.Client(timeout=120))
-            write_wind(args.wind, wind)
+            wind = fetch_wind(needed, client or httpx.Client(timeout=120), args.wind)
         else:
             wind = read_wind(args.wind)
         missing = sorted(needed - wind.keys())
