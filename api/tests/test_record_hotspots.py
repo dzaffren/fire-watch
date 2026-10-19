@@ -18,9 +18,14 @@ from eth_account import Account
 from psycopg.rows import dict_row
 from web3 import Web3
 
-from firewatch import concessions, record_hotspots
+from firewatch import concessions, forecast, record_hotspots
 from firewatch.chain import Chain
-from firewatch.fingerprint import fingerprint_v2, record_fields_v2
+from firewatch.fingerprint import (
+    fingerprint_v2,
+    forecast_fields,
+    forecast_fingerprint,
+    record_fields_v2,
+)
 
 ROOT = Path(__file__).parents[2]
 FIRMS = ROOT / "fixtures" / "firms"
@@ -30,6 +35,8 @@ ARTIFACT = ROOT / "contracts" / "out" / "FireRecords.sol" / "FireRecords.json"
 ANVIL_KEY = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
 RECORD_HOTSPOTS = Path(sys.executable).parent / "record-hotspots"
 FIRE_RECORD = (FIRMS / "fire-record.csv").read_text()
+# The 19 detections of the ID-WOOD-CONCESSION-0332 fire of scenario 1, on 4 passes.
+FIRE_ORIGIN = (FIRMS / "fire-origin.csv").read_text()
 # The header and hotspots A, B and C from scenario 1.
 ABC = "".join(FIRE_RECORD.splitlines(keepends=True)[:4])
 A = (-358175, 10571567)
@@ -38,6 +45,8 @@ LOG_LINE = re.compile(
     r"recorded fetched=(\d+) kept=(\d+) new=(\d+) sealed=(\d+) unsealed=(\d+)"
     r" balance_eth=\d+\.\d{4}"
 )
+FORECAST_LOG = re.compile(r"forecasts=(\d+) forecasts_sealed=(\d+) outcomes=(\d+) forecast_ms=\d+")
+C0332 = "ID-WOOD-CONCESSION-0332"
 
 
 def _free_port():
@@ -71,6 +80,41 @@ def _deploy(w3, recorder):
     tx_hash = w3.eth.send_raw_transaction(deployer.sign_transaction(tx).raw_transaction)
     address = w3.eth.wait_for_transaction_receipt(tx_hash).contractAddress
     return w3.eth.contract(address=address, abi=artifact["abi"])
+
+
+@pytest.fixture
+def clocked(mapped_db, firms):
+    """A fresh anvil whose clock starts at 2026-10-13 19:00 UTC, so each run can be staged at a
+    past chain time, as the e2e stages them."""
+    url = f"http://127.0.0.1:{_free_port()}"
+    start = str(_unix("2026-10-13T19:00"))
+    proc = subprocess.Popen(
+        ["anvil", "--port", url.rsplit(":", 1)[1], "--silent", "--timestamp", start]
+    )
+    w3 = Web3(Web3.HTTPProvider(url))
+    for _ in range(100):
+        if w3.is_connected():
+            break
+        time.sleep(0.05)
+    contract = _deploy(w3, Account.from_key(ANVIL_KEY).address)
+    yield contract, _env(mapped_db, w3, firms, contract, ANVIL_KEY)
+    proc.terminate()
+    proc.wait()
+
+
+def _unix(text):
+    return int(datetime.fromisoformat(text + "+00:00").timestamp())
+
+
+def at_chain_time(contract, text):
+    """Mines a block at text, UTC, so the next run's now is then."""
+    contract.w3.provider.make_request("evm_mine", [_unix(text)])
+
+
+def passes(*acquired):
+    """The FIRE_ORIGIN header and its rows from the passes acquired at these YYYY-MM-DD,HHMM."""
+    header, *rows = FIRE_ORIGIN.splitlines(keepends=True)
+    return header + "".join(r for r in rows if r.split(",")[5] + "," + r.split(",")[6] in acquired)
 
 
 @pytest.fixture
@@ -197,9 +241,18 @@ def records(url):
         ).fetchall()
 
 
+def forecasts(url):
+    with psycopg.connect(url, row_factory=dict_row) as conn:
+        return conn.execute("SELECT * FROM forecasts ORDER BY made_at, id").fetchall()
+
+
 def runs(url):
     with psycopg.connect(url, row_factory=dict_row) as conn:
         return conn.execute("SELECT * FROM recorder_runs ORDER BY id").fetchall()
+
+
+def utc(text):
+    return datetime.fromisoformat(text + "+00:00")
 
 
 def km(edge_m):
@@ -228,7 +281,7 @@ def test_keeps_a_and_b_drops_c(funded, firms):
     result = run_recorder(env)
 
     assert result.returncode == 0, result.stderr
-    assert logged(result.stdout) == (3, 2, 2, 2, 0)
+    assert logged(result.stdout) == (3, 2, 2, 4, 0)
     a, b = records(env["DATABASE_URL"])
     assert (a["lat_e5"], a["lon_e5"]) == A
     assert (b["lat_e5"], b["lon_e5"]) == B
@@ -247,7 +300,7 @@ def test_keeps_a_and_b_drops_c(funded, firms):
         )
         assert len(logs) == 1
     (run,) = runs(env["DATABASE_URL"])
-    assert (run["kept"], run["sealed"], run["unsealed"], run["error"]) == (2, 2, 0, None)
+    assert (run["kept"], run["sealed"], run["unsealed"], run["error"]) == (2, 4, 0, None)
     assert run["started_at"] <= run["finished_at"]
 
 
@@ -255,13 +308,17 @@ def test_rerun_adds_nothing(funded):
     contract, env = funded
     assert run_recorder(env).returncode == 0
     first = records(env["DATABASE_URL"])
+    made = forecasts(env["DATABASE_URL"])
+    assert len(made) == 2
     block = contract.w3.eth.block_number
 
     result = run_recorder(env)
 
     assert result.returncode == 0, result.stderr
     assert logged(result.stdout) == (3, 2, 0, 0, 0)
+    assert FORECAST_LOG.search(result.stdout).groups()[:3] == ("0", "0", "0")
     assert records(env["DATABASE_URL"]) == first
+    assert forecasts(env["DATABASE_URL"]) == made
     assert contract.w3.eth.block_number == block
 
 
@@ -272,18 +329,18 @@ def test_unfunded_keeps_records_then_next_run_seals(unfunded):
 
     assert result.returncode == 1
     assert "insufficient funds" in result.stderr
-    assert logged(result.stdout) == (3, 2, 2, 0, 2)
+    assert logged(result.stdout) == (3, 2, 2, 0, 4)
     unsealed = records(env["DATABASE_URL"])
     assert [(r["tx_hash"], r["sealed_at"]) for r in unsealed] == [(None, None)] * 2
     (run,) = runs(env["DATABASE_URL"])
-    assert (run["kept"], run["sealed"], run["unsealed"]) == (2, 0, 2)
+    assert (run["kept"], run["sealed"], run["unsealed"]) == (2, 0, 4)
     assert "insufficient funds" in run["error"]
 
     contract.w3.provider.make_request("anvil_setBalance", [wallet.address, hex(10**18)])
     result = run_recorder(env)
 
     assert result.returncode == 0, result.stderr
-    assert logged(result.stdout) == (3, 2, 0, 2, 0)
+    assert logged(result.stdout) == (3, 2, 0, 4, 0)
     sealed = records(env["DATABASE_URL"])
     assert [(r["id"], r["record_id"]) for r in sealed] == [
         (r["id"], r["record_id"]) for r in unsealed
@@ -291,6 +348,75 @@ def test_unfunded_keeps_records_then_next_run_seals(unfunded):
     for row in sealed:
         assert_sealed(contract, row)
     assert runs(env["DATABASE_URL"])[-1]["error"] is None
+
+
+def test_run_makes_and_seals_forecasts_first(clocked, firms):
+    contract, env = clocked
+    firms.csv = passes("2026-10-13,1737", "2026-10-14,618", "2026-10-14,1720")
+    at_chain_time(contract, "2026-10-14T20:00")
+
+    result = run_recorder(env)
+
+    assert result.returncode == 0, result.stderr
+    assert FORECAST_LOG.search(result.stdout).groups()[:3] == ("1", "1", "0")
+    (made,) = forecasts(env["DATABASE_URL"])
+    assert made["concession_id"] == C0332
+    assert (made["after_pass_at"], made["made_at"], made["until_at"], made["inside_by_at"]) == (
+        utc("2026-10-14T17:20"), utc("2026-10-14T20:00"), utc("2026-10-16T20:00"),
+        utc("2026-10-15T05:20"),
+    )
+    assert (made["from_lat_e5"], made["from_lon_e5"]) == (-284220, 11271781)
+    assert (made["crossing_lat_e5"], made["crossing_lon_e5"]) == (-284194, 11271793)
+    assert (made["rule_version"], made["outcome"]) == (forecast.RULE_VERSION, "waiting")
+    first = records(env["DATABASE_URL"])[0]
+    assert made["fire_key"] == first["record_id"]
+    sealed_fp, sealed_unix = contract.functions.sealOf(made["record_id"]).call()
+    assert sealed_fp == forecast_fingerprint(forecast_fields(made))
+    assert made["sealed_at"] == datetime.fromtimestamp(sealed_unix, timezone.utc)
+    receipt = contract.w3.eth.get_transaction_receipt(made["tx_hash"])
+    assert receipt.status == 1 and receipt.to == contract.address
+    hotspot_blocks = [
+        contract.w3.eth.get_transaction_receipt(r["tx_hash"]).blockNumber
+        for r in records(env["DATABASE_URL"])
+    ]
+    assert receipt.blockNumber < min(hotspot_blocks)
+
+
+def test_next_run_stores_the_outcome(clocked, firms):
+    contract, env = clocked
+    firms.csv = passes("2026-10-13,1737", "2026-10-14,618", "2026-10-14,1720")
+    at_chain_time(contract, "2026-10-14T20:00")
+    assert run_recorder(env).returncode == 0
+    firms.csv = FIRE_ORIGIN
+    at_chain_time(contract, "2026-10-15T21:00")
+
+    result = run_recorder(env)
+
+    assert result.returncode == 0, result.stderr
+    assert FORECAST_LOG.search(result.stdout).groups()[:3] == ("0", "0", "1")
+    # Seen inside on the 15 Oct pass, so no more forecasts for the fire.
+    (made,) = forecasts(env["DATABASE_URL"])
+    assert (made["outcome"], made["outcome_at"]) == ("seen_inside", utc("2026-10-15T18:43"))
+    assert made["sealed_at"] < made["outcome_at"]
+
+
+def test_forecast_error_still_seals_detections(funded, firms, monkeypatch, capsys):
+    contract, env = funded
+    for name, value in env.items():
+        monkeypatch.setenv(name, value)
+
+    def broken(*args):
+        raise RuntimeError("no forecast")
+
+    monkeypatch.setattr(forecast, "make", broken)
+
+    assert record_hotspots.main() == 1
+
+    assert logged(capsys.readouterr().out) == (3, 2, 2, 2, 0)
+    for row in records(env["DATABASE_URL"]):
+        assert_sealed(contract, row)
+    assert forecasts(env["DATABASE_URL"]) == []
+    assert runs(env["DATABASE_URL"])[-1]["error"] == "RuntimeError: no forecast"
 
 
 def test_stops_sealing_after_40_minutes(funded, firms, monkeypatch, capsys):
@@ -303,11 +429,15 @@ def test_stops_sealing_after_40_minutes(funded, firms, monkeypatch, capsys):
     assert record_hotspots.main(clock=ten_minutes_a_call) == 0
 
     stored = records(env["DATABASE_URL"])
+    made = forecasts(env["DATABASE_URL"])
     fetched, kept, new, sealed, unsealed = logged(capsys.readouterr().out)
-    assert (fetched, kept, new, sealed, unsealed) == (25, len(stored), len(stored), 3, len(stored) - 3)
-    assert [r["tx_hash"] is not None for r in stored] == [True] * 3 + [False] * (len(stored) - 3)
-    for row in stored[:3]:
-        assert_sealed(contract, row)
+    # Forecasts seal first, so the budget's 3 seals all go to them (D49).
+    assert len(made) > 3
+    assert (fetched, kept, new, sealed, unsealed) == (
+        25, len(stored), len(stored), 3, len(stored) + len(made) - 3,
+    )
+    assert [r["tx_hash"] is not None for r in made] == [True] * 3 + [False] * (len(made) - 3)
+    assert all(r["tx_hash"] is None for r in stored)
 
 
 def test_second_run_exits_while_first_holds_lock(funded, firms):
