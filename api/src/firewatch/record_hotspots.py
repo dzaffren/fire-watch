@@ -97,6 +97,13 @@ SELECT concession_id FROM forecasts WHERE outcome = 'waiting'
 ORDER BY id
 """
 WAITING = "SELECT * FROM forecasts WHERE concession_id = %(id)s AND outcome = 'waiting'"
+# The newest pass each fire key was forecast after, once this run's joins are stored.
+FORECAST_PASSES = """
+SELECT fire_key, max(after_pass_at) AS after_pass_at FROM forecasts
+WHERE concession_id = %(id)s AND outcome <> 'joined'
+GROUP BY fire_key
+"""
+STORED_AT = "SELECT created_at FROM hotspots WHERE record_id = %s"
 SETTLE = "UPDATE forecasts SET outcome = %(outcome)s, outcome_at = %(at)s WHERE id = %(id)s"
 INSERT_FORECAST = """
 INSERT INTO forecasts (record_id, concession_id, fire_key, after_pass_at, made_at, until_at,
@@ -178,12 +185,16 @@ def _forecast(conn, now, new_ids: list[bytes], counts: dict) -> None:
     new = set(new_ids)
     # Counted only once committed, so a rolled-back run logs none.
     settled = made = 0
+
+    def stored_at(record_id: bytes) -> datetime:
+        return conn.execute(STORED_AT, (record_id,)).fetchone()["created_at"]
+
     for concession in conn.execute(TO_FORECAST, {"record_ids": new_ids}).fetchall():
         concession_id = concession["id"]
         grouped, _ = fires.stored(conn, concession_id, None)
         fire_of = {d.record_id: fire for fire in grouped for d in fire.detections}
         for row in conn.execute(WAITING, {"id": concession_id}).fetchall():
-            decided = forecast.outcome(row, fire_of[bytes(row["fire_key"])], now)
+            decided = forecast.outcome(row, fire_of[bytes(row["fire_key"])], now, stored_at)
             if decided:
                 outcome, at = decided
                 conn.execute(SETTLE, {"outcome": outcome, "at": at, "id": row["id"]})
@@ -194,11 +205,18 @@ def _forecast(conn, now, new_ids: list[bytes], counts: dict) -> None:
             point = conn.execute(CROSSING, params).fetchone()
             return point["lat_e5"], point["lon_e5"]
 
+        forecast_after = {
+            bytes(f["fire_key"]): f["after_pass_at"]
+            for f in conn.execute(FORECAST_PASSES, {"id": concession_id})
+        }
         for fire in grouped:
             if new.isdisjoint(d.record_id for d in fire.detections):
                 continue
             new_forecast = forecast.make(fire, concession_id, now, crossing)
-            if new_forecast:
+            # One forecast a pass: a late row of a pass already forecast can move the fire's
+            # key and first detection, which the unique key alone would miss.
+            done = [forecast_after.get(d.record_id) for d in fire.detections]
+            if new_forecast and all(at is None or at < new_forecast.after_pass_at for at in done):
                 inserted = conn.execute(
                     INSERT_FORECAST, {**vars(new_forecast), "record_id": secrets.token_bytes(32)}
                 )

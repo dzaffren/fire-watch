@@ -24,7 +24,10 @@ The rule, so anyone can redo it from the stored detections and the concession's 
 A forecast is made now and runs 48 hours from then. Its outcome reads the fire, as grouped now,
 that holds the forecast's key detection. The first of these that holds decides it (D44):
 
-1. The fire has another key: the forecast's fire joined an older fire before it was seen inside.
+1. The fire has another key, and that key's detection was stored before the forecast: the
+   forecast's fire joined an older fire before it was seen inside. A key that moves to a
+   detection stored after the forecast, such as a late row of the fire's own first pass, is
+   the same fire.
 2. The fire's inside from is at or before the seal, or the forecast is not sealed yet: it was seen
    inside before the seal.
 3. The fire's inside from is at or before the forecast's end: it was seen inside.
@@ -116,9 +119,12 @@ def make(
 
 
 def outcome(
-    forecast: Mapping, fire: fires.Fire, now: datetime
+    forecast: Mapping,
+    fire: fires.Fire,
+    now: datetime,
+    stored_at: Callable[[bytes], datetime],
 ) -> tuple[str, datetime | None] | None:
-    if fire.key != forecast["fire_key"]:
+    if fire.key != forecast["fire_key"] and stored_at(fire.key) <= forecast["created_at"]:
         return ("joined", None)
     seen = fire.inside_from
     sealed_at = forecast["sealed_at"]
