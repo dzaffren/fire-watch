@@ -1,4 +1,5 @@
 import type { Hex } from "viem";
+import backtest2023 from "../../fixtures/backtest/2023.json";
 import { sealOf, sealsOf, sealsWithTime } from "./chain";
 import { fingerprint, forecastFingerprint, type ForecastFields, type MatchedDetection } from "./fingerprint";
 import type { PackSource } from "./ComplaintPack";
@@ -178,6 +179,8 @@ export const apiSource: FireRecordSource = {
   forecastSeals: async (forecasts) =>
     (await sealsWithTime(forecasts.map((f) => f.record_id))).map((s) => ({ fingerprint: s.fingerprint, sealedAt: Number(s.sealedAt) })),
   forecastFingerprint,
+  // Changes only when the replay is redone and committed, so it is bundled (D59).
+  backtest: backtest2023,
 };
 
 export const packSource: PackSource = {

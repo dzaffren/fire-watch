@@ -1,22 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import type { Backtest } from "../api";
+import backtest from "../../../fixtures/backtest/2023.json";
 import { FireRecordPage } from "../FireRecordPage";
 import { fixture, param, syncPreview, THEMES, type Theme } from "./fixture";
 import { AS_OF, initialView, makeSource, type State as ForecastState } from "./SpreadForecastPreview";
 import "./preview.css";
-
-// The totals of a scratch replay of 2023, run 2026-10-19 with a 3-hour FIRMS lag and ERA5 wind from
-// Open-Meteo. /build replaces them with the committed result. The forecasts on the 2026 fires are the
-// spread-forecast preview's.
-const SCRATCH: Backtest = {
-  rule_version: 1,
-  forecasts: 20277,
-  joined: 246,
-  seen_before_made: 21,
-  ends_after_2023: 15,
-  rule: { warned: 123, missed: 12, did_not_come_in: 3751, stayed_out: 16109, median_hours_off: 11.7 },
-  downwind: { warned: 19, missed: 116, did_not_come_in: 256, stayed_out: 19604, median_hours_off: 11.7 },
-};
 
 const STATES = {
   hit: "0332: came true, replay under it",
@@ -29,7 +16,7 @@ type State = keyof typeof STATES;
 export default function SeasonBacktestPreview() {
   const [state, setState] = useState<State>(() => param("state", STATES, "hit"));
   const [theme, setTheme] = useState<Theme>(() => param("theme", THEMES, "system"));
-  const source = useMemo(() => ({ ...makeSource(state), backtest: SCRATCH }), [state]);
+  const source = useMemo(() => ({ ...makeSource(state), backtest }), [state]);
 
   useEffect(() => syncPreview(state, theme), [state, theme]);
 
@@ -37,8 +24,8 @@ export default function SeasonBacktestPreview() {
     <div className="preview">
       <div className="preview-bar">
         <p className="fw-help">
-          Preview of season-backtest. The replay totals come from a scratch run over 2023; the 2026 forecasts, seals
-          and transactions are made up, as in the spread-forecast preview.
+          Preview of season-backtest. The replay totals are the committed 2023 result; the 2026 forecasts, seals and
+          transactions are made up, as in the spread-forecast preview.
         </p>
         <label className="preview-pick">
           State

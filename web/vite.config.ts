@@ -6,7 +6,11 @@ export default defineConfig({
   plugins: [react()],
   server: {
     fs: {
-      allow: [".", fileURLToPath(new URL("../docs/design/design-system", import.meta.url))],
+      allow: [
+        ".",
+        fileURLToPath(new URL("../docs/design/design-system", import.meta.url)),
+        fileURLToPath(new URL("../fixtures/backtest", import.meta.url)),
+      ],
     },
   },
   test: {
