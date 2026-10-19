@@ -270,3 +270,31 @@ def test_replay_of_fire_origin_matches_the_recorder(migrated_db):
         (utc("2026-10-14T17:20"), utc("2026-10-14T21:00"), utc("2026-10-15T05:20"),
          -284220, 11271781, "seen_inside", seen),
     ]
+
+
+def test_fetch_wind_asks_again_after_a_cut_answer_and_keeps_what_it_has(tmp_path, monkeypatch):
+    monkeypatch.setattr(backtest, "WIND_PAUSE_S", 0)
+    hour = utc("2023-09-27T06:00")
+    kept, wanted = (-300000, 11525000, hour), (-375000, 11625000, hour)
+    path = tmp_path / "wind.csv"
+    backtest.write_wind(path, {kept: (3.5, 127)})
+    asked = []
+
+    def handler(request):
+        asked.append(dict(request.url.params))
+        if len(asked) == 1:
+            return httpx.Response(200, content=b'[{"hourly": {"time": ["2023-09-27T00:00"')
+        times = [f"2023-09-27T{h:02d}:00" for h in range(24)]
+        return httpx.Response(200, json=[
+            {"hourly": {"time": times, "wind_speed_10m": [2.25] * 24, "wind_direction_10m": [90] * 24}}
+        ])
+
+    wind = backtest.fetch_wind(
+        {kept, wanted}, httpx.Client(transport=httpx.MockTransport(handler)), path
+    )
+
+    assert wind == {kept: (3.5, 127.0), wanted: (2.25, 90)}
+    assert [(a["latitude"], a["longitude"], a["models"]) for a in asked] == [
+        ("-3.75", "116.25", "era5"), ("-3.75", "116.25", "era5"),
+    ]
+    assert backtest.read_wind(path) == wind
