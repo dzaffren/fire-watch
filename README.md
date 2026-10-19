@@ -92,3 +92,10 @@ first run backfills, and narrows GitHub's Azure role to the API app. The Recorde
 until that first run finishes. If Deploy's `az containerapp update` is then refused, also give
 GitHub Contributor on `firewatch-env`. To stop recording,
 `az containerapp job delete -g firewatch -n firewatch-recorder`; `setup.sh` recreates it.
+
+Turning on spread forecasts, in order, on the day it merges: `migrate up`, which adds the
+`forecasts` table and lets the read-only role read it; merge to main (Deploy ships the API, then
+the page); then point the recorder job at the merged sha's image by digest, as above. Forecasts
+count only from their seal, so each day between the merge and the job update loses that day's
+forecasts. The next run's log line shows `forecasts=` and `forecast_ms=`. To roll back, point the
+job at its previous digest; `migrate down` only if the table must go.
