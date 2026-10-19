@@ -419,6 +419,27 @@ def test_forecast_error_still_seals_detections(funded, firms, monkeypatch, capsy
     assert runs(env["DATABASE_URL"])[-1]["error"] == "RuntimeError: no forecast"
 
 
+def test_rolled_back_forecasts_are_not_logged(funded, firms, monkeypatch, capsys):
+    _, env = funded
+    for name, value in env.items():
+        monkeypatch.setenv(name, value)
+    make, calls = forecast.make, []
+
+    # B is near 0275 and 0377; its 0275 forecast is made, then its 0377 one fails.
+    def fails_second(*args):
+        calls.append(args)
+        if len(calls) == 2:
+            raise RuntimeError("no forecast")
+        return make(*args)
+
+    monkeypatch.setattr(forecast, "make", fails_second)
+
+    assert record_hotspots.main() == 1
+
+    assert FORECAST_LOG.search(capsys.readouterr().out).groups()[:3] == ("0", "0", "0")
+    assert forecasts(env["DATABASE_URL"]) == []
+
+
 def test_stops_sealing_after_40_minutes(funded, firms, monkeypatch, capsys):
     contract, env = funded
     firms.csv = FIRE_RECORD
