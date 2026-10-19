@@ -64,20 +64,34 @@ class Forecast:
     rule_version: int
 
 
-def _rounded_h(hours: float) -> int:
+def rounded_h(hours: float) -> int:
+    """Rule step 4's rounding."""
     return max(STEP_H, floor(hours / STEP_H + 0.5) * STEP_H)
 
 
+def passes_of(fire: fires.Fire) -> list[list[fires.Detection]]:
+    passes: list[list[fires.Detection]] = [[] for _ in range(fire.passes)]
+    for d, number in zip(fire.detections, fire.pass_numbers):
+        passes[number - 1].append(d)
+    return passes
+
+
+def advance_rate(passes: list[list[fires.Detection]]) -> float | None:
+    """Rule step 3, in metres an hour."""
+    if len(passes) < 2:
+        return None
+    newest, before = passes[-1], passes[-2]
+    earlier = [e for detections in passes[:-1] for e in detections]
+    advance = max(min(fires.distance_m(d, e) for e in earlier) for d in newest)
+    return advance / ((newest[0].acquired_at - before[0].acquired_at) / timedelta(hours=1))
+
+
 def _lead_h(passes: list[list[fires.Detection]], distance: int) -> int | None:
-    if len(passes) > 1:
-        newest, before = passes[-1], passes[-2]
-        earlier = [e for detections in passes[:-1] for e in detections]
-        advance = max(min(fires.distance_m(d, e) for e in earlier) for d in newest)
-        rate = advance / ((newest[0].acquired_at - before[0].acquired_at) / timedelta(hours=1))
-        if rate > 0:
-            hours = (distance + fires.EDGE_DOUBT_M) / rate
-            if hours <= HORIZON / timedelta(hours=1):
-                return _rounded_h(hours)
+    rate = advance_rate(passes)
+    if rate is not None and rate > 0:
+        hours = (distance + fires.EDGE_DOUBT_M) / rate
+        if hours <= HORIZON / timedelta(hours=1):
+            return rounded_h(hours)
     if distance <= fires.EDGE_DOUBT_M:
         return STEP_H
     return None
@@ -91,9 +105,7 @@ def make(
 ) -> Forecast | None:
     if fire.inside_from is not None:
         return None
-    passes: list[list[fires.Detection]] = [[] for _ in range(fire.passes)]
-    for d, number in zip(fire.detections, fire.pass_numbers):
-        passes[number - 1].append(d)
+    passes = passes_of(fire)
     nearest = min(passes[-1], key=lambda d: 0 if d.inside else d.edge_m)
     distance = 0 if nearest.inside else nearest.edge_m
     after_pass_at = passes[-1][0].acquired_at
