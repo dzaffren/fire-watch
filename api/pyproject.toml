@@ -14,6 +14,7 @@ dependencies = [
 [project.scripts]
 record-hotspots = "firewatch.record_hotspots:main"
 load-concessions = "firewatch.concessions:main"
+backtest-2023 = "firewatch.backtest:main"
 
 [dependency-groups]
 dev = ["pytest"]
