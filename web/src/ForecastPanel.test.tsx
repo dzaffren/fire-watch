@@ -263,7 +263,7 @@ describe("ForecastPanel", () => {
     ]);
     expect(rows[0]).toHaveAttribute("aria-selected", "true");
 
-    fireEvent.click(within(rows[2]).getByRole("button", { name: "13 Oct 20:00" }));
+    fireEvent.click(within(rows[2]).getByRole("button", { name: /^13 Oct 20:00/ }));
     expect(onPick).toHaveBeenCalledWith(2);
   });
 

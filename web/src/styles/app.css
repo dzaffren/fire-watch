@@ -202,7 +202,7 @@ a.fw-btn { text-decoration: none; }
   .fw-kv a.fw-link { position: relative; }
   .fw-kv a.fw-link::after { content: ""; position: absolute; inset: calc((var(--fw-touch-target) - 100%) / -2) 0; }
   /* The credit links wrap on a phone, so an overlay can't follow them; each becomes one tall box instead */
-  .credit .fw-link, .pack-foot .fw-link { display: inline-flex; align-items: center; min-height: var(--fw-touch-target); }
+  .credit .fw-link, .pack-foot .fw-link, .forecast details .fw-link { display: inline-flex; align-items: center; min-height: var(--fw-touch-target); }
 }
 
 @media (max-width: 720px) {
