@@ -2,8 +2,8 @@ import { act, fireEvent, render, screen, waitFor, within } from "@testing-librar
 import type { ReactElement } from "react";
 import { keccak256, toHex, type Hex } from "viem";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { ConcessionListing, ConcessionSummary, FireSummary, HotspotRecord, Ring } from "./api";
-import { fingerprint } from "./fingerprint";
+import type { ConcessionListing, ConcessionSummary, FireSummary, Forecast, HotspotRecord, Ring } from "./api";
+import { fingerprint, forecastFingerprint } from "./fingerprint";
 import { FireMap } from "./FireMap";
 import { FireRecordPage, type FireRecordSource } from "./FireRecordPage";
 import { shortHash } from "./format";
@@ -90,6 +90,60 @@ function fixtureSource(edit: (r: HotspotRecord) => HotspotRecord = (r) => r): Fi
     packHref: vi.fn((id: string, f: { key: Hex; as_of_unix: number }) => `/?pack=${id}&fire=${f.key}&as_of=${f.as_of_unix}`),
     sealOf: vi.fn(async (r: HotspotRecord) => fingerprint(sealed.get(r.record_id)!)),
     fingerprint,
+  };
+}
+
+const at = (text: string) => Date.parse(`${text}Z`) / 1000;
+const SEEN_INSIDE = at("2026-10-15T18:43:00");
+
+/** The fire's three forecasts of scenario 1, newest first, as seen inside on its 15 Oct 18:43 pass. */
+function scenario1Forecasts(): Forecast[] {
+  const made = (pass: string, madeAt: string, insideBy: string | null, i: number): Forecast => {
+    const record_id = keccak256(toHex(`forecast:${ID}:${KEY}:${madeAt}`));
+    const point = (lat_e5: number, lon_e5: number) => (insideBy ? { lat_e5, lon_e5 } : null);
+    return {
+      record_id,
+      concession_id: ID,
+      fire_key: KEY,
+      after_pass_unix: at(pass),
+      made_unix: at(madeAt),
+      until_unix: at(madeAt) + 2 * DAY_S,
+      inside_by_unix: insideBy ? at(insideBy) : null,
+      from: point(-284220 - i, 11271781),
+      crossing: point(-284194 - i, 11271793),
+      rule_version: 1,
+      tx_hash: keccak256(record_id),
+      sealed_at: iso(at(madeAt) + 120),
+      outcome: "seen_inside",
+      outcome_unix: SEEN_INSIDE,
+    };
+  };
+  return [
+    made("2026-10-14T17:20:00", "2026-10-14T20:00:00", "2026-10-15T05:20:00", 0),
+    made("2026-10-14T06:18:00", "2026-10-14T09:00:00", "2026-10-15T06:18:00", 1),
+    made("2026-10-13T17:37:00", "2026-10-13T20:00:00", null, 2),
+  ];
+}
+
+/** The fixture with scenario 1's forecasts on its fire; `edit` changes a stored forecast after its seal. */
+function forecastSource(edit: (f: Forecast, i: number) => Forecast = (f) => f): FireRecordSource {
+  const source = fixtureSource();
+  const sealed = scenario1Forecasts();
+  const fire = source.fire;
+  return {
+    ...source,
+    fire: vi.fn(async (id: string, key: Hex) => ({
+      ...(await fire(id, key)),
+      forecasts: sealed.map(edit),
+      forecasts_from_unix: at("2026-10-13T09:00:00"),
+    })),
+    forecastSeals: vi.fn(async (forecasts: Forecast[]) =>
+      forecasts.map((f) => {
+        const original = sealed.find((s) => s.record_id === f.record_id)!;
+        return { fingerprint: forecastFingerprint(original), sealedAt: original.made_unix + 120 };
+      }),
+    ),
+    forecastFingerprint,
   };
 }
 
@@ -351,6 +405,77 @@ describe("FireRecordPage", () => {
 
     expect(await screen.findByRole("heading", { name: "First seen outside, 950 m from the edge" })).toBeInTheDocument();
     expect(source.fire).toHaveBeenCalledTimes(2);
+  });
+
+  it("reads every forecast's seal in one chain read, and each matches the chain", async () => {
+    const source = forecastSource();
+    await openFire(source);
+
+    const panel = screen.getByRole("region", { name: "Forecast to be seen inside by about 15 Oct 05:20 UTC" });
+    expect(await within(panel).findByText("Matches the chain")).toBeInTheDocument();
+    expect(source.forecastSeals).toHaveBeenCalledOnce();
+    expect(source.forecastSeals).toHaveBeenCalledWith(scenario1Forecasts());
+    expect(
+      screen.getByText("Sealed 22 hours 41 minutes before the pass that saw it inside, by Base Sepolia's clock."),
+    ).toBeInTheDocument();
+    const rows = within(screen.getAllByRole("table")[0]).getAllByRole("row").slice(1);
+    expect(rows.map((r) => within(r).getAllByRole("cell")[0].textContent)).toEqual([
+      "14 Oct 20:00Matches the chain",
+      "14 Oct 09:00Matches the chain",
+      "13 Oct 20:00Matches the chain",
+    ]);
+  });
+
+  it("says a forecast changed after its seal does not match the chain, and the others still do", async () => {
+    // Scenario 4: the newest forecast's time moved from 15 Oct 05:20 to 18:40 in the database.
+    const source = forecastSource((f, i) => (i === 0 ? { ...f, inside_by_unix: at("2026-10-15T18:40:00") } : f));
+    await openFire(source);
+
+    const panel = screen.getByRole("region", { name: "Forecast to be seen inside by about 15 Oct 18:40 UTC" });
+    expect(await within(panel).findByText("Does not match the chain")).toBeInTheDocument();
+    expect(within(panel).getByText("Changed after its seal, so its outcome isn't shown.")).toBeInTheDocument();
+    expect(kv("Sealed fingerprint")).toHaveTextContent(fp(forecastFingerprint(scenario1Forecasts()[0])));
+    const rows = within(screen.getAllByRole("table")[0]).getAllByRole("row").slice(1);
+    expect(rows.map((r) => within(r).getAllByRole("cell")[0].textContent)).toEqual([
+      "14 Oct 20:00Does not match the chain",
+      "14 Oct 09:00Matches the chain",
+      "13 Oct 20:00Matches the chain",
+    ]);
+  });
+
+  it("draws the picked forecast's line only while the replay is at or after the pass it followed", async () => {
+    const [newest] = scenario1Forecasts();
+    await openFire(forecastSource());
+    const replay = () => map().children as ReactElement<{ at: number; onChange(at: number): void }>;
+
+    // The newest forecast followed pass 3; the fire opens on pass 4.
+    expect(replay().props.at).toBe(4);
+    expect(map().forecast).toEqual({ from: newest.from, to: newest.crossing });
+    expect(map().label).toMatch(/, with the picked forecast's line to where it crosses the edge$/);
+
+    act(() => replay().props.onChange(3));
+    expect(map().forecast).toEqual({ from: newest.from, to: newest.crossing });
+
+    act(() => replay().props.onChange(2));
+    expect(map().forecast).toBeNull();
+  });
+
+  it("moves the replay to a forecast's pass when its row is picked", async () => {
+    const [, second] = scenario1Forecasts();
+    await openFire(forecastSource());
+    const replay = () => map().children as ReactElement<{ at: number }>;
+
+    fireEvent.click(screen.getByRole("button", { name: "14 Oct 09:00" }));
+
+    expect(screen.getByRole("heading", { name: "Forecast to be seen inside by about 15 Oct 06:18 UTC" })).toBeInTheDocument();
+    expect(replay().props.at).toBe(2);
+    expect(map().forecast).toEqual({ from: second.from, to: second.crossing });
+
+    // The forecast after the first pass said not, so it has no line.
+    fireEvent.click(screen.getByRole("button", { name: "13 Oct 20:00" }));
+
+    expect(replay().props.at).toBe(1);
+    expect(map().forecast).toBeNull();
   });
 
   it("goes back to the concession when the dates change, keeping the fire marked while it is in them", async () => {
