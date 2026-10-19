@@ -19,3 +19,5 @@
 - Ask before committing a fixture read from the live database — [live-db-fixtures-need-approval](live-db-fixtures-need-approval.md)
 - Put `~/.foundry/bin` on PATH before the API suite, or `test_record_hotspots.py` errors — [pytest-needs-foundry-on-path](pytest-needs-foundry-on-path.md)
 - Keep each commit subject at 72 characters or fewer as you write it — [commit-subjects-72](commit-subjects-72.md)
+- Stage past chain times on an anvil started with `--timestamp`, then `evm_mine` each run — [stage-chain-time-with-own-anvil](stage-chain-time-with-own-anvil.md)
+- Put `--` straight after `cast abi-encode` when an argument is negative — [cast-abi-encode-negatives](cast-abi-encode-negatives.md)
