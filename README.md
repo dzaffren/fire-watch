@@ -17,6 +17,7 @@ for watchdog investigators who file grievances over fires on plantation land.
 - Pick dates, see which pulpwood concessions had hotspots, and check any hotspot's sealed record.
 - See a concession's fires, where each was first seen against its edge, and its passes in order, from sealed detections.
 - Turn one fire into a pack with its own link, which anyone's browser checks against the chain, and print it to PDF.
+- After each pass, forecast whether a fire near a concession is seen inside within 48 hours, seal it, and list every forecast with its outcome.
 
 ## Docs
 

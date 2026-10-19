@@ -1,6 +1,6 @@
 # Spread forecast
 
-**Version:** v1 · **Status:** Built · **Type:** Feature · **Project type:** Web UI
+**Version:** v1 · **Status:** Shipped · **Type:** Feature · **Project type:** Web UI
 
 **Shape doc:** docs/specs/fire-watch/shape.md
 **Depends on:** fire-origin
