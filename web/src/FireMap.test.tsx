@@ -106,7 +106,7 @@ function recordShapes(): (string | number)[][] {
   return shapes;
 }
 
-/** Records every call the fire layer makes, with the fill colour, opacity and dash it sets. */
+/** Records every call the fire layer makes, with the colours, line width, opacity and dash it sets. */
 function recordDrawing(): { frame(): string[] } {
   const log: string[] = [];
   const ctx = new Proxy(
@@ -117,7 +117,7 @@ function recordDrawing(): { frame(): string[] } {
         else log.push(name === "fill" && args[0] ? `fill ${args[0]}` : String(name));
       },
       set: (_, name, value) => {
-        if (name === "fillStyle" || name === "globalAlpha") log.push(`${String(name)}=${value}`);
+        if (["fillStyle", "strokeStyle", "lineWidth", "globalAlpha"].includes(String(name))) log.push(`${String(name)}=${value}`);
         return true;
       },
     },
@@ -153,6 +153,9 @@ const STRONG: Dot = { lat_e5: -360000, lon_e5: 10575000, frp_e2: 5423 };
 const WEAK: Dot = { lat_e5: -359000, lon_e5: 10573000, frp_e2: 192 };
 // About 1 km around hotspot A, as the fire view pads a fire's detections.
 const FIRE_AREA: Area = { west: 105.70667, east: 105.72467, south: -3.59075, north: -3.57275 };
+// From hotspot A to the boundary's north edge, as a forecast runs to where it crosses.
+const FORECAST = { from: { lat_e5: A.lat_e5, lon_e5: A.lon_e5 }, to: { lat_e5: -350000, lon_e5: A.lon_e5 } };
+const FORECAST_LEGEND = "Spread forecast, to where it crosses the edge";
 const CROWDED = "Fire detection. Zoom in for fire power";
 const FIRE_POWER = "Fire power: under 5, 5–20, over 20 MW";
 
@@ -312,6 +315,67 @@ describe("FireMap", () => {
 
     expect(screen.getByText("First seen")).toBeInTheDocument();
     expect(screen.queryByText("Older to newer")).toBeNull();
+  });
+
+  it("draws the forecast as a dashed accent line, with a crossing mark on the edge above it", async () => {
+    mapSize(991, 536);
+    const drawing = recordDrawing();
+    render(<FireMap label="Map" boundary={BOUNDARY} dots={[A]} area={FIRE_AREA} fire forecast={FORECAST} />);
+    await mapReady();
+
+    await waitFor(() => expect(drawing.frame()).toContain("strokeStyle=--fw-accent"));
+    const frame = drawing.frame();
+    const line = frame.indexOf("strokeStyle=--fw-accent");
+    expect(frame.slice(line, line + 8)).toEqual([
+      "strokeStyle=--fw-accent",
+      "lineWidth=1.5",
+      "setLineDash [5,4]",
+      "beginPath",
+      "moveTo",
+      "lineTo",
+      "stroke",
+      "setLineDash []",
+    ]);
+    // The dot, under the line.
+    expect(frame.indexOf("arc")).toBeLessThan(line);
+    const mark = frame.lastIndexOf("arc");
+    expect(mark).toBeGreaterThan(line);
+    expect(frame.slice(line + 8, mark + 3)).toEqual([
+      "fillStyle=--fw-surface",
+      "strokeStyle=--fw-accent",
+      "lineWidth=1.5",
+      "beginPath",
+      "arc",
+      "fill",
+      "stroke",
+    ]);
+    expect(screen.getByText(FORECAST_LEGEND)).toBeInTheDocument();
+  });
+
+  it("draws the crossing mark at 5 px where the line ends, smaller than the picked detection's 7 px ring", async () => {
+    mapSize(991, 536);
+    const shapes = recordShapes();
+    render(<FireMap label="Map" boundary={BOUNDARY} dots={[A]} area={FIRE_AREA} selected={0} fire forecast={FORECAST} />);
+    const map = await mapReady();
+    await waitFor(() => expect(map.zoom).toBe(14));
+
+    // The dot, the crossing mark, then the picked detection's ring on top.
+    await waitFor(() => expect(shapes.slice(-3)).toEqual([[4.5, "fill", "stroke"], [5, "fill", "stroke"], [7, "stroke"]]));
+  });
+
+  it("draws neither the line nor the mark without a forecast", async () => {
+    mapSize(991, 536);
+    const drawing = recordDrawing();
+    render(<FireMap label="Map" boundary={BOUNDARY} dots={[A]} area={FIRE_AREA} fire forecast={null} />);
+    await mapReady();
+
+    await waitFor(() => expect(drawing.frame()).toContain("arc"));
+    const frame = drawing.frame();
+    expect(frame).not.toContain("strokeStyle=--fw-accent");
+    // Only the concession's dashed edge.
+    expect(frame.filter((call) => call === "setLineDash [5,4]")).toHaveLength(1);
+    expect(frame.filter((call) => call === "arc")).toHaveLength(1);
+    expect(screen.queryByText(FORECAST_LEGEND)).toBeNull();
   });
 
   it("frames the fire's area, at most zoom 14, and stays on it when a detection is picked", async () => {
