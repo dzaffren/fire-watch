@@ -2,7 +2,7 @@ import { fireEvent, render, screen, within } from "@testing-library/react";
 import type { Hex } from "viem";
 import { describe, expect, it, vi } from "vitest";
 import vectors from "../../fixtures/fingerprint-vectors.json";
-import type { FireDetail, FireSummary, Forecast, HotspotRecord } from "./api";
+import type { Backtest, FireDetail, FireSummary, Forecast, HotspotRecord } from "./api";
 import { ForecastPanel, type ForecastCheck } from "./ForecastPanel";
 import { shortHash } from "./format";
 import raw from "./preview/fire-origin.fixture.json";
@@ -28,6 +28,17 @@ const vector = (name: string) => vectors.find((v) => v.name.startsWith(name))!.f
 // Scenario 1's forecast as sealed, and as it reads after scenario 4 moved its time to 18:40.
 const SEALED_FP = vector("0332 fire after its 14 Oct 17:20 pass");
 const CHANGED_FP = vector("the scenario 1 forecast with its time changed");
+
+/** A 2023 replay of rule version 1, next to the downwind guess. */
+const REPLAY: Backtest = {
+  rule_version: 1,
+  forecasts: 20277,
+  joined: 246,
+  seen_before_made: 21,
+  ends_after_2023: 15,
+  rule: { warned: 123, missed: 12, did_not_come_in: 3751, stayed_out: 16109, median_hours_off: 11.7 },
+  downwind: { warned: 19, missed: 116, did_not_come_in: 256, stayed_out: 19604, median_hours_off: 9 },
+};
 
 /** Scenario 1's forecast: made 14 Oct 20:00 after the 17:20 pass, inside by about 15 Oct 05:20. */
 const scenario1: Forecast = {
@@ -91,9 +102,10 @@ interface Show {
   fingerprints?: Hex[];
   now?: number;
   fire?: FireDetail;
+  backtest?: Backtest;
 }
 
-function show({ forecasts = [scenario1], checks, fingerprints, now = at("2026-10-14T20:30:00"), fire }: Show = {}) {
+function show({ forecasts = [scenario1], checks, fingerprints, now = at("2026-10-14T20:30:00"), fire, backtest }: Show = {}) {
   const handlers = { onPick: vi.fn(), onCheckAgain: vi.fn() };
   render(
     <ForecastPanel
@@ -102,6 +114,7 @@ function show({ forecasts = [scenario1], checks, fingerprints, now = at("2026-10
       fingerprints={fingerprints ?? forecasts.map(() => SEALED_FP)}
       picked={0}
       now={now}
+      backtest={backtest}
       {...handlers}
     />,
   );
@@ -286,5 +299,68 @@ describe("ForecastPanel", () => {
       "Waiting for the last passes before 16 Oct 09:00",
       "Seen inside 15 Oct 18:43. Not forecast.",
     ]);
+  });
+
+  describe("the 2023 replay", () => {
+    const cells = (table: HTMLElement) =>
+      within(table).getAllByRole("row").map((r) => Array.from(r.children).map((c) => c.textContent));
+
+    it("shows how rule version 1 did on 2023, next to the downwind guess", () => {
+      show({ backtest: REPLAY });
+
+      const block = screen.getByRole("heading", { name: "How this rule did on 2023, replayed" }).parentElement!;
+      expect(cells(within(block).getByRole("table", { name: "How this rule did on 2023, replayed" }))).toEqual([
+        ["In 2023", "Rule version 1", "Downwind guess"],
+        ["Arrivals warned of", "123 of 135", "19 of 135"],
+        ["Warnings that didn't come in", "3,751 of 3,874", "256 of 275"],
+        ["Median hours off", "11.7 h", "9.0 h"],
+      ]);
+      expect(within(block).getByText("A replay of 2023, run in 2026. Nothing in it was sealed in 2023.")).toBeInTheDocument();
+    });
+
+    it("gives every count, the method and both links under How this is worked out", () => {
+      show({ backtest: REPLAY });
+
+      expect(cells(screen.getByRole("table", { name: "Every count of the 2023 replay" }))).toEqual([
+        ["Forecasts", "Rule version 1", "Downwind guess"],
+        ["Warnings that came in", "123", "19"],
+        ["Warnings that didn't come in", "3,751", "256"],
+        ["Arrivals missed", "12", "116"],
+        ["Said no, and stayed out", "16,109", "19,604"],
+        ["Not checked: joined another fire first", "246, the same for both"],
+        ["Not checked: seen inside before it was made", "21, the same for both"],
+        ["Not counted: its 48 hours end after 2023", "15, the same for both"],
+        ["Forecasts made", "20,277, the same for both"],
+      ]);
+      expect(screen.getByText(/moves the fire with ERA5's hourly wind, from Open-Meteo, at the rate it advanced/)).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: "Every 2023 forecast, as CSV" })).toHaveAttribute(
+        "href",
+        "https://github.com/dzaffren/fire-watch/blob/main/fixtures/backtest/2023-forecasts.csv",
+      );
+      expect(screen.getByRole("link", { name: "Redo the 2023 replay" })).toHaveAttribute(
+        "href",
+        "https://github.com/dzaffren/fire-watch/blob/main/README.md#redo-the-2023-replay",
+      );
+    });
+
+    it("reads None warned of for a method that warned of none", () => {
+      show({ backtest: { ...REPLAY, downwind: { ...REPLAY.downwind, warned: 0, median_hours_off: null } } });
+
+      const table = screen.getByRole("table", { name: "How this rule did on 2023, replayed" });
+      expect(cells(table)[3]).toEqual(["Median hours off", "11.7 h", "None warned of"]);
+    });
+
+    it("shows no replay for a forecast by a rule version with none", () => {
+      show({ backtest: { ...REPLAY, rule_version: 2 } });
+
+      expect(screen.queryByText("How this rule did on 2023, replayed")).not.toBeInTheDocument();
+      expect(screen.queryByRole("link", { name: "Redo the 2023 replay" })).not.toBeInTheDocument();
+    });
+
+    it("shows no replay for a fire with no forecasts", () => {
+      show({ fire: fireOf(ID, KEY, []), backtest: REPLAY });
+
+      expect(screen.queryByText("How this rule did on 2023, replayed")).not.toBeInTheDocument();
+    });
   });
 });
