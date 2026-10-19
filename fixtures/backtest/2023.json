@@ -1,0 +1,21 @@
+{
+  "rule_version": 1,
+  "forecasts": 20277,
+  "joined": 246,
+  "seen_before_made": 21,
+  "ends_after_2023": 15,
+  "rule": {
+    "warned": 123,
+    "missed": 12,
+    "did_not_come_in": 3751,
+    "stayed_out": 16109,
+    "median_hours_off": 11.7
+  },
+  "downwind": {
+    "warned": 20,
+    "missed": 115,
+    "did_not_come_in": 264,
+    "stayed_out": 19596,
+    "median_hours_off": 12.4
+  }
+}
