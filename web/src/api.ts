@@ -1,10 +1,10 @@
 import type { Hex } from "viem";
-import { sealOf, sealsOf } from "./chain";
-import { fingerprint, type MatchedDetection } from "./fingerprint";
+import { sealOf, sealsOf, sealsWithTime } from "./chain";
+import { fingerprint, forecastFingerprint, type ForecastFields, type MatchedDetection } from "./fingerprint";
 import type { PackSource } from "./ComplaintPack";
 import type { FireRecordSource } from "./FireRecordPage";
 
-export type { ConcessionMatch } from "./fingerprint";
+export type { ConcessionMatch, Point } from "./fingerprint";
 
 export interface HotspotRecord extends MatchedDetection {
   record_id: Hex;
@@ -63,26 +63,9 @@ export interface FireSummary {
   forecast_inside_by_unix?: number | null;
 }
 
-export interface Point {
-  lat_e5: number;
-  lon_e5: number;
-}
-
 /** A forecast made after a pass, while the fire was not yet seen inside this concession (D39–D41). */
-export interface Forecast {
+export interface Forecast extends ForecastFields {
   record_id: Hex;
-  /** The fire it was made for, by its key then; a fire that joins another keeps its forecasts (D44). */
-  fire_key: Hex;
-  after_pass_unix: number;
-  made_unix: number;
-  /** 48 hours after it was made; passes from its seal until then decide it (D39, D44). */
-  until_unix: number;
-  /** When it says the fire is seen inside, or null for "not by until_unix". */
-  inside_by_unix: number | null;
-  /** Where it runs from, and where it says the fire crosses the edge; null when it says not. */
-  from: Point | null;
-  crossing: Point | null;
-  rule_version: number;
   tx_hash: Hex | null;
   sealed_at: string | null;
   outcome: "waiting" | "seen_inside" | "not_seen_inside" | "joined" | "seen_before_seal";
@@ -168,6 +151,9 @@ export const apiSource: FireRecordSource = {
   packHref,
   sealOf: async (record) => (await sealOf(record.record_id)).fingerprint,
   fingerprint,
+  forecastSeals: async (forecasts) =>
+    (await sealsWithTime(forecasts.map((f) => f.record_id))).map((s) => ({ fingerprint: s.fingerprint, sealedAt: Number(s.sealedAt) })),
+  forecastFingerprint,
 };
 
 export const packSource: PackSource = {
