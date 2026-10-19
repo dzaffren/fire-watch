@@ -26,8 +26,12 @@ const WEB = fileURLToPath(new URL("..", import.meta.url));
 const ROOT = resolve(WEB, "..");
 const CONTRACTS = resolve(ROOT, "contracts");
 const API = resolve(ROOT, "api");
-// The recorder asks FIRMS once, so the fixture server answers with both files' rows.
+// The fixture server answers with both files' rows acquired before the run that asks.
 const FIRMS_CSVS = ["fire-record.csv", "fire-origin.csv"].map((f) => resolve(ROOT, "fixtures/firms", f));
+// Four recorder runs, each at its own chain time, so the 0332 fire is forecast after each of its
+// first three passes and each forecast is sealed before the 15 Oct pass that decides it.
+const CHAIN_START = "2026-10-13T19:00:00Z";
+const RUNS = ["2026-10-13T20:00:00Z", "2026-10-14T09:00:00Z", "2026-10-14T20:00:00Z", "2026-10-15T21:00:00Z"];
 // The real boundaries of ID-WOOD-CONCESSION-0540, 0377, 0275, 0332, 0356 and 0372, so matches come at real
 // distances.
 const CONCESSIONS = resolve(ROOT, "fixtures/concessions/trase-cut.geojson");
@@ -80,6 +84,13 @@ const rpc = (method: string, params: unknown[]): RequestInit => ({
   body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
 });
 
+// A FIRMS row's acq_date and acq_time, such as 2026-10-14 and 618, in milliseconds.
+function acquired(row: string): number {
+  const [, , , , , date, time] = row.split(",");
+  const hhmm = time.padStart(4, "0");
+  return Date.parse(`${date}T${hhmm.slice(0, 2)}:${hhmm.slice(2)}:00Z`);
+}
+
 async function resetDatabase() {
   const admin = new pg.Client(ADMIN_DATABASE_URL);
   await admin.connect();
@@ -96,10 +107,10 @@ export default async function globalSetup() {
   const [header, ...rows] = FIRMS_CSVS.flatMap((path, i) =>
     readFileSync(path, "utf8").trimEnd().split("\n").slice(i === 0 ? 0 : 1),
   );
-  const firmsCsv = [header, ...rows].join("\n") + "\n";
+  let runAt = 0;
   const firms = createServer((_req, res) => {
     res.writeHead(200, { "content-type": "text/csv" });
-    res.end(firmsCsv);
+    res.end([header, ...rows.filter((row) => acquired(row) < runAt)].join("\n") + "\n");
   });
   const teardown = () => {
     children.forEach(stop);
@@ -107,7 +118,7 @@ export default async function globalSetup() {
   };
 
   try {
-    const anvil = start("anvil", ["--port", String(ANVIL_PORT), "--silent"], WEB);
+    const anvil = start("anvil", ["--port", String(ANVIL_PORT), "--silent", "--timestamp", String(Date.parse(CHAIN_START) / 1000)], WEB);
     children.push(anvil);
     await waitFor("anvil", anvil, answers(RPC_URL, rpc("eth_chainId", [])));
     const setCode = await (await fetch(RPC_URL, rpc("anvil_setCode", [MULTICALL3_ADDRESS, readFileSync(MULTICALL3, "utf8").trim()]))).json();
@@ -125,14 +136,20 @@ export default async function globalSetup() {
     await run("uv", ["run", "load-concessions", CONCESSIONS], API, apiEnv);
 
     await new Promise<void>((done) => firms.listen(FIRMS_PORT, "127.0.0.1", done));
-    await run("uv", ["run", "record-hotspots"], API, {
-      ...apiEnv,
-      FIRMS_MAP_KEY: "e2e",
-      FIRMS_BASE_URL: FIRMS_URL,
-      RPC_URL,
-      CONTRACT_ADDRESS,
-      RECORDER_PRIVATE_KEY,
-    });
+    for (const at of RUNS) {
+      runAt = Date.parse(at);
+      // The recorder's clock is the latest block's time (D50).
+      const mined = await (await fetch(RPC_URL, rpc("evm_mine", [runAt / 1000]))).json();
+      if (mined.error) throw new Error(`evm_mine at ${at} failed: ${mined.error.message}`);
+      await run("uv", ["run", "record-hotspots"], API, {
+        ...apiEnv,
+        FIRMS_MAP_KEY: "e2e",
+        FIRMS_BASE_URL: FIRMS_URL,
+        RPC_URL,
+        CONTRACT_ADDRESS,
+        RECORDER_PRIVATE_KEY,
+      });
+    }
 
     const api = start(
       "uv",
