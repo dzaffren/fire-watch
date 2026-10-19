@@ -1,6 +1,6 @@
 # Spread forecast
 
-**Version:** v1 · **Status:** Refined · **Type:** Feature · **Project type:** Web UI
+**Version:** v1 · **Status:** Built · **Type:** Feature · **Project type:** Web UI
 
 **Shape doc:** docs/specs/fire-watch/shape.md
 **Depends on:** fire-origin
@@ -462,7 +462,7 @@ Cut: wind data (D48), a forecast job of its own (D49), a cache, a new contract (
 | 2. Seen inside after the seal | `test_forecast.py::test_seen_inside_after_the_seal`; `test_record_hotspots.py::test_next_run_stores_the_outcome`; `spread-forecast.spec.ts`; `ForecastPanel.test.tsx` "reads seen inside and how long before it was sealed" | all three |
 | 3. Wrong forecasts stay listed | `test_forecast.py::test_not_forecast_but_seen_inside`, `::test_forecast_inside_but_not_seen`; `ForecastPanel.test.tsx` | `cd api && uv run pytest`; `cd web && pnpm test` |
 | 4. Changed after its seal | `test_fingerprint.py` and `fingerprint.test.ts` version 3 vectors; `ForecastPanel.test.tsx` "hides a changed forecast's outcome" | both |
-| 5. Joined first | `test_forecast.py::test_0341_joined_before_seen_inside`; `test_app.py::test_fire_lists_forecasts_of_fires_that_joined_it` | `cd api && uv run pytest` |
+| 5. Joined first | `test_forecast.py::test_joined_before_seen_inside`; `test_app.py::test_fire_lists_forecasts_of_fires_that_joined_it` | `cd api && uv run pytest` |
 | Ranking and marker (D45) | `test_app.py::test_concession_ranks_forecast_inside_fires_first`; `ConcessionView.test.tsx` | both |
 | Migration | `test_migrations.py::test_up_down_up` | `cd api && uv run pytest` |
 | Earlier slices still work | `fire-record.spec.ts`, `fire-origin.spec.ts`, `complaint-pack.spec.ts` on the four-run setup | `cd web && pnpm e2e` |
@@ -529,6 +529,13 @@ Recorded as D48, D49, D50.
 | O15 | Which forecast rule ships as version 1. On 2026-10-12 to 16, 2,007 moments, 41 seen inside: the advance rate, else 375 m, forecast 482 inside (41 came, 0 missed; median time error 11.7 h, 1.0 h for the 17 the rate timed); the rate alone 221 (17 came, 24 missed); 375 m alone 343 (38 came, 3 missed; 11.7 h). Each warns falsely about 9 times in 10, and D45 lists those fires first | question | spec p3 | user | Resolved | 2026-10-19: the advance rate to the nearest edge, else 375 m means the next pass (D48) |
 | O16 | Where a forecast's outcome is worked out: stored by the recorder once decided, or by the API on each request | question | spec p3 | user | Resolved | 2026-10-19: the recorder stores it, by the chain's clock (D50) |
 | O17 | The recorder can group every touched concession and make its forecasts within its 40-minute run on 0.25 vCPU. On a laptop, about 170 concessions take under 30 ms each | unproven | spec p3 | user | Accepted risk | 2026-10-19: build as planned and read `forecast_ms` in the job log after deploy. If it passes a few minutes, group only the concessions with new detections |
+
+| O18 | D47 said `/design-system` adds the crossing mark to the detections guideline before `/build`. It had not when the build ran | flag | build | user | Decided alone | Chose: `FireMap` draws a provisional mark from existing tokens: a 5 px ring, `--fw-surface` fill, 1.5 px `--fw-accent` edge, above the line and under the selected ring; no legend key. Other: wait for `/design-system`. Undo: run `/design-system` for the mark, then make `FireMap` draw what it defines (commit 74b4d39). 2026-10-19 |
+| O19 | Scenario 5's test was `test_0341_joined_before_seen_inside`, on the real 0341 fire. Its detections aren't in `fixtures/fires/scenarios.json`, and a fixture read from the live database needs approval | flag | build | user | Decided alone | Chose: `test_joined_before_seen_inside` on a real join in the fixture: the 0332 fire `0x3c75…`, 1,054 and 1,365 m outside, that the 13 Oct 17:37 pass joined to `0x2ee3…`, seen inside since 13 Oct 06:37. Other: add 0341's detections from the live database. Undo: approve that fixture, then point the test at it. 2026-10-19 |
+| O20 | The plan counted unsealed forecasts in `unsealed`, but not whether `sealed` counts forecast seals. The recorder check fails when `last_sealed == 0 and unsealed > 0` | flag | build | user | Decided alone | Chose: the run's `sealed` and the log's `sealed=` count both kinds, as `unsealed` does; `forecasts_sealed=` gives the forecast part. Other: `sealed` counts hotspots only, and a run that seals only forecasts trips the check. Undo: count only `hotspots_sealed` in `record_hotspots.main()` (commit f1caa43). 2026-10-19 |
+| O21 | The job needed the API's fire grouping and its two queries, which lived in `app.py`. `fires.py` was not in the plan | flag | build | user | Decided alone | Chose: move them into `fires.stored()`, shared by the API and the job. Other: the job imports `app.py`, which builds the FastAPI app on import. Undo: `git revert 6d03ac7`, then import from `app.py`. 2026-10-19 |
+| O22 | `infra/neon-reader.sql` grants the read-only role its tables on a fresh database. It was not in the plan | flag | build | user | Decided alone | Chose: add `forecasts` to its GRANT, so a fresh setup's fire route can read forecasts. Other: rely on the migration's grant alone, which runs only when the role already exists. Undo: drop `forecasts` from that line (commit 708688f). 2026-10-19 |
+| O23 | The plan did not say what `outcome_at` holds for a forecast that joined another fire or was not seen inside | flag | build | user | Decided alone | Chose: null for both; it is the arrival pass's time for "seen inside" and "seen before the seal". The page shows no time for the other two. Other: the time of the joining pass, or the forecast's end. Undo: set it in `forecast.outcome()`. 2026-10-19 |
 
 _Never delete this section or its rows. See references/ledger.md._
 
