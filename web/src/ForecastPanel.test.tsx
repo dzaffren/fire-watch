@@ -175,7 +175,7 @@ describe("ForecastPanel", () => {
   });
 
   it("reads a forecast for a fire that joined this one, not checked", () => {
-    show({ forecasts: [{ ...scenario1, fire_key: OTHER_KEY, outcome: "joined", outcome_unix: SEEN_INSIDE }] });
+    show({ forecasts: [{ ...scenario1, fire_key: OTHER_KEY, outcome: "joined", outcome_unix: null }] });
 
     expect(outcome()).toHaveTextContent(/^Joined another fire before it was seen inside\. Not checked\.$/);
     expect(kv("Made")).toHaveTextContent(

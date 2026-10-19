@@ -69,7 +69,7 @@ export interface Forecast extends ForecastFields {
   tx_hash: Hex | null;
   sealed_at: string | null;
   outcome: "waiting" | "seen_inside" | "not_seen_inside" | "joined" | "seen_before_seal";
-  /** The pass that saw the fire inside, or that joined it to another fire. */
+  /** The pass that saw the fire inside; null for a forecast that joined another fire or wasn't seen inside. */
   outcome_unix: number | null;
 }
 
