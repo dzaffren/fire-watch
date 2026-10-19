@@ -285,9 +285,8 @@ def test_fetch_wind_asks_again_after_a_cut_answer_and_keeps_what_it_has(tmp_path
         if len(asked) == 1:
             return httpx.Response(200, content=b'[{"hourly": {"time": ["2023-09-27T00:00"')
         times = [f"2023-09-27T{h:02d}:00" for h in range(24)]
-        return httpx.Response(200, json=[
-            {"hourly": {"time": times, "wind_speed_10m": [2.25] * 24, "wind_direction_10m": [90] * 24}}
-        ])
+        hourly = {"time": times, "wind_speed_10m": [2.25] * 24, "wind_direction_10m": [90] * 24}
+        return httpx.Response(200, json=[{"hourly": hourly}])
 
     wind = backtest.fetch_wind(
         {kept, wanted}, httpx.Client(transport=httpx.MockTransport(handler)), path
