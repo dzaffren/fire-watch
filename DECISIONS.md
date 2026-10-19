@@ -549,3 +549,49 @@ pass after the seal, several times per fire view), the job's own clock (a second
 seals', and the e2e could not stage past runs without a test hook).
 Source: docs/specs/spread-forecast.md
 Status: active
+
+## D51 · 2026-10-19 · Measure the forecast against a fire moving downwind at its recent rate
+
+Why: shape O12 named it as the naive guess, and D48 kept wind out of rule version 1 because of it.
+A fire seen on one pass has no rate, so the baseline says no.
+Rejected: the same plus rule version 1's 375 m step (only the direction would differ, so it is not
+naive), "never comes in" (right about 96 times in 100 in 2023, while it warns of nothing).
+Source: docs/specs/season-backtest.md
+Status: active
+
+## D52 · 2026-10-19 · Replay all of 2023
+
+Why: there are no months to argue about. FIRMS's NOAA-20 file holds 250,312 detections for 2023,
+and the replay takes about 30 seconds.
+Rejected: Aug–Oct (189,545 detections; invites "why those months"), Jul–Nov (222,944; the same
+question).
+Source: docs/specs/season-backtest.md
+Status: active
+
+## D53 · 2026-10-19 · Count every forecast once, with arrivals warned of, false alarms and hours off
+
+Why: the live fire view lists every forecast (D41), so the replay counts the same way. The hours
+off alone would hide the 3,753 "inside" forecasts that did not come in.
+Rejected: each arrival once, by the last forecast before it (unlike the live view), the hours off
+only (hides the false alarms).
+Source: docs/specs/season-backtest.md
+Status: active
+
+## D54 · 2026-10-19 · Show the 2023 result in the forecast panel
+
+Why: the reader weighs a forecast where it is shown. No new screen, and D34 holds.
+Rejected: a page with its own link (supersedes D34 and adds a route), a section on the home page
+(away from the forecasts it describes).
+Source: docs/specs/season-backtest.md
+Status: active
+
+## D55 · 2026-10-19 · Publish every replay forecast as a CSV, and seal nothing
+
+Why: anyone can recount the misses, as D41 lets them do live. A seal made in 2026 proves nothing
+about 2023 (shape O9). The pinned inputs and the command let anyone redo it, and git history shows
+any change.
+Rejected: the totals only (the misses can't be recounted without a rerun), sealing the result's
+fingerprint once (a new fingerprint version, for a seal that proves only that the file is unchanged
+since 2026).
+Source: docs/specs/season-backtest.md
+Status: active
