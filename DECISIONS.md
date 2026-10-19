@@ -418,3 +418,67 @@ Rejected: one sealOf per detection in a batch (rate-limited, as above), batches 
 rejected).
 Source: docs/specs/complaint-pack.md
 Status: active
+
+## D39 · 2026-10-19 · A forecast gives when a fire is seen inside within 48 hours, or that it isn't
+
+Why: a time is right or wrong for each fire, so a buyer can check one forecast. "Seen inside" is
+fire-origin's rule (D26), so an arrival is never a detection that could be on either side of the
+edge. The 31 arrivals on 2026-10-12 to 15 came 11 to 47 hours after the pass before.
+Rejected: a chance of arriving (checkable only over many fires), where the front is next (says
+nothing about the concession), any detection inside or within 375 m (could be on either side,
+D26), 24 hours (14 of the 31 arrivals came later), 72 hours (each forecast stays open 3 days).
+Source: docs/specs/spread-forecast.md
+Status: active
+
+## D40 · 2026-10-19 · Forecast every fire near a concession not yet seen inside, after each pass
+
+Why: a fire can be seen inside on its second pass, as one on ID-WOOD-CONCESSION-0532 was, so the
+forecast after its first pass counts. One forecast per concession, 278 on the quiet day to
+2026-10-17 07:03 UTC, adds little to the recorder's seals (D19).
+Rejected: only fires seen on 2 or more passes (misses fires seen inside on their second pass),
+only fires within 1 km of the edge (misses the 0332 fire that came in from 3.1 km).
+Source: docs/specs/spread-forecast.md
+Status: active
+
+## D41 · 2026-10-19 · Seal and list every forecast, "yes" or "no", with its outcome
+
+Why: a reader can count the misses, so nobody can keep only the forecasts that came true. The seal
+fixes each forecast's time before its outcome is known.
+Rejected: every forecast sealed but only the newest on the page (older ones hidden on the chain),
+sealing only those that say the fire comes in (a fire that came in when the forecast said no would
+leave no trace).
+Source: docs/specs/spread-forecast.md
+Status: active
+
+## D42 · 2026-10-19 · Measure the forecast in season-backtest, not before it ships
+
+Why: a forecast counts only from its seal, and 5 days remain to 2026-10-24, so the forecast step
+should run as soon as it can. season-backtest's 2023 replay, labelled as a replay, measures the
+published rule against the naive baseline and reports the result, good or bad.
+Rejected: a spike first (delays the first sealed forecast), the baseline itself as the forecast
+(season-backtest could compare it only with "never comes in"), replaying the recorded week now
+(forecasts sealed today prove nothing about timing, and need a replay label in this slice).
+Source: docs/specs/spread-forecast.md
+Status: active
+
+## D43 · 2026-10-19 · The complaint pack doesn't carry forecasts
+
+Why: keeps spread-forecast to 5 scenarios and two areas. A later slice can add them if the demo
+needs it.
+Rejected: forecasts sealed before the pack's time (one more scenario, and the pack view changes).
+Source: docs/specs/spread-forecast.md
+Status: active
+
+## D44 · 2026-10-19 · Check a forecast by time, against its own fire's passes after its seal
+
+Why: a forecast must never get credit for what the satellite had already seen, or for a fire it
+joined. NOAA-20 sometimes passes twice about 100 minutes apart and FIRMS takes 2 to 3 hours, so a
+pass can come before the seal yet be stored after it. From 2026-10-16 to 18, a fire not yet seen
+inside joined an older fire 28 times, often one already inside. Those forecasts close unchecked
+and count neither way, here and in season-backtest. The crossing point is drawn, not scored.
+Rejected: counting any pass stored after the seal (credits an arrival seen before the seal),
+checking against the joined fire (the 0341 fire 2,501 m out would read "seen inside" with none of
+its own detections inside), scoring the crossing point's distance too (one more number to define
+and test).
+Source: docs/specs/spread-forecast.md
+Status: active
