@@ -244,8 +244,8 @@ export function ForecastPanel({ fire, checks, fingerprints, picked, now, backtes
               <p className="fw-help">
                 The 2023 replay runs this rule, and a downwind guess, at every moment the recorder would have forecast
                 in 2023. It reads FIRMS's 2023 VIIRS NOAA-20 archive for Indonesia and the same concession map. The
-                downwind guess moves the fire with ERA5's hourly wind, at the rate it advanced since the pass before. A
-                fire seen on one pass has no rate, so the guess says no.
+                downwind guess moves the fire with ERA5's hourly wind, from Open-Meteo, at the rate it advanced since
+                the pass before. A fire seen on one pass has no rate, so the guess says no.
               </p>
               <p className="fw-help">
                 Both forecast at the same moments, and only passes after a forecast was made count. A warning is a
