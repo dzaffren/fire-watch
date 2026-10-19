@@ -9,7 +9,7 @@ import {
   type Hex,
 } from "viem";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { sealsOf } from "./chain";
+import { sealsOf, sealsWithTime } from "./chain";
 
 vi.hoisted(() => {
   vi.stubEnv("VITE_RPC_URL", "http://rpc.test/");
@@ -22,6 +22,8 @@ const fireRecords = parseAbi(["function sealOf(bytes32 recordId) view returns (b
 
 const recordId = (i: number) => toHex(i + 1, { size: 32 });
 const sealed = (id: Hex) => keccak256(id);
+// 2026-10-14 20:02 UTC, when scenario 1's forecast was sealed.
+const SEALED_AT = 1792008120n;
 
 /** Base Sepolia as the browser sees it: FireRecords' seals, read only through Multicall3's aggregate3. */
 function fakeRpc(seals: Map<Hex, Hex>) {
@@ -40,7 +42,7 @@ function fakeRpc(seals: Map<Hex, Hex>) {
         const returnData = encodeFunctionResult({
           abi: fireRecords,
           functionName: "sealOf",
-          result: [fingerprint, fingerprint === zeroHash ? 0n : 1791968700n],
+          result: [fingerprint, fingerprint === zeroHash ? 0n : SEALED_AT],
         });
         return { success: true, returnData };
       });
@@ -87,5 +89,27 @@ describe("sealsOf", () => {
     fakeRpc(new Map([[ids[0], sealed(ids[0])], [ids[2], sealed(ids[2])]]));
 
     await expect(sealsOf(ids)).resolves.toEqual([sealed(ids[0]), zeroHash, sealed(ids[2])]);
+  });
+});
+
+describe("sealsWithTime", () => {
+  it("reads each seal's fingerprint and time by the chain's clock, in one eth_call through Multicall3", async () => {
+    const ids = [recordId(0), recordId(1), recordId(2)];
+    const calls = fakeRpc(new Map([[ids[0], sealed(ids[0])], [ids[2], sealed(ids[2])]]));
+
+    await expect(sealsWithTime(ids)).resolves.toEqual([
+      { fingerprint: sealed(ids[0]), sealedAt: SEALED_AT },
+      { fingerprint: zeroHash, sealedAt: 0n },
+      { fingerprint: sealed(ids[2]), sealedAt: SEALED_AT },
+    ]);
+    expect(calls).toEqual([{ to: MULTICALL3, records: 3 }]);
+  });
+
+  it("reads 1,200 seals in three eth_calls of at most 500, in order", async () => {
+    const ids = Array.from({ length: 1200 }, (_, i) => recordId(i));
+    const calls = fakeRpc(sealedAll(ids));
+
+    await expect(sealsWithTime(ids)).resolves.toEqual(ids.map((id) => ({ fingerprint: sealed(id), sealedAt: SEALED_AT })));
+    expect(calls.map((c) => c.records).sort((a, b) => a - b)).toEqual([200, 500, 500]);
   });
 });

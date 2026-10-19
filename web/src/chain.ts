@@ -28,6 +28,11 @@ export async function sealOf(recordId: Hex): Promise<Seal> {
 
 /** Each record's sealed fingerprint, in order; zero for one not sealed yet. One eth_call per 500 records. */
 export async function sealsOf(recordIds: Hex[]): Promise<Hex[]> {
+  return (await sealsWithTime(recordIds)).map((s) => s.fingerprint);
+}
+
+/** Each record's seal with its time by the chain's clock, in order; zeros for one not sealed yet. */
+export async function sealsWithTime(recordIds: Hex[]): Promise<Seal[]> {
   const chunks: Hex[][] = [];
   for (let i = 0; i < recordIds.length; i += RECORDS_PER_CALL) chunks.push(recordIds.slice(i, i + RECORDS_PER_CALL));
   const results = await Promise.all(
@@ -45,5 +50,5 @@ export async function sealsOf(recordIds: Hex[]): Promise<Hex[]> {
       }),
     ),
   );
-  return results.flat().map(([fingerprint]) => fingerprint);
+  return results.flat().map(([fingerprint, sealedAt]) => ({ fingerprint, sealedAt }));
 }

@@ -1,8 +1,9 @@
+import { zeroHash } from "viem";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { apiSource, concession, concessions, pack, packRef, packSource, type HotspotRecord } from "./api";
-import { sealOf, sealsOf } from "./chain";
+import { apiSource, concession, concessions, pack, packRef, packSource, type Forecast, type HotspotRecord } from "./api";
+import { sealOf, sealsOf, sealsWithTime } from "./chain";
 
-vi.mock("./chain", () => ({ sealOf: vi.fn(), sealsOf: vi.fn() }));
+vi.mock("./chain", () => ({ sealOf: vi.fn(), sealsOf: vi.fn(), sealsWithTime: vi.fn() }));
 
 const MAP = "Trase pulpwood concessions 2023–2024, v2026-02-20";
 const A_FP = "0x86a47945c682c15fb86471df99c10a3fe1d8fc4ba7f39f87e70b46703b85f051";
@@ -21,6 +22,25 @@ const hotspotA: HotspotRecord = {
   fingerprint_version: 2,
   map_version: MAP,
   concessions: [{ id: "ID-WOOD-CONCESSION-0540", inside: true, edge_m: 3099 }],
+};
+
+// Scenario 1's forecast, as the shared version 3 vector holds it.
+const FORECAST_FP = "0x8d241f36bb7851fa396129c88476e5677cbf694e4c1497724a46332ace86295e";
+const forecast: Forecast = {
+  record_id: `0x${"cd".repeat(32)}`,
+  concession_id: "ID-WOOD-CONCESSION-0332",
+  fire_key: "0x48f25fe185b0402018dc6cd3fab3930a760bc0c47bed4d163aa67f678000fbc1",
+  after_pass_unix: 1791998400,
+  made_unix: 1792008000,
+  until_unix: 1792180800,
+  inside_by_unix: 1792041600,
+  from: { lat_e5: -284220, lon_e5: 11271781 },
+  crossing: { lat_e5: -284194, lon_e5: 11271793 },
+  rule_version: 1,
+  tx_hash: `0x${"12".repeat(32)}`,
+  sealed_at: "2026-10-14T20:02:00Z",
+  outcome: "waiting",
+  outcome_unix: null,
 };
 
 const listing = {
@@ -80,6 +100,24 @@ describe("apiSource", () => {
     vi.mocked(sealOf).mockResolvedValue({ fingerprint: A_FP, sealedAt: 1791968700n });
     await expect(apiSource.sealOf(hotspotA)).resolves.toBe(A_FP);
     expect(sealOf).toHaveBeenCalledWith(hotspotA.record_id);
+  });
+
+  it("fingerprints a forecast with version 3", () => {
+    expect(apiSource.forecastFingerprint!(forecast)).toBe(FORECAST_FP);
+  });
+
+  it("reads every forecast's seal and its time in one chain read", async () => {
+    const other = { ...forecast, record_id: `0x${"ef".repeat(32)}` as const };
+    vi.mocked(sealsWithTime).mockResolvedValue([
+      { fingerprint: FORECAST_FP, sealedAt: 1792008120n },
+      { fingerprint: zeroHash, sealedAt: 0n },
+    ]);
+    await expect(apiSource.forecastSeals!([forecast, other])).resolves.toEqual([
+      { fingerprint: FORECAST_FP, sealedAt: 1792008120 },
+      { fingerprint: zeroHash, sealedAt: 0 },
+    ]);
+    expect(sealsWithTime).toHaveBeenCalledTimes(1);
+    expect(sealsWithTime).toHaveBeenCalledWith([forecast.record_id, other.record_id]);
   });
 });
 
