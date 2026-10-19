@@ -176,6 +176,8 @@ def _forecast(conn, now, new_ids: list[bytes], counts: dict) -> None:
     """Stores the outcome of each waiting forecast the fire as it now stands decides, then
     forecasts each fire with a new detection, near each concession it matched (D40, D48)."""
     new = set(new_ids)
+    # Counted only once committed, so a rolled-back run logs none.
+    settled = made = 0
     for concession in conn.execute(TO_FORECAST, {"record_ids": new_ids}).fetchall():
         concession_id = concession["id"]
         grouped, _ = fires.stored(conn, concession_id, None)
@@ -185,7 +187,7 @@ def _forecast(conn, now, new_ids: list[bytes], counts: dict) -> None:
             if decided:
                 outcome, at = decided
                 conn.execute(SETTLE, {"outcome": outcome, "at": at, "id": row["id"]})
-                counts["outcomes"] += 1
+                settled += 1
 
         def crossing(lat_e5: int, lon_e5: int) -> tuple[int, int]:
             params = {"id": concession_id, "lat_e5": lat_e5, "lon_e5": lon_e5}
@@ -195,13 +197,15 @@ def _forecast(conn, now, new_ids: list[bytes], counts: dict) -> None:
         for fire in grouped:
             if new.isdisjoint(d.record_id for d in fire.detections):
                 continue
-            made = forecast.make(fire, concession_id, now, crossing)
-            if made:
+            new_forecast = forecast.make(fire, concession_id, now, crossing)
+            if new_forecast:
                 inserted = conn.execute(
-                    INSERT_FORECAST, {**vars(made), "record_id": secrets.token_bytes(32)}
+                    INSERT_FORECAST, {**vars(new_forecast), "record_id": secrets.token_bytes(32)}
                 )
-                counts["forecasts"] += inserted.rowcount
+                made += inserted.rowcount
     conn.commit()
+    counts["outcomes"] += settled
+    counts["forecasts"] += made
 
 
 # What each kind of record seals as, and the query for those still unsealed (D17, D49).
