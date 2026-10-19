@@ -374,11 +374,11 @@ pass that decides it.
 | File | What | Why |
 | ---- | ---- | --- |
 | `api/migrations/003_forecasts.up.sql` (new), `003_forecasts.down.sql` (new) | Table `forecasts`, as in Data; `GRANT SELECT` to `firewatch_reader` when it exists, as `002_fire_record.up.sql` does. Down drops the table | Scenarios 1–5 |
-| `api/src/firewatch/forecast.py` (new) | The rule above, `RULE_VERSION = 1`. `make(fire, concession_id, now, crossing)` returns a forecast or none; `crossing` is a callable that asks PostGIS for `ST_ClosestPoint(ST_Boundary(boundary), point)` on the full boundary. `outcome(forecast, fire, now)` works as follows. When the fire holding the forecast's key detection has another key, it returns `joined`. When the fire has a detection inside, more than 375 m from the edge, taken after the forecast's pass and at or before the seal, it returns `seen_before_seal`. When that detection comes after the seal and by the forecast's end, it returns `seen_inside`. When now is 6 hours past the end, it returns `not_seen_inside`. Otherwise it returns none. Pure functions, no I/O (D18: no shapely) | Scenarios 1–3, 5; D44 |
+| `api/src/firewatch/forecast.py` (new) | The rule above, `RULE_VERSION = 1`. `make(fire, concession_id, now, crossing)` returns a forecast or none; `crossing` is a callable that asks PostGIS for `ST_ClosestPoint(ST_Boundary(boundary), point)` on the full boundary. `outcome(forecast, fire, now, stored_at)` works as follows. When the fire holding the forecast's key detection has another key, and that key's detection was stored before the forecast, it returns `joined`; a key that moves to a row stored later, such as a late row of the fire's own first pass, is the same fire. When the fire has a detection inside, more than 375 m from the edge, taken after the forecast's pass and at or before the seal, it returns `seen_before_seal`. When that detection comes after the seal and by the forecast's end, it returns `seen_inside`. When now is 6 hours past the end, it returns `not_seen_inside`. Otherwise it returns none. Pure functions, no I/O (D18: no shapely) | Scenarios 1–3, 5; D44 |
 | `api/src/firewatch/fingerprint.py:43` | `TYPES_V3` and `forecast_fingerprint()`: version 3, concession ID, fire key, pass, made, until and forecast times (0 for "not"), the two points as whole numbers times 100,000 (0 for "not"), rule version | Scenario 4; D49 |
 | `api/src/firewatch/chain.py` | `now()`: the latest block's time | D50 |
-| `api/src/firewatch/record_hotspots.py` | `INSERT` (`:63`) also returns `record_id`; `store()` (`:109`) returns the new rows. `main()` (`:154`) builds `Chain` straight after storing and takes `now` from it. New `_forecast()` groups each concession touched or with a waiting forecast, stores outcomes, inserts forecasts `ON CONFLICT DO NOTHING`, and commits. Its errors go into the run's `error` but don't stop sealing. New `_seal_forecasts()` runs before `_seal()` (`:135`) within the same 40 minutes. `COUNT_UNSEALED` (`:78`) adds forecasts. The log line adds `forecasts=`, `forecasts_sealed=`, `outcomes=` and `forecast_ms=` | Scenarios 1–3, 5; D49, D50 |
-| `api/src/firewatch/app.py` | `fire()` (`:233`) adds `forecasts`: those for the concession whose `fire_key` is one of the fire's record IDs, newest first, each with `concession_id`. It also adds `forecasts_from_unix`, the earliest `made_at`. A pack (`as_of`) gets none (D43). `concession()` (`:199`) gives each fire `forecast_inside_by_unix`: its newest forecast, when it has the fire's own key, still waits and says inside. It ranks those fires first, then as today (`:210`, D45). `RECORDER` (`:81`) counts unsealed forecasts too. The logs add `forecasts=` | Scenarios 1–5; D45 |
+| `api/src/firewatch/record_hotspots.py` | `INSERT` (`:63`) also returns `record_id`; `store()` (`:109`) returns the new rows. `main()` (`:154`) builds `Chain` straight after storing and takes `now` from it. New `_forecast()` groups each concession touched or with a waiting forecast, stores outcomes, inserts forecasts `ON CONFLICT DO NOTHING`, skips a pass the fire was already forecast after, and commits. Its errors go into the run's `error` but don't stop sealing. New `_seal_forecasts()` runs before `_seal()` (`:135`) within the same 40 minutes. `COUNT_UNSEALED` (`:78`) adds forecasts. The log line adds `forecasts=`, `forecasts_sealed=`, `outcomes=` and `forecast_ms=` | Scenarios 1–3, 5; D49, D50 |
+| `api/src/firewatch/app.py` | `fire()` (`:233`) adds `forecasts`: those for the concession whose `fire_key` is one of the fire's record IDs, newest first, each with `concession_id`. It also adds `forecasts_from_unix`, the earliest `made_at`. A pack (`as_of`) gets none (D43). `concession()` (`:199`) gives each fire `forecast_inside_by_unix`: its newest forecast that didn't join another fire, keyed on any of its detections, still waits and says inside. It ranks those fires first, then as today (`:210`, D45). `RECORDER` (`:81`) counts unsealed forecasts too. The logs add `forecasts=` | Scenarios 1–5; D45 |
 | `api/tests/test_forecast.py` (new) | The 0332 fire after each of its 3 passes reads as scenario 1 (not; 15 Oct 06:18; 15 Oct 05:20); the rate's 48 h edge and the 12 h rounding; a one-pass fire within 375 m reads next pass; one 400 m out reads not; outcomes: seen inside (scenario 2), not seen, as forecast and not, joined (scenario 5's real detections), seen before the seal, and a join and an arrival in one run reads joined | Scenarios 1–3, 5 |
 | `api/tests/test_record_hotspots.py` | A run makes and seals forecasts before detections; a second run stores the outcome; a rerun adds no forecast; a forecast error still seals detections and fills `error`; the 40-minute cap covers forecast seals | Scenarios 1, 2 |
 | `api/tests/test_app.py` | Forecasts on the fire route, a joined fire's included; none on a pack; forecast-inside fires ranked first with `forecast_inside_by_unix`; health counts unsealed forecasts; reuses `record()` (`:34`) | Scenarios 1, 3, 5 |
@@ -420,6 +420,7 @@ erDiagram
         timestamptz sealed_at
         text outcome "waiting until decided"
         timestamptz outcome_at
+        timestamptz created_at "database clock, as hotspots.created_at"
     }
 ```
 
@@ -498,13 +499,23 @@ first: forecasts count only from their seal.
 | The rule was chosen on the week it was measured on | season-backtest measures it on 2023 against the baseline (D42) |
 | Forecasts start only after two hand steps, `migrate up` and the job's image (D21); each day's delay loses that day's forecasts | Ship chunk A first; README steps; do both on the day it merges |
 | A newer fire lit inside within 1 km joins the forecast's fire, which then reads "seen inside" | Same fire by D25, as fire-origin O4 accepted; the fire view shows each pass |
-| A pass's rows split across two runs: the forecast used the first run's rows, and redoing it from all of them can differ | One forecast per pass (unique key); the forecast keeps its pass and made times; rare |
+| A pass's rows split across two runs: the forecast used the first run's rows, and redoing it from all of them can differ | One forecast per pass: the recorder skips a pass the fire was already forecast after, even when a late row moves the fire's key, and such a key change is not a join (O24); the forecast keeps its pass and made times; rare |
 | Forecast seals go first, so detection seals wait longer on busy days | About 14 minutes a pass run; health counts both; D20's check fails on a stall |
 | The e2e moves from one recorder run to four with anvil's clock, under three existing specs | The same 44 records at the end; all four e2e specs run |
 
 ### Decisions to record
 
 Recorded as D48, D49, D50.
+
+## Review
+
+2026-10-19 · 6 raw findings, 5 survived, 5 fixed.
+
+- correctness · `api/src/firewatch/forecast.py:127` · a late row of a forecast's own pass no longer reads as a join or makes a second forecast · `8c9a6e4`
+- correctness · `api/src/firewatch/record_hotspots.py:225` · count forecasts and outcomes only after the commit · `2e912e7`
+- coverage · `api/src/firewatch/record_hotspots.py:95` · a recorder test that closes a quiet concession's forecast · `ccdd64d`
+- ui · `web/src/styles/app.css:205` · 44 px tap targets for the rule link and the forecast rows, with a phone e2e · `1e31c3c`
+- quality · `web/src/api.ts:73` · the comment on `outcome_unix` says it is null for a joined forecast · `885b43c`
 
 ## Open items
 
@@ -536,6 +547,7 @@ Recorded as D48, D49, D50.
 | O21 | The job needed the API's fire grouping and its two queries, which lived in `app.py`. `fires.py` was not in the plan | flag | build | user | Decided alone | Chose: move them into `fires.stored()`, shared by the API and the job. Other: the job imports `app.py`, which builds the FastAPI app on import. Undo: `git revert 6d03ac7`, then import from `app.py`. 2026-10-19 |
 | O22 | `infra/neon-reader.sql` grants the read-only role its tables on a fresh database. It was not in the plan | flag | build | user | Decided alone | Chose: add `forecasts` to its GRANT, so a fresh setup's fire route can read forecasts. Other: rely on the migration's grant alone, which runs only when the role already exists. Undo: drop `forecasts` from that line (commit 708688f). 2026-10-19 |
 | O23 | The plan did not say what `outcome_at` holds for a forecast that joined another fire or was not seen inside | flag | build | user | Decided alone | Chose: null for both; it is the arrival pass's time for "seen inside" and "seen before the seal". The page shows no time for the other two. Other: the time of the joining pass, or the forecast's end. Undo: set it in `forecast.outcome()`. 2026-10-19 |
+| O24 | The plan said a forecast reads joined when the fire holding its key detection has another key, and that the unique key keeps one forecast per pass. A late row of the fire's own first pass that sorts first moves the key: the forecast read joined, and a second forecast was made for the same pass | flag | review | user | Decided alone | Chose: joined only when the new key's detection was stored before the forecast, by a new `forecasts.created_at`; the recorder skips a pass already forecast; the concession view finds a fire's newest forecast on any of its detections. The panel's Made line still adds ", for a fire that later joined this one" when the key moved. Other: read any key change as a join, and accept a second forecast for the pass. Undo: `git revert 8c9a6e4`. 2026-10-19 |
 
 _Never delete this section or its rows. See references/ledger.md._
 
