@@ -1,6 +1,6 @@
 # Season backtest
 
-**Version:** v1 · **Status:** Refined · **Type:** Feature · **Project type:** Web UI
+**Version:** v1 · **Status:** Built · **Type:** Feature · **Project type:** Web UI
 
 **Shape doc:** docs/specs/fire-watch/shape.md
 **Depends on:** spread-forecast
@@ -97,9 +97,9 @@ Scenario: A missed arrival and a false alarm both count against rule version 1
 
 Scenario: The downwind baseline is judged on the same moments
   Given the 0263 fire's 2023-09-27 06:05 UTC pass, advancing 44 m an hour since the pass before
-  And ERA5's 10 m wind at the fire at 06:00 UTC, from 107° at 3.5 m/s
+  And ERA5's 10 m wind at the fire at 06:00 UTC, from 127° at 3.5 m/s
   When the replay runs the baseline
-  Then the baseline moves the fire toward 287° at 44 m an hour, and in 48 hours it gets no more
+  Then the baseline moves the fire toward 307° at 44 m an hour, and in 48 hours it gets no more
     than 375 m inside the edge
   And it says "Not forecast to be seen inside", so it misses the arrival that rule version 1 warned of
   And the 0332 fire, seen on one pass, has no recent rate, so the baseline says "Not forecast" for it
@@ -122,9 +122,8 @@ Scenario: Anyone redoes the replay and gets the same result
     expected 99969d97…" and writes nothing
 ```
 
-Scenarios 1 to 3 come from the scratch replay and from ERA5, checked on 2026-10-19. Pause 3 fixes
-when a replay forecast counts as made. The scratch run used 3 hours after the pass, rounded up to
-the next whole hour.
+Scenarios 1 to 3 come from the committed replay, with each pass stored by the first hourly run 3
+hours after it (D57), and ERA5's wind from Open-Meteo (O13). The tests check them on a cut.
 
 ## Scope
 
@@ -225,8 +224,8 @@ existing tokens.
 **Preview:** real components in `web/src`: `ForecastPanel` (the block and the additions),
 `FireRecordPage` (hands `backtest` to the panel) and `api.ts` (the types). Run `cd web && pnpm dev`
 and open `http://localhost:5173/?preview=season-backtest`. Pickers switch between 4 states and the
-themes, and `&state=none&theme=dark` links straight to one. The totals come from the scratch replay
-of 2023, with ERA5 wind from Open-Meteo. The 2026 forecasts, seals and transactions are the
+themes, and `&state=none&theme=dark` links straight to one. The totals are the committed result,
+`fixtures/backtest/2023.json`. The 2026 forecasts, seals and transactions are the
 spread-forecast preview's, which are made up. Drift check passed over the 6 files written. All 8
 tokens the new CSS uses exist in `docs/design/design-system/tokens/`. `tsc -b` is clean, and the
 156 web unit tests pass. At 390 px with the disclosure open, the page has no sideways scroll.
@@ -336,11 +335,11 @@ files.
 
 | File | What | Why |
 | ---- | ---- | --- |
-| `api/src/firewatch/backtest.py` (new) | The replay and the guess above, and `main()`. Arguments: `--firms <path>` and `--map <path>` read files as given, or download the pinned ones. `--wind <path>` defaults to `fixtures/backtest/2023-wind.csv`. `--fetch-wind` fetches the hours it needs from Open-Meteo, at most 100 points a request and 35 s apart, and writes the wind file. `--out <dir>` defaults to `fixtures/backtest`. It loads the map into `DATABASE_URL` with `concessions.load()` and uses only that map's concession IDs. A missing wind hour stops it, naming the point and the hour. It writes nothing until the replay ends | Scenarios 1–5 |
+| `api/src/firewatch/backtest.py` (new) | The replay and the guess above, and `main()`. Arguments: `--firms <path>` and `--map <path>` read files as given, or download the pinned ones. `--wind <path>` defaults to `fixtures/backtest/2023-wind.csv`. `--fetch-wind` fetches the hours it needs from Open-Meteo, at most 100 points a request and 35 s apart, with three tries each. It writes each answer to the wind file at once, and asks only for the hours the file lacks. `--out <dir>` defaults to `fixtures/backtest`. It loads the map into `DATABASE_URL` with `concessions.load()` and uses only that map's concession IDs. A missing wind hour stops it, naming the point and the hour. It writes nothing until the replay ends | Scenarios 1–5 |
 | `api/src/firewatch/forecast.py:71` | Split rule step 3 out of `_lead_h()` as `advance_rate(passes)`, and rename `_rounded_h()` (`:67`) to `rounded_h()`. The recorder's forecasts don't change | Scenario 3; D60 |
 | `api/src/firewatch/concessions.py:37` | `download()` takes `url` and `sha256`, defaulting to the map's, so the FIRMS file is checked the same way | Scenario 5 |
 | `api/pyproject.toml` | `backtest-2023 = "firewatch.backtest:main"` | Scenario 5 |
-| `fixtures/backtest/2023.json`, `2023-forecasts.csv`, `2023-wind.csv` (new, generated) | The committed result and the wind it used. The CSV has one row per forecast: `concession_id`, the fire's first detection (time, latitude, longitude), `after_pass_at`, `made_at`, `rule_inside_by`, `downwind_inside_by`, `outcome`, `seen_inside_at`. Rows are sorted by concession, made time and fire. It is about 3 MB | D55, D58 |
+| `fixtures/backtest/2023.json`, `2023-forecasts.csv`, `2023-wind.csv` (new, generated) | The committed result and the wind it used. The CSV has one row per forecast: `concession_id`, the fire's first detection (time, latitude, longitude), `after_pass_at`, `made_at`, `rule_inside_by`, `downwind_inside_by`, `outcome`, `seen_inside_at`. Rows are sorted by concession, made time and fire. It is 2.4 MB | D55, D58 |
 | `fixtures/backtest/2023-cut.csv`, `trase-cut.geojson`, `2023-wind-cut.csv` (new) | Every 2023 row within 5 km of ID-WOOD-CONCESSION-0263, 0264 and 0332, 2023-09-20 to 10-20. Also those three boundaries, and the wind hours their forecasts need. All public data | Tests, e2e |
 | `api/tests/test_backtest.py` (new) | On the cut: the 0263 forecast reads scenario 1, the 0332 and 0264 forecasts read scenario 2, and the guess reads scenario 3. Two runs write identical bytes, and a changed FIRMS file stops it with nothing written. A forecast made 2023-12-30 is "ends after 2023". The replay over `fixtures/firms/fire-origin.csv` gives the 0332 fire's three forecasts as `test_forecast.py` has them, so the replay's loop matches the recorder's | Scenarios 1–3, 5 |
 | `README.md` | "Redo the 2023 replay": the compose db, the command, the sha256, and the credit to Open-Meteo and Copernicus (CC BY 4.0) | Scenario 5; O11 |
@@ -377,10 +376,10 @@ downloads, a feature flag.
 
 |                      |                                                                               |
 | -------------------- | ----------------------------------------------------------------------------- |
-| **Load**             | One run by hand: about 50 s to match 250,312 rows, 30 s to replay, 10 s for the guess, plus two downloads. `--fetch-wind` takes about 10 minutes, once. The page grows by about 0.5 KB of bundled JSON and makes no new request |
+| **Load**             | One run by hand: 95 s with both downloads. `--fetch-wind` took 645 s, once: 16 requests 35 s apart. The page grows by about 0.5 KB of bundled JSON and makes no new request |
 | **Breaks first**     | Open-Meteo's free limits, if more years are replayed: it refused the 15th request when they came 2 s apart. One year needs about 1,500 of its 10,000 daily calls |
 | **Security surface** | No new route, no secret: neither the FIRMS archive nor Open-Meteo needs a key. Inputs: the FIRMS file and the map, both sha256-checked, and Open-Meteo's numbers, committed where review sees them. Stores public data only, with concession IDs and no company names (shape O10) |
-| **Proof it works**   | The command prints `replayed year=2023 detections=42682 forecasts=20277 arrivals=135 rule_warned=123 downwind_warned=19 seconds=94` (scratch figures). The live fire view shows the block under a forecast |
+| **Proof it works**   | The command prints `replayed year=2023 detections=42682 forecasts=20277 arrivals=135 rule_warned=123 downwind_warned=20 seconds=95`. The live fire view shows the block under a forecast |
 | **Rollout**          | No flag. Run the replay, commit the result, merge to main; Deploy ships the page (D21). The API and the job don't change. Rollback: the page to the previous sha |
 
 ### Test plan
@@ -394,6 +393,7 @@ downloads, a feature flag.
 | 5. Redo, byte for byte | `test_backtest.py::test_two_runs_write_the_same_bytes`, `::test_changed_firms_file_stops_it` | `cd api && uv run pytest tests/test_backtest.py` |
 | Year end (D56) | `test_backtest.py::test_forecast_ending_in_2024_is_not_counted` | as above |
 | The replay's loop is the recorder's | `test_backtest.py::test_replay_of_fire_origin_matches_the_recorder` | as above |
+| The wind fetch tries again and keeps what it has (O14) | `test_backtest.py::test_fetch_wind_asks_again_after_a_cut_answer_and_keeps_what_it_has` | as above |
 | Earlier slices | the full suites | `cd api && uv run pytest`; `cd web && pnpm test && pnpm e2e` |
 
 pytest and e2e need `docker compose up -d --wait db` and `~/.foundry/bin` on `PATH`. Run one API
@@ -418,7 +418,7 @@ then the full run with `--fetch-wind` and its commit, then the web changes and t
 
 | Risk | Mitigation |
 | ---- | ---------- |
-| The guess's warnings come true more often than rule version 1's: 19 of 275 against 123 of 3,874 (scratch). A buyer may read rule version 1 as worse | The block shows both sides, and the arrivals warned of (123 against 19) sit first (D53) |
+| The guess's warnings come true more often than rule version 1's: 20 of 284 against 123 of 3,874. A buyer may read rule version 1 as worse | The block shows both sides, and the arrivals warned of (123 against 20) sit first (D53) |
 | FIRMS replaces its 2023 file, and the download no longer matches | `--firms <path>` reads a saved copy; the README gives the sha256 so anyone can check theirs |
 | Open-Meteo refuses requests that come quickly | It is fetched once, 35 s apart, and the wind is committed (D58) |
 | The replay's loop drifts from the recorder's `_forecast()` | Both call the same `fires.py` and `forecast.py`; a test replays fire-origin's 2026 rows and gets the recorder's forecasts |
@@ -445,6 +445,8 @@ Recorded as D57, D58, D59, D60.
 | O10 | Scenario 5 promises the same CSV byte for byte. Another GEOS version can move a PostGIS distance by a metre | flag | spec p3 | user | Accepted risk | 2026-10-19: the promise holds on the compose db (postgis/postgis:17-3.5, PostGIS 3.5 as on Neon). The README says so, and a test checks two runs give identical bytes |
 | O11 | Open-Meteo's free API is for non-commercial use, under CC BY 4.0 with credit | flag | spec p3 | user | Accepted risk | 2026-10-19: a hackathon entry is non-commercial. The page says "from Open-Meteo", and the README credits Open-Meteo and Copernicus. A paid use later needs their licence |
 | O12 | The page bundles the committed totals, so the e2e can't show its own run's numbers without a test-only build switch. Pause 1's slice test said it would | question | spec p3 | user | Resolved | 2026-10-19: the e2e runs the command on a cut and checks its CSV, then reads the committed totals on the page. The slice test row now says so (D59) |
+| O13 | Scenario 3 said "ERA5's 10 m wind at the fire at 06:00 UTC, from 107° at 3.5 m/s" and "toward 287°". That wind was Open-Meteo's default blend of models at the detection itself, not ERA5 | flag | build | user | Decided alone | Chose: ask Open-Meteo for ERA5 only (`models=era5`), at the nearest 0.25° grid point as the plan says. It reads from 127° at 3.5 m/s, toward 307°, and the guess still says no for 0263. Other: Open-Meteo's default blend, which mixes in finer models. Undo: drop `models` from `fetch_wind()`, rerun with `--fetch-wind`, and put back the old scenario 3. 2026-10-19 |
+| O14 | The plan said `--fetch-wind` writes the wind file once the replay ends. The first full run lost 12 requests when Open-Meteo ended the 13th answer at 83 KB of 2 MB | flag | build | user | Decided alone | Chose: three tries for each request, each answer written to the wind file at once, and a rerun asks only for the hours the file lacks (ad32727). The totals and the CSV are still written only when the replay ends. Other: one try, and the whole fetch again after any failure. Undo: `git revert ad32727`. 2026-10-19 |
 
 _Never delete this section or its rows. See references/ledger.md._
 
