@@ -59,6 +59,35 @@ export interface FireSummary {
   never_spread: boolean;
   /** Hours recording had run when the fire was first seen, when under 48. */
   recorded_before_h: number | null;
+  /** When its newest forecast says it is seen inside, while that forecast waits (D39). */
+  forecast_inside_by_unix?: number | null;
+}
+
+export interface Point {
+  lat_e5: number;
+  lon_e5: number;
+}
+
+/** A forecast made after a pass, while the fire was not yet seen inside this concession (D39–D41). */
+export interface Forecast {
+  record_id: Hex;
+  /** The fire it was made for, by its key then; a fire that joins another keeps its forecasts (D44). */
+  fire_key: Hex;
+  after_pass_unix: number;
+  made_unix: number;
+  /** 48 hours after it was made; passes from its seal until then decide it (D39, D44). */
+  until_unix: number;
+  /** When it says the fire is seen inside, or null for "not by until_unix". */
+  inside_by_unix: number | null;
+  /** Where it runs from, and where it says the fire crosses the edge; null when it says not. */
+  from: Point | null;
+  crossing: Point | null;
+  rule_version: number;
+  tx_hash: Hex | null;
+  sealed_at: string | null;
+  outcome: "waiting" | "seen_inside" | "not_seen_inside" | "joined" | "seen_before_seal";
+  /** The pass that saw the fire inside, or that joined it to another fire. */
+  outcome_unix: number | null;
 }
 
 /** One fire with every detection in it, oldest first, whatever the chosen dates. */
@@ -66,6 +95,10 @@ export interface FireDetail extends FireSummary {
   hotspots: HotspotRecord[];
   /** When the API answered: a pack made from this view holds the detections stored by then (D33). */
   as_of_unix: number;
+  /** Every forecast made for it near this concession, newest first (D41). */
+  forecasts?: Forecast[];
+  /** When the recorder made its first forecast for any fire; null before then. */
+  forecasts_from_unix?: number | null;
 }
 
 /** Which fire a pack holds, and as of when; the pack's link carries all three (D33, D34). */

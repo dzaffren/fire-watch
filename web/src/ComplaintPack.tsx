@@ -1,11 +1,11 @@
-import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { zeroHash, type Hex } from "viem";
 import type { HotspotRecord, PackDetail, PackRef } from "./api";
 import { FireMap } from "./FireMap";
 import { fireArea, fireDots, passTimes, Replay, where } from "./FireView";
 import { count, detected, detectedShort, distance, firstSeenLine, location, plural, shortHash } from "./format";
-import { AlertIcon, BadIcon, CheckingIcon, ExternalIcon, OkIcon, PendingIcon } from "./icons";
-import { RecordPanel, type Check } from "./RecordPanel";
+import { AlertIcon, ExternalIcon, OkIcon } from "./icons";
+import { Chip, RecordPanel, type Check } from "./RecordPanel";
 
 /** Where the pack gets its data; the preview passes fixtures, the app passes the API and the chain. */
 export interface PackSource {
@@ -23,24 +23,6 @@ const SLOW_AFTER_MS = 3000;
 const COPIED_MS = 2000;
 const RULE_URL = "https://github.com/dzaffren/fire-watch/blob/main/api/src/firewatch/fires.py";
 const TRASE_DATASET = "https://trase.earth/open-data/datasets/indonesia-wood-pulp-concessions-2023-2024";
-
-const CHIP: Record<Exclude<Check["state"], "error">, { chip: string; icon: ReactNode; label: string }> = {
-  pending: { chip: "fw-chip--pending", icon: <PendingIcon />, label: "Not on chain yet" },
-  checking: { chip: "fw-chip--checking", icon: <CheckingIcon />, label: "Checking" },
-  matches: { chip: "fw-chip--ok", icon: <OkIcon />, label: "Matches the chain" },
-  mismatch: { chip: "fw-chip--bad", icon: <BadIcon />, label: "Does not match the chain" },
-};
-
-function Chip({ check }: { check: Check }) {
-  if (check.state === "error") return <span className="none">Couldn't check</span>;
-  const { chip, icon, label } = CHIP[check.state];
-  return (
-    <span className={`fw-chip ${chip}`}>
-      {icon}
-      {label}
-    </span>
-  );
-}
 
 /** "3 outside, 950 m to 1.3 km; 1 inside, 190 m": one pass against the concession's edge. */
 function passSides(detections: HotspotRecord[], id: string): string {

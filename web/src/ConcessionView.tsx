@@ -17,6 +17,9 @@ function whereNext(fire: FireSummary): string | null {
   return null;
 }
 
+/** Fires whose newest forecast, still waiting, says they are seen inside (D39). */
+const forecastIn = (fires: FireSummary[]) => fires.filter((f) => f.forecast_inside_by_unix).length;
+
 interface Props {
   id: string;
   load: DetailLoad;
@@ -72,11 +75,18 @@ export function ConcessionView({ id, load, mapVersion, picked, onBack, onPick, o
             <dd>{count(load.detail.inside)} inside, {count(load.detail.near)} within 5 km</dd>
             <dt>Fires</dt>
             <dd>{count(load.detail.fires.length)}</dd>
+            {forecastIn(load.detail.fires) > 0 && (
+              <>
+                <dt>Forecast inside</dt>
+                <dd>{plural(forecastIn(load.detail.fires), "fire", "fires")} within 48 hours</dd>
+              </>
+            )}
             <dt>Boundaries</dt>
             <dd>{mapVersion}</dd>
           </dl>
           <p className="fw-help list-note enter">
-            Detections within 1 km and 48 hours of each other count as one fire. Largest first.
+            Detections within 1 km and 48 hours of each other count as one fire.{" "}
+            {forecastIn(load.detail.fires) > 0 ? "Fires forecast to be seen inside come first, then the largest." : "Largest first."}
           </p>
           <div className="table-box enter">
             <table className="fw-table">
@@ -99,6 +109,9 @@ export function ConcessionView({ id, load, mapVersion, picked, onBack, onPick, o
                       <td>
                         {firstSeenShort(f.first_seen)}
                         {next && <span className="sub">{next}</span>}
+                        {f.forecast_inside_by_unix && (
+                          <span className="sub">Forecast inside by about {detectedShort(f.forecast_inside_by_unix)}</span>
+                        )}
                       </td>
                     </tr>
                   );

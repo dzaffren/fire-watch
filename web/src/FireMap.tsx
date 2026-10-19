@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import type { Ring } from "./api";
+import type { Point, Ring } from "./api";
 import { fitView, loadMaps, mapStyles, themeColour, themeFill, WATCH_AREA, type Area } from "./maps";
 import { MinusIcon, PlusIcon } from "./icons";
 
@@ -43,10 +43,17 @@ function areaOf(rings: Ring[]): Area {
   return area;
 }
 
+/** The detections guideline's spread forecast: a dashed accent line to where it crosses the edge. */
+export interface ForecastLine {
+  from: Point;
+  to: Point;
+}
+
 interface LayerData {
   boundary: Ring[];
   dots: Dot[];
   selected: number | null;
+  forecast: ForecastLine | null;
 }
 
 interface Layer {
@@ -61,7 +68,7 @@ interface Layer {
 function createLayer(OverlayView: typeof google.maps.OverlayView): Layer {
   class FireLayer extends OverlayView implements Layer {
     private canvas = document.createElement("canvas");
-    private data: LayerData = { boundary: [], dots: [], selected: null };
+    private data: LayerData = { boundary: [], dots: [], selected: null, forecast: null };
     private origin = { x: 0, y: 0 };
 
     constructor() {
@@ -161,6 +168,20 @@ function createLayer(OverlayView: typeof google.maps.OverlayView): Layer {
         ctx.fill();
         ctx.stroke();
       }
+      // Over the dots, so the line still reads where it runs through the fire.
+      const line = this.data.forecast;
+      const start = line && this.pixel(line.from.lon_e5 / 1e5, line.from.lat_e5 / 1e5);
+      const end = line && this.pixel(line.to.lon_e5 / 1e5, line.to.lat_e5 / 1e5);
+      if (start && end) {
+        ctx.strokeStyle = themeColour("--fw-accent");
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([5, 4]);
+        ctx.beginPath();
+        ctx.moveTo(...start);
+        ctx.lineTo(...end);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
       if (this.data.selected !== null) {
         const dot = this.data.dots[this.data.selected];
         const p = dot && this.pixel(dot.lon_e5 / 1e5, dot.lat_e5 / 1e5);
@@ -203,11 +224,13 @@ interface Props {
   area?: Area;
   /** Adds the first-seen row to the legend, and the older-to-newer row while a detection is faded. */
   fire?: boolean;
+  /** The picked forecast, drawn while the replay is at or after the pass it followed. */
+  forecast?: ForecastLine | null;
   /** Overlaid at the top of the map, as the fire view's replay is. */
   children?: ReactNode;
 }
 
-export function FireMap({ label, boundary, dots, selected = null, onSelect, area, fire = false, children }: Props) {
+export function FireMap({ label, boundary, dots, selected = null, onSelect, area, fire = false, forecast = null, children }: Props) {
   const container = useRef<HTMLDivElement>(null);
   const map = useRef<google.maps.Map | null>(null);
   const layer = useRef<Layer | null>(null);
@@ -292,8 +315,8 @@ export function FireMap({ label, boundary, dots, selected = null, onSelect, area
   }, [ready, boundary, focus, area]);
 
   useEffect(() => {
-    layer.current?.setData({ boundary: boundary ?? [], dots: dots ?? [], selected });
-  }, [ready, boundary, dots, selected]);
+    layer.current?.setData({ boundary: boundary ?? [], dots: dots ?? [], selected, forecast });
+  }, [ready, boundary, dots, selected, forecast]);
 
   function zoomBy(step: number) {
     const zoom = map.current?.getZoom();
@@ -348,6 +371,12 @@ export function FireMap({ label, boundary, dots, selected = null, onSelect, area
                 <span className="legend-dot md" />
               </span>
               Older to newer
+            </div>
+          )}
+          {forecast && (
+            <div className="legend-row">
+              <span className="legend-key legend-forecast" />
+              Spread forecast, to where it crosses the edge
             </div>
           )}
           <div className="legend-row">

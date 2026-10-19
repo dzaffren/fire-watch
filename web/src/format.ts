@@ -53,6 +53,19 @@ export function gap(fromUnix: number, toIso: string): string {
   return `${Math.floor(minutes / 1440)} d ${Math.floor((minutes % 1440) / 60)} h`;
 }
 
+/** "22 hours 41 minutes", the long form for a sentence. */
+export function duration(seconds: number): string {
+  const minutes = Math.round(Math.abs(seconds) / 60);
+  const unit = (n: number, one: string) => `${count(n)} ${one}${n === 1 ? "" : "s"}`;
+  if (minutes < 60) return unit(minutes, "minute");
+  if (minutes < 2880) {
+    const m = minutes % 60;
+    return m ? `${unit(Math.floor(minutes / 60), "hour")} ${unit(m, "minute")}` : unit(minutes / 60, "hour");
+  }
+  const h = Math.floor((minutes % 1440) / 60);
+  return h ? `${unit(Math.floor(minutes / 1440), "day")} ${unit(h, "hour")}` : unit(Math.floor(minutes / 1440), "day");
+}
+
 /** The fire view's headline: where the fire's first pass saw it against this concession (D26). */
 export function firstSeenLine(f: FirstSeen): string {
   if (f.reading === "both") return "First seen on both sides of the edge";
