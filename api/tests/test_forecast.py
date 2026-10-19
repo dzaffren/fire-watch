@@ -4,7 +4,15 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from firewatch.fires import Detection, group
-from firewatch.forecast import HORIZON, RULE_VERSION, SETTLE, Forecast, _rounded_h, make
+from firewatch.forecast import (
+    HORIZON,
+    RULE_VERSION,
+    SETTLE,
+    Forecast,
+    _rounded_h,
+    make,
+    outcome,
+)
 
 SCENARIOS = json.loads(
     (Path(__file__).parents[2] / "fixtures" / "fires" / "scenarios.json").read_text()
@@ -22,6 +30,8 @@ CROSSING = (-284194, 11271793)
 LAT_E5_999_6_M = 899
 # 90 e5 is 100.1 m: 10.01 m an hour over 10 hours.
 LAT_E5_100_1_M = 90
+# Within the 1,000 m that joins two detections into one fire.
+LAT_E5_998_5_M = 898
 
 
 def utc(text):
@@ -179,3 +189,88 @@ def test_nearest_detection_ties_go_to_the_first():
 def test_seen_inside_gets_no_forecast():
     at = utc("2026-10-15T21:00")
     assert make(fire_holding(KEY_0332, at), C0332, at, no_crossing) is None
+
+
+def forecast_0332(made):
+    return make(fire_holding(KEY_0332, utc(made)), C0332, utc(made), at_edge)
+
+
+def sealed(forecast, sealed_at):
+    return {**asdict(forecast), "sealed_at": sealed_at}
+
+
+def test_seen_inside_after_the_seal():
+    forecast = sealed(forecast_0332("2026-10-14T20:00"), utc("2026-10-14T20:02"))
+    now = utc("2026-10-15T21:00")
+    assert outcome(forecast, fire_holding(KEY_0332, now), now) == (
+        "seen_inside",
+        utc("2026-10-15T18:43"),
+    )
+
+
+def test_not_forecast_but_seen_inside():
+    forecast = forecast_0332("2026-10-13T20:00")
+    assert forecast.inside_by_at is None
+    now = utc("2026-10-15T21:00")
+    fire = fire_holding(KEY_0332, now)
+    assert outcome(sealed(forecast, utc("2026-10-13T20:02")), fire, now) == (
+        "seen_inside",
+        utc("2026-10-15T18:43"),
+    )
+
+
+def test_forecast_inside_but_not_seen():
+    forecast = forecast_0332("2026-10-14T20:00")
+    assert forecast.inside_by_at == utc("2026-10-15T05:20")
+    # The fire as it stood after its third pass, before anything saw it inside.
+    fire = fire_holding(KEY_0332, utc("2026-10-14T20:00"))
+    waiting = sealed(forecast, utc("2026-10-14T20:02"))
+    assert outcome(waiting, fire, utc("2026-10-17T01:59")) is None
+    assert outcome(waiting, fire, utc("2026-10-17T02:00")) == ("not_seen_inside", None)
+    # Seen inside 15 Oct 18:43, after a forecast that ended at 18:00.
+    ended = {**waiting, "until_at": utc("2026-10-15T18:00")}
+    came_in = fire_holding(KEY_0332, utc("2026-10-15T21:00"))
+    assert outcome(ended, came_in, utc("2026-10-15T23:59")) is None
+    assert outcome(ended, came_in, utc("2026-10-16T00:00")) == ("not_seen_inside", None)
+
+
+def test_seen_before_the_seal():
+    forecast = forecast_0332("2026-10-14T20:00")
+    now = utc("2026-10-15T21:00")
+    fire = fire_holding(KEY_0332, now)
+    for sealed_at in [utc("2026-10-15T18:43"), None]:
+        assert outcome(sealed(forecast, sealed_at), fire, now) == (
+            "seen_before_seal",
+            utc("2026-10-15T18:43"),
+        )
+    assert outcome(sealed(forecast, utc("2026-10-15T18:42")), fire, now) == (
+        "seen_inside",
+        utc("2026-10-15T18:43"),
+    )
+
+
+def test_joined_before_seen_inside():
+    made = utc("2026-10-13T09:00")
+    forecast = make(fire_holding(YOUNG_0332, made), C0332, made, no_crossing)
+    assert forecast.fire_key == YOUNG_0332
+    assert forecast.inside_by_at is None
+    now = utc("2026-10-13T20:00")
+    joined = fire_holding(YOUNG_0332, now)
+    assert joined.key == OLDER_0332
+    assert joined.inside_from == utc("2026-10-13T06:37")
+    assert outcome(sealed(forecast, utc("2026-10-13T09:02")), joined, now) == ("joined", None)
+
+
+def test_join_and_arrival_in_one_run_reads_joined():
+    older = det(1, edge_m=2000)
+    young = det(2, lat_e5=2 * LAT_E5_998_5_M, minutes=60, edge_m=300)
+    fires = group([older, young], None)
+    assert [f.key for f in fires] == [older.record_id, young.record_id]
+    forecast = make(fires[1], "C", T0 + timedelta(hours=2), at_edge)
+    # One pass links the two fires and sees the young one inside, 400 m from the edge.
+    link = det(3, lat_e5=LAT_E5_998_5_M, minutes=600)
+    arrival = det(4, lat_e5=2 * LAT_E5_998_5_M + 300, minutes=600, inside=True, edge_m=400)
+    (fire,) = group([older, young, link, arrival], None)
+    assert fire.inside_from == arrival.acquired_at
+    now = T0 + timedelta(hours=12)
+    assert outcome(sealed(forecast, T0 + timedelta(hours=2)), fire, now) == ("joined", None)
