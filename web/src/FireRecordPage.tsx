@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { zeroHash, type Hex } from "viem";
-import type { ConcessionDetail, ConcessionListing, FireDetail, Forecast, HotspotRecord } from "./api";
+import type { Backtest, ConcessionDetail, ConcessionListing, FireDetail, Forecast, HotspotRecord } from "./api";
 import { ConcessionList, type ListLoad } from "./ConcessionList";
 import { ConcessionView, type DetailLoad } from "./ConcessionView";
 import { DateRange, daysBefore } from "./DateRange";
@@ -23,6 +23,8 @@ export interface FireRecordSource {
   /** Each forecast's sealed fingerprint and seal time, in order, in one read; zero for one not sealed yet. */
   forecastSeals?(forecasts: Forecast[]): Promise<{ fingerprint: Hex; sealedAt: number }[]>;
   forecastFingerprint?(forecast: Forecast): Hex;
+  /** The 2023 replay of the forecast rule, shown in the forecast panel (D54). */
+  backtest?: Backtest;
 }
 
 export type View =
@@ -261,6 +263,7 @@ export function FireRecordPage({ source, today, initialView, initialDates, now =
                       fingerprints={forecastFps}
                       picked={forecastPick}
                       now={now}
+                      backtest={source.backtest}
                       onPick={(i) => {
                         setForecastPick(i);
                         setReplayAt(passOf(forecasts[i]));

@@ -22,6 +22,7 @@ const PREVIEWS = import.meta.env.DEV
       "fire-origin": lazy(() => import("./preview/FireOriginPreview")),
       "complaint-pack": lazy(() => import("./preview/ComplaintPackPreview")),
       "spread-forecast": lazy(() => import("./preview/SpreadForecastPreview")),
+      "season-backtest": lazy(() => import("./preview/SeasonBacktestPreview")),
     }
   : null;
 const Preview = PREVIEWS?.[params.get("preview") as keyof typeof PREVIEWS] ?? null;

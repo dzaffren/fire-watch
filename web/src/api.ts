@@ -73,6 +73,30 @@ export interface Forecast extends ForecastFields {
   outcome_unix: number | null;
 }
 
+/** One method's forecasts in the 2023 replay, by how each turned out (D53). */
+export interface BacktestTotals {
+  /** Said inside, and a pass after it was made saw the fire inside within 48 hours. */
+  warned: number;
+  missed: number;
+  did_not_come_in: number;
+  stayed_out: number;
+  /** For the arrivals warned of; null when it warned of none. */
+  median_hours_off: number | null;
+}
+
+/** A forecast rule replayed over 2023 at every moment the recorder would have forecast, next to the
+ *  downwind guess (D51–D55). Both forecast at the same moments, so the arrivals and the forecasts
+ *  not checked are the same for both. */
+export interface Backtest {
+  rule_version: number;
+  forecasts: number;
+  joined: number;
+  seen_before_made: number;
+  ends_after_2023: number;
+  rule: BacktestTotals;
+  downwind: BacktestTotals;
+}
+
 /** One fire with every detection in it, oldest first, whatever the chosen dates. */
 export interface FireDetail extends FireSummary {
   hotspots: HotspotRecord[];
