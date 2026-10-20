@@ -413,37 +413,7 @@ needs `load-peat` and the test cut.
 
 ### Decisions to record
 
-```
-## D69 · 2026-10-20 · Keep WRI's peat as polygons in PostGIS, cut to the concessions' reach
-
-Why: the peat within 5.5 km of the 294 concessions is 38,537 polygons with 767,181 vertices. Cut
-to 256 vertices a piece it is a 14 MB table, and Neon holds 36 MB today. The damage query took 1 to
-7 ms for most fires and 121 ms for a 188-detection fire. Matching is already in PostGIS (D18).
-Rejected: the raster in PostGIS (about 260 million pixels in reach), reading the tiles in the API
-with rasterio (GDAL and 42 MB of tiles in the API image), the peat of each detection worked out
-when the recorder stores it (a recorder change and a backfill, and joined squares still need the
-polygons).
-Source: docs/specs/damage-estimate.md
-Status: active
-
-## D70 · 2026-10-20 · Commit the peat cut, made once from the pinned tiles
-
-Why: GFW serves the tiles only with an API key, and no key goes in the repo. The cut is 2.0 MB
-gzipped. Anyone with a GFW key redoes it with `load-peat --cut`, as `--fetch-wind` redoes the wind
-(D58).
-Rejected: downloading the tiles on each load (every operator and the e2e would need a key),
-committing the 10 tiles (42 MB).
-Source: docs/specs/damage-estimate.md
-Status: active
-
-## D71 · 2026-10-20 · The API sends a fire's four hectare parts, and the page holds the factors
-
-Why: the parts come from stored detections and the peat table. The factors are fixed numbers that
-the page also cites, so one file states and applies them.
-Rejected: the API also sends the CO2 and the cost (the factors in Python and in the page's text).
-Source: docs/specs/damage-estimate.md
-Status: active
-```
+Recorded as D69, D70, D71.
 
 ## Open items
 
