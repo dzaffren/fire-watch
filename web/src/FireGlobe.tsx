@@ -24,7 +24,9 @@ interface Props {
   still?: boolean;
 }
 
-const desktop3d = () => matchMedia("(pointer: fine) and (min-width: 721px)").matches && canDraw3d();
+// Asked once: each ask makes a WebGL context, and past its limit the browser drops the oldest, which may be the globe's.
+let can3d: boolean | undefined;
+const desktop3d = () => matchMedia("(pointer: fine) and (min-width: 721px)").matches && (can3d ??= canDraw3d());
 const reducedMotion = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 /** The fire globe of 14 Oct 2026 (design brief, tier 3). The flat map shows first and holds the space; on desktop the

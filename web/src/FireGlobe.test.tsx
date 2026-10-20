@@ -95,6 +95,29 @@ describe("FireGlobe", () => {
     expect(scene.nudge.mock.calls).toEqual([[10, 0], [0, 10]]);
   });
 
+  it("asks once whether the browser can draw 3D, however often the globe redraws", async () => {
+    vi.stubGlobal("matchMedia", (media: string) => ({
+      matches: media.includes("pointer: fine"),
+      media,
+      addEventListener() {},
+      removeEventListener() {},
+    }));
+    const probe = vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue({} as WebGL2RenderingContext);
+    const onArrive = vi.fn();
+    const { container, rerender } = render(<FireGlobe atFire={false} onArrive={onArrive} />);
+    await waitFor(() => expect(startGlobe).toHaveBeenCalled());
+    act(() => callbacks().onFirstFrame());
+
+    rerender(<FireGlobe atFire onArrive={onArrive} />);
+    await act(async () => landed());
+
+    expect(onArrive).toHaveBeenCalledOnce();
+    expect(probe.mock.calls.filter(([type]) => type === "webgl2")).toHaveLength(1);
+    expect(box(container)).not.toHaveClass("globe--flat");
+    expect(box(container)).toHaveAttribute("data-shown", "globe");
+    probe.mockRestore();
+  });
+
   it("starts the scene still when the reader asks for reduced motion", async () => {
     render(<FireGlobe atFire={false} flat={false} still />);
 
