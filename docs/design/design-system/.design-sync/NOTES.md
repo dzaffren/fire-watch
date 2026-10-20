@@ -9,10 +9,12 @@
   2. `node .design-sync/build.mjs`, then `node .ds-sync/package-validate.mjs ./ds-bundle` (must exit 0).
   3. Screenshot every `ds-bundle/guidelines/*.html` in headless Chromium, light and dark halves. The
      validator's render check only covers `components/`, which is empty, so it checks no cards.
+     `mkdir -p .design-sync/.cache/shots && node .design-sync/cards.cjs "$PWD/.ds-sync/node_modules/playwright" ds-bundle/guidelines .design-sync/.cache/shots`
+     prints each card's height, its `@dsCard` line and any page or request errors; then look at the PNGs.
   4. Upload with full writes; delete any remote file under `tokens/` or `guidelines/` that the new build
      lacks (compare `list_files`). Sentinel first and last.
 - No `_ds_sync.json` is uploaded, on purpose: the hand-built layout has no anchor recipe, so every sync
-  re-checks all 9 cards. The validator's `_ds_sync.json absent` warning is expected.
+  re-checks every card. The validator's `_ds_sync.json absent` warning is expected.
 - The validator crashes (ENOENT) if `ds-bundle/components/` is missing; `build.mjs` creates it empty.
 - Cards stay in `guidelines/` with their `../styles.css` links; their first-line `@dsCard` headers come
   from the source files.
