@@ -1,6 +1,6 @@
 # Landing page
 
-**Version:** v1 · **Status:** Refined · **Type:** Feature · **Project type:** Web UI
+**Version:** v1 · **Status:** Built · **Type:** Feature · **Project type:** Web UI
 
 **Shape doc:** docs/specs/fire-watch/shape.md
 **Depends on:** complaint-pack
@@ -269,19 +269,19 @@ is a committed static file.
 | ---- | ------------ | --- |
 | `web/src/main.tsx:32` | `Page` is the preview, else the pack for `?pack`, else the tool for `?tool` with `aboutHref="/"`, else the landing, each lazily loaded as now | Scenarios 1, 5; D72, D74 |
 | `web/src/Landing.tsx` (pause 2) | As built at pause 2 | Scenarios 1, 2, 4 |
-| `web/src/globeScene.ts:90` | `startGlobe()` takes `onSlow`. It counts frames for 2 s after the first frame and calls `onSlow` when there are fewer than 60 | Scenario 3; D80 |
-| `web/src/FireGlobe.tsx:80` | On `onSlow`, disposes the scene and keeps the flat map | Scenario 3; D80 |
+| `web/src/globeScene.ts:90` | `startGlobe()` takes `onSlow`. It counts frames over the globe's first 2 s of frame time, each frame's time capped at 100 ms, and calls `onSlow` when there are fewer than 60 (O13) | Scenario 3; D80 |
+| `web/src/FireGlobe.tsx:80` | On `onSlow`, disposes the scene, removes the 3D canvas and keeps the flat map in the square box. It asks `canDraw3d()` once for the page's life | Scenario 3; D80. Each ask made a WebGL context. Past the browser's limit the globe's own was dropped, and the box shrank from 537 px to 209 px after the flight |
 | `web/src/FireRecordPage.tsx` (pause 2) | `aboutHref` puts "About Fire Watch" in the header | Scenario 5 |
 | `web/public/staticwebapp.config.json` (new) | `{"mimeTypes": {".bin": "application/octet-stream"}}`; Vite copies it to the root of `dist`, where the deploy reads it | O10 |
 | `web/public/globe/*.bin` (pause 2) | Rewritten by `globe-day`, the same bytes | D79 |
-| `api/src/firewatch/globe_day.py` (new) | `globe-day [--out <dir>]`. Downloads the 14 Oct FIRMS file with `FIRMS_MAP_KEY`, Natural Earth 110m and 10m land, and Trase, each through `concessions.download()` with its sha256. Writes the three files, gzipped with mtime 0. The docstring gives the method: 0.01° cells outside the box, every detection inside it, land clipped 0.1° beyond the box | D79 |
+| `api/src/firewatch/globe_day.py` (new) | `globe-day [--out <dir>]`. Downloads the 14 Oct FIRMS file with `FIRMS_MAP_KEY`, Natural Earth 110m and 10m land, and Trase, each through `concessions.download()` with its sha256. Writes the three files, gzipped with mtime 0 by `GzipFile`: `gzip.compress` writes another OS byte, so other bytes. The docstring gives the method: 0.01° cells outside the box, every detection inside it, land clipped 0.1° beyond the box. A refusal leaves the key out of its message. Run here, it gave the committed bytes | D79 |
 | `api/pyproject.toml` | Script `globe-day` | D79 |
 | `api/tests/test_globe_day.py` (new) | On small inputs written by the test: the same bytes twice; a detection in the box comes out in full and one outside as its cell; land is clipped to the box | D79 |
-| `web/src/globe.test.ts` (new) | `loadGlobe()` on the committed files: 41,380 dots, 128 land rings, the box, 0332's two edge rings | D75 |
+| `web/src/globe.test.ts` (new) | `loadGlobe()` on the committed files: 41,380 dots, 128 land rings, the box, 0332's two edge rings. A Node types reference, since the page's tsconfig has none | D75 |
 | `web/src/FireGlobe.test.tsx` (new) | The skeleton while loading, the "didn't load" line, the flat map when `flat`, `onArrive` at once on the flat map, the arrow keys | Scenarios 2, 3 |
 | `web/src/Landing.test.tsx` (new) | The headline, the lede, both links and their addresses, the dated facts, the four steps and four words, the caption after arriving | Scenarios 1, 2, 4 |
 | `web/src/FireRecordPage.test.tsx` | "About Fire Watch" with `aboutHref`, none without | Scenario 5 |
-| `web/e2e/landing-page.spec.ts` (new) | The e2e below, and a phone tap check | All scenarios' path |
+| `web/e2e/landing-page.spec.ts` (new) | The e2e below, and a phone check: the flat map, no 3D chunk, 44 px taps | All scenarios' path |
 | `web/e2e/fire-record.spec.ts:34`, `:55`, `:141`, `complaint-pack.spec.ts:29`, `damage-estimate.spec.ts:23`, `:52`, `fire-origin.spec.ts:33`, `spread-forecast.spec.ts:33`, `:68`, `season-backtest.spec.ts:99` | Open `/?tool` where they opened `/` | Scenario 5 |
 | `README.md`, `docs/ARCHITECTURE.md`, `CHANGELOG.md` | The landing and the tool's link; `globe-day` in "Run it locally" and a "Redo the globe's data" section; Natural Earth's credit; the component rows; one changelog line | Operators |
 
@@ -322,8 +322,9 @@ fake Google Maps.
 
 **E2E:** `web/e2e/landing-page.spec.ts`. It opens `/` and reads the headline, "62,489 worldwide" and
 the four words. It presses "Go to the example fire" and reads "first saw it on 12 Oct", and checks
-that "See its complaint pack" points at the example pack. It presses "Open the tool", lands on
-`/?tool` with the concession list, and comes back through "About Fire Watch". On a 375 px touch
+that "See its complaint pack" points at the example pack. The globe's box keeps its height through
+the flight, and the landing asks nothing of the API. It presses "Open the tool", lands on `/?tool`
+with the concession list, and comes back through "About Fire Watch". On a 375 px touch
 screen, every link and button on the landing is at least 44 px to tap. The e2e's API has no example
 fire, so it checks the pack link's address, not the pack. `cd web && pnpm e2e`.
 
@@ -362,6 +363,7 @@ Recorded as D79, D80, D81.
 | O10 | Azure Static Web Apps may not serve a `.bin` file without a declared MIME type. The docs describe `mimeTypes` but don't say what happens without it | unproven | spec p3 | user | Accepted risk | 2026-10-20: declare `.bin` in `web/public/staticwebapp.config.json` and check the file after the deploy, rather than a spike on a staging app. If it still fails, the landing shows its "didn't load" line |
 | O11 | The globe's frame rate is unmeasured: this machine draws WebGL in software and its browser stops at 20 fps | question | spec p3 | user | Resolved | 2026-10-20: fall back to the flat map when the first 2 s after the globe shows run under 30 fps (D80) |
 | O12 | Whether the landing ships behind a flag | question | spec p3 | user | Resolved | 2026-10-20: no flag; a revert rolls it back (D81) |
+| O13 | The plan said `startGlobe()` "counts frames for 2 s after the first frame and calls `onSlow` when there are fewer than 60". By the clock, a tab sent to the background in those 2 s pauses its frames and reads as slow | flag | build | user | Decided alone | Chose: count over 2 s of frame time, each frame's time capped at 100 ms, as the turning already is (a03f65e). Below 10 fps the check takes longer than 2 s. Other: 2 s by the clock. Undo: in `tick()`, compare `now` with the first frame's time instead of summing `dt`. 2026-10-20 |
 _Never delete this section or its rows. See references/ledger.md._
 
 ## Glossary
