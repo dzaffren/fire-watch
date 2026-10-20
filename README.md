@@ -19,6 +19,7 @@ for watchdog investigators who file grievances over fires on plantation land.
 - Turn one fire into a pack with its own link, which anyone's browser checks against the chain, and print it to PDF.
 - After each pass, forecast whether a fire near a concession is seen inside within 48 hours, seal it, and list every forecast with its outcome.
 - See how the forecast rule did on a replay of 2023, next to a downwind guess, in the forecast panel; `backtest-2023` redoes it byte for byte.
+- Each fire gets an estimate of the ground it burned, the CO₂ it released and what that cost, split at the concession's edge, in the fire view and the pack.
 
 ## Docs
 
