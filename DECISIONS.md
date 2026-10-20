@@ -808,3 +808,13 @@ Rejected: a fixed sequence with no dragging (nothing to explore), free zoom with
 fire (most to build; each record already opens in the tool).
 Source: docs/specs/landing-page.md
 Status: active
+
+## D78 · 2026-10-20 · Make 0332's fire first seen outside the landing's example
+
+Why: on the full record it was first seen on 12 Oct 2026 at 05:16 UTC, outside
+ID-WOOD-CONCESSION-0332 and 3,100 m from its edge, and inside from 13 Oct: the "started outside,
+spread in" case the site answers. Its 283 detections to the 17 Oct 09:00 UTC cut are all sealed.
+Rejected: the fire of fire-origin scenario 1 (on the full record it reads "first seen on both
+sides", so its pack opens with that caveat; it read "outside" only on a 19-row test cut).
+Source: docs/specs/landing-page.md
+Status: active

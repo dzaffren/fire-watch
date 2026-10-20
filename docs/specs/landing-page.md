@@ -40,8 +40,8 @@ so that the concession list and the "Matches the chain" check make sense to me.
 ```mermaid
 flowchart LR
     V((newcomer or judge)) -- "opens /" --> L[landing page with the globe]
-    L -- "Go to the example fire" --> G[globe over the 0332 fire]
-    G -- "See its complaint pack" --> P[complaint pack of the 0332 fire]
+    L -- "Go to the example fire" --> G[globe over the example fire in 0332]
+    G -- "See its complaint pack" --> P[complaint pack of the example fire]
     L -- "See a real example" --> P
     L -- "Open the tool" --> T["dates and concession list, /?tool"]
     T -- "About Fire Watch" --> L
@@ -79,8 +79,10 @@ Scenario: The globe shows a day of fires and flies to a real one
   Then it shows the NOAA-20 fire detections of 14 Oct 2026, and turns slowly
   And the reader can drag it to turn it
   When the reader presses "Go to the example fire"
-  Then it flies to Indonesia and the ID-WOOD-CONCESSION-0332 fire, seen at 06:18 and 17:20 UTC
+  Then it flies to Indonesia and the fire in ID-WOOD-CONCESSION-0332 seen at 06:18 and 17:20 UTC
     that day
+  And the caption reads that the satellite first saw the fire on 12 Oct, outside the concession and
+    3,100 m from its edge, and that by 13 Oct it was inside
   And it offers "See its complaint pack"
 
 Scenario: On a phone, with reduced motion, or without 3D, nothing turns on its own
@@ -94,7 +96,8 @@ Scenario: On a phone, with reduced motion, or without 3D, nothing turns on its o
 Scenario: A real example pack opens from the landing
   Given the landing page
   When the reader presses "See a real example", or "See its complaint pack" after the flight
-  Then the complaint pack of the ID-WOOD-CONCESSION-0332 fire of fire-origin scenario 1 opens
+  Then the complaint pack of that fire opens, cut at 17 Oct 2026 09:00 UTC: 283 detections on 8
+    passes, first seen on 12 Oct at 05:16 UTC, outside the concession and 3,100 m from its edge
   And their browser checks each of its detections against Base Sepolia, as any pack does
 
 Scenario: Each address opens its own page
@@ -129,6 +132,70 @@ Scenario: Each address opens its own page
 - Any language but English: the design brief settles English only.
 - Company names: never (shape O10).
 
+## Interface
+
+The landing is one page that scrolls, on the design system's tokens (D2, D4). It opens with a plain
+question beside the globe of 14 Oct 2026's fires, the one tier 3 piece (D3). One real fire then
+carries the explanation, instead of a list of features. The tool gets "About Fire Watch" in its
+header.
+
+```mermaid
+flowchart LR
+    L["/ : landing"] -- "Open the tool" --> T["/?tool : dates and concession list"]
+    T -- "About Fire Watch" --> L
+    L -- "Go to the example fire" --> G[globe over the example fire]
+    G -- "See its complaint pack" --> P["/?pack= : its pack, cut 17 Oct 09:00 UTC"]
+    L -- "See a real example" --> P
+```
+
+A reader goes from the landing to the tool and back, or to the example fire's pack, by the globe or
+straight from the hero.
+
+| Part | What shows |
+| ---- | ---------- |
+| Header | "Fire Watch", and "Open the tool" as a link |
+| Headline | "Where did the fire start?" |
+| Lede | "Fire Watch records every satellite fire detection on or near Indonesia's pulpwood plantations, and seals each record on a public blockchain. Watchdog investigators use it to show a company's buyers where a fire started and how it spread, on records anyone can check." |
+| Actions | "Open the tool" (primary button) and "See a real example" (secondary), both links |
+| Globe, beside the text on desktop | The fire globe primitive, in a square box; under it on a phone, as the flat map |
+| Caption, before the flight | "Every dot is a fire the NOAA-20 satellite saw on 14 Oct 2026: 62,489 worldwide, 9,923 of them in and around Indonesia." and the button "Go to the example fire" |
+| Caption, after the flight | "A fire in ID-WOOD-CONCESSION-0332, Central Kalimantan, on 14 Oct 2026. The satellite first saw it on 12 Oct, outside the concession and 3,100 m from its edge. By 13 Oct it was inside." and the link "See its complaint pack" |
+| "Two accounts of the same fire" | "When a fire burns on plantation land, a watchdog files a grievance with the buyers of the company that holds the land. The company often answers that the fire started outside its concession and spread in, or that the complaint has no site, date or basis. The buyer then has to pick one account." Then: "Fire Watch gives the grievance its site, dates and basis from satellite records, each sealed when it came in. The buyer can check them instead of picking." |
+| "How it works", numbered | 1 "Satellites spot fires." 2 "Each record is sealed." 3 "An investigator finds where it started." 4 "The buyer checks it.", each with two plain sentences |
+| "Words used here", a key-value list | Concession, Hotspot, Seal, Peat, one line each |
+| Footer | The sources: NASA FIRMS, Trase, WRI Global Peatlands (CC BY 4.0), Natural Earth; Base Sepolia as a test network; the hackathon |
+| The tool's header | "About Fire Watch", a link to the landing, after "Records are sealed on Base Sepolia, a test network" |
+
+| State | What shows |
+| ----- | ---------- |
+| Loading | The text at once; a skeleton block holds the globe's space |
+| Desktop with WebGL | The flat map, then the globe fading in over it, opening on Indonesia |
+| Phone, touch screen or no WebGL | The flat map in its own 18:7 box; no 3D code downloads |
+| After "Go to the example fire" | The flight, then the second caption; reduced motion jumps straight there |
+| The globe's data didn't load | A help line in its place; the rest of the page works |
+
+**Motion tier:** 3 for the globe alone, within the brief's budget: 244 kB on desktop of the 250 kB
+ceiling, and 104 kB for the flat map. Tier 1 for the rest: the buttons' hover. Nothing else on the
+page moves.
+
+**Components used:** `app-top`, `fw-btn`, `fw-btn--secondary`, `fw-link`, `fw-kv`, `fw-help`, and
+the fire globe (`FireGlobe`), added to the system by `/design-system` for this slice. No new token.
+`app.css` adds the `.landing` composition, the `.globe` box and `.app-top-end`.
+
+**Design system:** Fire Watch, `docs/design/design-system/`, with its new guideline
+`guidelines/globe.html` (D2, D3, D4, D76).
+
+**Preview:** `cd web && pnpm dev`, then `http://localhost:5173/?preview=landing-page` for the landing
+and the tool's header, and `?preview=fire-globe` for the globe's states. The globe's dots are FIRMS's
+NOAA-20 detections of 14 Oct 2026; land is Natural Earth 110m, and 10m around the example fire. The
+example pack link is the production pack. The data files were made by a scratch script; pause 3 plans
+the committed one. The drift check passed over the 9 files written, every token used exists, `tsc -b`
+is clean and the 171 web unit tests pass. At 390 px, in both themes, no page has a sideways scroll.
+
+**The page expects:** no API change. `web/public/globe/` holds three gzipped files: land, the day's
+fire cells, and the full detail near the example fire. Routes: `/` the landing, `/?tool` the tool
+(D74), `/?pack=` a pack, as today.
+
 ## Open items
 
 | ID | What | Type | Raised at | Owner | Status | Answer |
@@ -140,6 +207,7 @@ Scenario: Each address opens its own page
 | O5 | Which day of fires the globe shows: 14 Oct 2026, when the 0332 fire burns; 12 Oct 2026, the day the brief measured; or the latest day, fetched live | question | spec p1 | user | Resolved | 2026-10-20: 14 Oct 2026, fixed and committed. FIRMS gives 62,489 NOAA-20 detections worldwide that day, 9,923 in the box around Indonesia (D75) |
 | O6 | When the 3D globe loads: on a press, as the design brief's tier 3 budget says ("nothing downloads until asked"), or on its own on desktop | question | spec p1 | user | Resolved | 2026-10-20: on its own on desktop. The flat map shows first and holds the space; phones keep the flat map (D76) |
 | O7 | What the reader can do with the globe: drag it and take one flight to the example fire, watch a fixed sequence, or explore freely with zoom and a card per fire | question | spec p1 | user | Resolved | 2026-10-20: drag to turn, and one flight to the 0332 fire (D77) |
+| O8 | Which fire the landing flies to and opens as its example pack. The spec named the fire of fire-origin scenario 1. On the full production record that fire reads "first seen on both sides of the edge", since the scenario used a 19-row cut | question | spec p2 | user | Resolved | 2026-10-20: 0332's fire first seen on 12 Oct 2026 at 05:16 UTC, outside the concession and 3,100 m from its edge, inside from 13 Oct. Its pack is cut at 17 Oct 2026 09:00 UTC: 283 sealed detections (D78) |
 _Never delete this section or its rows. See references/ledger.md._
 
 ## Glossary
