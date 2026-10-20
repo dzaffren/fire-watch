@@ -126,7 +126,7 @@ test("every control is at least 44 px to tap on a touch screen", async ({ browse
   const tooSmall = () =>
     page.evaluate(() =>
       [...document.querySelectorAll<HTMLElement>("a[href], button, summary")]
-        .filter((el) => el.offsetParent)
+        .filter((el) => el.checkVisibility())
         .filter((el) => {
           el.scrollIntoView({ block: "center" });
           const r = el.getBoundingClientRect();

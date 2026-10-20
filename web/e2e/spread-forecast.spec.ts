@@ -78,7 +78,7 @@ test("every forecast control is at least 44 px to tap on a touch screen", async 
 
   const tooSmall = await page.evaluate(() =>
     [...document.querySelectorAll<HTMLElement>("a[href], button, summary")]
-      .filter((el) => el.offsetParent)
+      .filter((el) => el.checkVisibility())
       .filter((el) => {
         el.scrollIntoView({ block: "center" });
         const r = el.getBoundingClientRect();
