@@ -49,9 +49,7 @@ export function estimate(d: Damage) {
 
 /** Two significant figures: 209.84 is 210, 122,661 is 120,000, 6.31 is 6.3. */
 export function twoFigures(n: number): number {
-  if (n === 0) return 0;
-  const step = 10 ** (Math.floor(Math.log10(n)) - 1);
-  return Math.round(n / step) * step;
+  return Number(n.toPrecision(2));
 }
 
 /** "120,000", "1.3 million". */
