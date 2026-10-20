@@ -478,6 +478,8 @@ _Never delete this section or its rows. See references/ledger.md._
 - **sha256** — a fingerprint of a file. Any change to the file changes it.
 - **Pinned** — fixed to one exact version, checked by its sha256.
 - **e2e** — end-to-end: one test that walks the whole slice as a user would.
+- **Backfill** — filling a new table from data that already exists, before the code reads it.
+- **Lockfile** — the file that pins the exact version of every dependency (`api/uv.lock`).
 - **UTM zone** — one of 60 north-south strips of the earth, each with a flat metre grid.
 - **GeoTIFF** — an image file whose pixels carry map positions; GFW's peat tiles are GeoTIFFs.
 - **rasterio** — a Python library that reads GeoTIFFs and turns pixels into polygons.
