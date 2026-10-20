@@ -24,3 +24,4 @@
 - Give each new link and row control a phone tap check, disclosures open — [phone-tap-check-every-new-control](phone-tap-check-every-new-control.md)
 - Ask Open-Meteo's archive for `models=era5`; its default blends finer models — [open-meteo-ask-for-era5](open-meteo-ask-for-era5.md)
 - Filter tap checks with `checkVisibility()`; a closed `<details>` keeps `offsetParent` — [tap-checks-skip-closed-details](tap-checks-skip-closed-details.md)
+- Add a uv group that runs with secrets to CI's `pip-audit` export — [audit-groups-that-run-with-secrets](audit-groups-that-run-with-secrets.md)
