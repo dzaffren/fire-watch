@@ -45,6 +45,7 @@ Needs Docker, uv, pnpm and Foundry (`forge`, `anvil` on the path).
 | Load the concession map | `cd api && uv run --env-file ../.env load-concessions` |
 | Load the peat map | `cd api && uv run --env-file ../.env load-peat` |
 | Record hotspots | `cd api && uv run --env-file ../.env record-hotspots` |
+| Redo the globe's data | `cd api && uv run --env-file ../.env globe-day` |
 
 The database runs PostGIS. A container made before that is plain Postgres; recreate it once
 with `docker compose up -d --wait --force-recreate --renew-anon-volumes db`.
@@ -54,6 +55,9 @@ it a path and it loads that file as is. `record-hotspots` reads `DATABASE_URL`,
 `FIRMS_MAP_KEY`, `RPC_URL`, `CONTRACT_ADDRESS` and `RECORDER_PRIVATE_KEY` from the
 environment; `load-concessions` needs only `DATABASE_URL`. Keep them in the untracked `.env` at
 the repo root; `--env-file ../.env` loads it, since `uv run` doesn't on its own.
+
+The page opens on the landing at `/`. The tool is at `/?tool`, and a complaint pack at its own
+`/?pack=` link.
 
 `load-peat` loads the committed cut of WRI's peat map,
 `fixtures/peat/gfw-peatlands-v20230315.geojson.gz`, and refuses it if its sha256 differs; give it
@@ -106,6 +110,24 @@ database. An empty `git diff` means you got the same bytes.
 
 Peat map: [WRI Global Peatlands](https://data.globalforestwatch.org/datasets/gfw::global-peatlands/about),
 under CC BY 4.0.
+
+## Redo the globe's data
+
+The landing's globe reads three gzipped files in `web/public/globe`: Natural Earth's land, the
+NOAA-20 detections of 14 Oct 2026, and the detail around the example fire in
+ID-WOOD-CONCESSION-0332. `api/src/firewatch/globe_day.py` pins its sources by sha256 and gives
+the method. With `FIRMS_MAP_KEY` in `.env`:
+
+```sh
+cd api && uv run --env-file ../.env globe-day
+git diff --stat ../web/public/globe
+```
+
+`globe-day` downloads FIRMS's world file for the day, Natural Earth 110m and 10m land, and
+Trase's concession map. It stops if a file's sha256 has changed. It takes a few seconds. An empty
+`git diff` means you got the same bytes. `--out <dir>` writes somewhere else.
+
+Land: [Natural Earth](https://www.naturalearthdata.com/) v5.1.2, in the public domain.
 
 ## First deploy
 
