@@ -19,6 +19,8 @@ export interface Near {
   fires: Point[];
   /** The rings of ID-WOOD-CONCESSION-0332's edge, Trase v2026-02-20. */
   concession: Point[][];
+  /** Natural Earth 10m land in and just beyond the box: at this scale 110m puts some of the day's fires at sea. */
+  land: Point[][];
 }
 
 export interface GlobeColours {
@@ -33,8 +35,9 @@ export interface GlobeColours {
 export const WORLD: Box = [-180, -90, 180, 90];
 // The flat map leaves out Antarctica and the far north, where there are no fires to show.
 export const FLAT_WORLD: Box = [-180, -60, 180, 80];
-// Where the example fire burns: ID-WOOD-CONCESSION-0332, 14 Oct 2026 (D75).
-export const EXAMPLE_FIRE: Point = [112.72, -2.85];
+// The example fire on 14 Oct 2026: the middle of its 103 detections that day. It was first seen on 12 Oct, outside
+// ID-WOOD-CONCESSION-0332 and 3,100 m from its edge, and was seen inside from 13 Oct (D75).
+export const EXAMPLE_FIRE: Point = [112.81, -3.09];
 // FIRMS's NOAA-20 detections worldwide on 14 Oct 2026, and in the box around Indonesia (D73).
 export const DAY_DETECTIONS = 62489;
 export const DAY_DETECTIONS_INDONESIA = 9923;
@@ -99,7 +102,7 @@ export function globeColours(): GlobeColours {
 
 /** The equirectangular map of `box`, fitted into the canvas: land on sea, then the 0332 concession and each fire
  * as a dot of `dot` CSS px. With no `dot` it draws land and sea only, for the globe's textures, with the coast `coast`
- * canvas px wide. */
+ * canvas px wide. The near box is drawn from its own finer land. */
 export function drawFlat(
   canvas: HTMLCanvasElement,
   data: GlobeData,
@@ -107,6 +110,7 @@ export function drawFlat(
   colours: GlobeColours,
   { dot, coast }: { dot?: number; coast?: number } = {},
 ) {
+  const land: ArrayLike<number>[] = box === data.near.box ? data.near.land.map((r) => r.flat()) : data.land;
   const ctx = canvas.getContext("2d")!;
   const [west, south, east, north] = box;
   const scale = Math.min(canvas.width / (east - west), canvas.height / (north - south));
@@ -127,7 +131,7 @@ export function drawFlat(
   ctx.fillStyle = colours.sea;
   ctx.fill();
   const shore = new Path2D();
-  data.land.forEach((r) => ring(shore, r));
+  land.forEach((r) => ring(shore, r));
   ctx.fillStyle = colours.land;
   ctx.fill(shore, "evenodd");
   const ratio = canvas.clientWidth ? canvas.width / canvas.clientWidth : 1;

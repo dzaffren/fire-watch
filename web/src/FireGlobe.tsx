@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from "react";
+import { count } from "./format";
 import { canDraw3d, DAY_DETECTIONS, drawFlat, FLAT_WORLD, globeColours, loadGlobe, type GlobeData } from "./globe";
 import type { GlobeScene } from "./globeScene";
 
 const FLAT_DOT = 1.5;
 const NEAR_FLAT_DOT = 4;
+const TURN_IT = "Drag it, or use the arrow keys, to turn it.";
 // Each arrow brings that side's ground to the middle, 10 degrees at a time.
 const ARROW: Record<string, [number, number]> = {
   ArrowLeft: [10, 0],
@@ -55,7 +57,8 @@ export function FireGlobe({ atFire, onArrive, flat = !desktop3d(), still = reduc
     const draw = () => {
       canvas.width = canvas.clientWidth * devicePixelRatio;
       canvas.height = canvas.clientHeight * devicePixelRatio;
-      drawFlat(canvas, data, atFire ? data.near.box : FLAT_WORLD, globeColours(), { dot: atFire ? NEAR_FLAT_DOT : FLAT_DOT });
+      const box = atFire ? data.near.box : FLAT_WORLD;
+      drawFlat(canvas, data, box, globeColours(), { dot: atFire ? NEAR_FLAT_DOT : FLAT_DOT });
     };
     draw();
     const resized = new ResizeObserver(draw);
@@ -106,14 +109,14 @@ export function FireGlobe({ atFire, onArrive, flat = !desktop3d(), still = reduc
 
   if (failed) {
     return (
-      <div className="globe globe--failed">
+      <div className={flat ? "globe globe--flat globe--failed" : "globe globe--failed"}>
         <p className="fw-help">The map of 14 Oct 2026's fires didn't load. The rest of the page works without it.</p>
       </div>
     );
   }
 
   return (
-    <div className="globe" data-shown={globe ? "globe" : "flat"} aria-busy={!data}>
+    <div className={flat ? "globe globe--flat" : "globe"} data-shown={globe ? "globe" : "flat"} aria-busy={!data}>
       {!data && <div className="globe-wait" />}
       <canvas
         ref={flatCanvas}
@@ -122,7 +125,7 @@ export function FireGlobe({ atFire, onArrive, flat = !desktop3d(), still = reduc
         aria-label={
           atFire
             ? "Map of the fires around ID-WOOD-CONCESSION-0332 on 14 Oct 2026, with the concession's edge"
-            : `World map of the ${DAY_DETECTIONS.toLocaleString("en-GB")} NOAA-20 fire detections on 14 Oct 2026`
+            : `World map of the ${count(DAY_DETECTIONS)} NOAA-20 fire detections on 14 Oct 2026`
         }
         aria-hidden={globe}
       />
@@ -132,7 +135,7 @@ export function FireGlobe({ atFire, onArrive, flat = !desktop3d(), still = reduc
           className="globe-3d"
           tabIndex={globe ? 0 : -1}
           role="img"
-          aria-label={`Globe of the ${DAY_DETECTIONS.toLocaleString("en-GB")} NOAA-20 fire detections on 14 Oct 2026. Drag it, or use the arrow keys, to turn it.`}
+          aria-label={`Globe of the ${count(DAY_DETECTIONS)} NOAA-20 fire detections on 14 Oct 2026. ${TURN_IT}`}
           aria-hidden={!globe}
           onKeyDown={(e) => {
             const step = ARROW[e.key];

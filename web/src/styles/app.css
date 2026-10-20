@@ -11,6 +11,7 @@
 }
 .app-name { font-weight: var(--fw-weight-semibold); }
 .app-top .fw-help { margin: 0; }
+.app-top-end { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--fw-space-2) var(--fw-space-5); }
 .app-main { display: grid; grid-template-columns: minmax(360px, 440px) minmax(0, 1fr); min-height: 0; }
 
 .rec-col { padding: var(--fw-space-6); display: flex; flex-direction: column; gap: var(--fw-space-5); overflow-y: auto; }
@@ -225,7 +226,7 @@ a.fw-btn { text-decoration: none; }
   .fw-kv a.fw-link { position: relative; }
   .fw-kv a.fw-link::after { content: ""; position: absolute; inset: calc((var(--fw-touch-target) - 100%) / -2) 0; }
   /* The credit links wrap on a phone, so an overlay can't follow them; each becomes one tall box instead */
-  .credit .fw-link, .pack-foot .fw-link, .forecast details .fw-link, .damage .fw-link { display: inline-flex; align-items: center; min-height: var(--fw-touch-target); }
+  .credit .fw-link, .pack-foot .fw-link, .forecast details .fw-link, .damage .fw-link, .landing .fw-link, .app-top-end .fw-link { display: inline-flex; align-items: center; min-height: var(--fw-touch-target); }
 }
 
 @media (max-width: 720px) {
@@ -251,8 +252,9 @@ a.fw-btn { text-decoration: none; }
 }
 
 /* Fire globe: 14 Oct 2026's fires, the tier 3 piece (docs/design/system-brief.md, D76). The flat map holds the space;
-   the globe fades in over it, so nothing shifts. */
-.globe { position: relative; aspect-ratio: 16 / 9; }
+   the globe fades in over it, so nothing shifts. Where the flat map stays, its box is the map's own shape. */
+.globe { position: relative; aspect-ratio: 1; }
+.globe--flat { aspect-ratio: 18 / 7; } /* 360° by 140°, the flat map's shape */
 .globe canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
 .globe-3d { opacity: 0; cursor: grab; touch-action: none; border-radius: var(--fw-radius-panel); transition: opacity var(--fw-dur-slow) var(--fw-ease); }
 .globe-3d:active { cursor: grabbing; }
@@ -261,6 +263,37 @@ a.fw-btn { text-decoration: none; }
 .globe[data-shown="globe"] .globe-flat { opacity: 0; }
 .globe-wait { position: absolute; inset: 0; border-radius: var(--fw-radius-panel); background: var(--fw-skeleton); }
 .globe--failed { display: grid; place-items: center; border: var(--fw-border) solid var(--fw-line); border-radius: var(--fw-radius-panel); }
+
+/* Landing: what Fire Watch is, before the tool (docs/specs/landing-page.md, D72). One column of reading width, the globe
+   the one bold element. */
+.landing { min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; }
+.landing a.fw-btn { text-decoration: none; }
+.landing-main { width: 100%; max-width: 1080px; margin: 0 auto; box-sizing: border-box; padding: var(--fw-space-7) var(--fw-space-6); display: grid; gap: var(--fw-space-7); }
+.landing-hero { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); align-items: center; gap: var(--fw-space-6); }
+.landing-intro { display: grid; gap: var(--fw-space-4); max-width: 68ch; }
+.landing-intro h1 { font-size: var(--fw-text-2xl); font-weight: var(--fw-weight-semibold); }
+.landing-lede { margin: 0; font-size: var(--fw-text-lg); }
+.landing-actions { display: flex; flex-wrap: wrap; gap: var(--fw-space-3); margin-top: var(--fw-space-2); }
+.landing-globe { margin: 0; display: grid; gap: var(--fw-space-3); }
+.landing-globe figcaption { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--fw-space-3) var(--fw-space-5); font-size: var(--fw-text-sm); color: var(--fw-muted); }
+.landing-globe figcaption p { margin: 0; max-width: 72ch; }
+.landing-section { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: var(--fw-space-4) var(--fw-space-6); padding-top: var(--fw-space-6); border-top: var(--fw-border) solid var(--fw-line); }
+.landing-section h2 { font-size: var(--fw-text-xl); font-weight: var(--fw-weight-semibold); }
+.landing-text { display: grid; gap: var(--fw-space-3); max-width: 64ch; }
+.landing-text p { margin: 0; }
+.landing-steps { margin: 0; padding: 0; list-style: none; counter-reset: step; display: grid; gap: var(--fw-space-4); max-width: 64ch; }
+.landing-steps li { counter-increment: step; display: grid; grid-template-columns: var(--fw-space-6) minmax(0, 1fr); }
+.landing-steps li::before { content: counter(step); font-weight: var(--fw-weight-semibold); color: var(--fw-muted); }
+.landing-steps p { margin: 0; }
+.landing-words { font-size: var(--fw-text-base); gap: var(--fw-space-3) var(--fw-space-5); max-width: 64ch; }
+.landing-words dt { font-weight: var(--fw-weight-medium); color: var(--fw-ink); }
+.landing-foot { width: 100%; max-width: 1080px; margin: auto auto 0; box-sizing: border-box; padding: var(--fw-space-5) var(--fw-space-6) var(--fw-space-7); }
+.landing-foot p { margin: 0; max-width: 72ch; }
 @media (max-width: 720px) {
-  .globe { aspect-ratio: 2 / 1; }
+  .landing-main { padding: var(--fw-space-6) var(--fw-space-4); gap: var(--fw-space-6); }
+  .landing-hero { grid-template-columns: minmax(0, 1fr); }
+  .landing-section { grid-template-columns: minmax(0, 1fr); }
+  .landing-words { grid-template-columns: minmax(0, 1fr); }
+  .landing-words dd + dt { margin-top: var(--fw-space-2); }
+  .landing-foot { padding: var(--fw-space-5) var(--fw-space-4) var(--fw-space-6); }
 }

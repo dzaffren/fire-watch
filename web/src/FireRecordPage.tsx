@@ -44,9 +44,11 @@ interface Props {
   initialDates?: { from: string; to: string };
   /** Unix seconds; the clock by default, fixed by the preview and tests. */
   now?: number;
+  /** The landing page, linked from the header as "About Fire Watch" (D72). */
+  aboutHref?: string;
 }
 
-export function FireRecordPage({ source, today, initialView, initialDates, now = Date.now() / 1000 }: Props) {
+export function FireRecordPage({ source, today, initialView, initialDates, now = Date.now() / 1000, aboutHref }: Props) {
   const [dates, setDates] = useState(initialDates ?? { from: daysBefore(today, DEFAULT_DAYS - 1), to: today });
   const [view, setView] = useState<View>(initialView ?? { kind: "list" });
   const [list, setList] = useState<ListLoad>({ kind: "loading" });
@@ -203,7 +205,10 @@ export function FireRecordPage({ source, today, initialView, initialDates, now =
     <div className="app">
       <header className="app-top">
         <span className="app-name">Fire Watch</span>
-        <p className="fw-help">Records are sealed on Base Sepolia, a test network</p>
+        <div className="app-top-end">
+          <p className="fw-help">Records are sealed on Base Sepolia, a test network</p>
+          {aboutHref && <a className="fw-link" href={aboutHref}>About Fire Watch</a>}
+        </div>
       </header>
       <main className="app-main app-main--wide">
         <section className="rec-col" aria-labelledby="h-page">

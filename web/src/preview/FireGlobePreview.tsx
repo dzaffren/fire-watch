@@ -47,8 +47,8 @@ export default function FireGlobePreview() {
     <div className="preview">
       <div className="preview-bar">
         <p className="fw-help">
-          Preview of the fire globe. Every dot is a real NOAA-20 detection of 14 Oct 2026 from NASA FIRMS. Land is Natural
-          Earth 110m, and the dashed edge is ID-WOOD-CONCESSION-0332 from Trase.
+          Preview of the fire globe. Every dot is a real NOAA-20 detection of 14 Oct 2026 from NASA FIRMS. Land is
+          Natural Earth 110m, and the dashed edge is ID-WOOD-CONCESSION-0332 from Trase.
         </p>
         <label className="preview-pick">
           State
