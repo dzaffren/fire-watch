@@ -59,10 +59,11 @@ detail on request                  → raw record behind a disclosure, not on sc
 motion ceiling tier 3              → tier 1: 120–240 ms, cubic-bezier(.2,.8,.2,1)
                                      tier 2: pass-by-pass replay, 600 ms a step (a 4-pass fire in about 2 s)
                                      tier 3: the globe only, inside the budget below
-fire globe, no new tokens           → sphere --fw-surface on page --fw-bg, coastlines 1px --fw-line,
-                                     fire dots --fw-fire at 2 px, one per 0.01° cell (40,713 dots for the
-                                     day's 62,489 detections); after the flight the concession is the
-                                     usual dashed --fw-ink edge over --fw-concession (D29)
+fire globe, no new tokens           → sea --fw-surface and land --fw-map, as on the tool's map; coast 1px
+                                     --fw-faint, since dark land and sea are too close to read without it;
+                                     fire dots --fw-fire, 2 px and round, one per 0.01° cell, and every
+                                     detection in full near the 0332 fire; after the flight the concession
+                                     is the usual dashed --fw-ink edge over --fw-concession (D29)
 "never salesy"                      → the globe turns at one turn a minute, no glow, no bloom, no stars
 ```
 
@@ -73,9 +74,9 @@ working screens. How one fire spread over time stays on the tier 2 replay.
 
 | | |
 | --- | --- |
-| Download | three.js 0.186.1, the parts the globe uses, 133 kB; Natural Earth 110m coastlines 16 kB; 14 Oct 2026's fires, one dot per 0.01° cell, about 70 kB. Gzipped and measured: about 220 kB. Ceiling 250 kB |
-| Frame rate | 60 fps target on a laptop from the last five years, never below 30, with all 40,713 dots. Measured at build |
-| Phones | The flat world map with the same fires, no 3D: the coastlines and the fires only, about 90 kB |
+| Download | three.js 0.186.1 and the scene 139 kB; Natural Earth 110m land 16 kB; 14 Oct 2026's fires, one dot per 0.01° cell, 71 kB; every detection and the concession's edge near the 0332 fire, 15 kB; the component 2 kB. Gzipped as committed and measured: 244 kB. Ceiling 250 kB |
+| Frame rate | 60 fps target on a laptop from the last five years, never below 30, with all 41,598 dots. Not measured: this machine draws WebGL in software, and its browser tops out at 20 fps with nothing animating |
+| Phones | The flat world map with the same fires, no 3D: 104 kB |
 | No 3D | Where WebGL can't run, the flat map stays in its place |
 | Reduced motion | No turning on its own; flights jump straight to the place |
 | Loading | The flat map shows first and holds the same space. On desktop the globe downloads on its own and swaps in, so nothing shifts (D76). Phones keep the flat map |
@@ -86,5 +87,5 @@ working screens. How one fire spread over time stays on the tier 2 replay.
 - **WCAG AA** — the common accessibility standard: text contrast at least 4.5:1, large text 3:1.
 - **Tier 1 / 2 / 3** — how much motion is allowed: small feedback, choreographed sequences, one 3D piece.
 - **three.js** — the JavaScript library that draws the 3D globe in the browser.
-- **Natural Earth** — a public-domain map of the world's coastlines, at 1:110 million here.
+- **Natural Earth** — a public-domain map of the world's land, at 1:110 million here.
 - **WebGL** — the browser feature that draws 3D; a few old machines and locked-down browsers lack it.

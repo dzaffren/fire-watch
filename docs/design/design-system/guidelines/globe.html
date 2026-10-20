@@ -1,0 +1,55 @@
+<!-- @dsCard group="Components" -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Fire globe</title>
+<link rel="stylesheet" href="../styles.css">
+<style>
+.pad { padding: 24px; display: grid; gap: 14px; }
+table { border-collapse: collapse; font-size: var(--fw-text-sm); }
+th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--fw-line); vertical-align: top; }
+th { color: var(--fw-muted); font-weight: var(--fw-weight-medium); }
+.swatch { display: inline-block; width: 28px; height: 14px; border: 1px solid var(--fw-line); vertical-align: middle; margin-right: 8px; }
+.dot { display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: var(--fw-fire); vertical-align: middle; margin-right: 8px; }
+.edge { display: inline-block; width: 28px; height: 14px; border: 1.5px dashed var(--fw-ink); background: var(--fw-concession); vertical-align: middle; margin-right: 8px; }
+</style>
+</head>
+<body>
+<div class="pad">
+<div class="fw-label">Fire globe: the one tier 3 piece</div>
+<p class="fw-help">Every NOAA-20 detection of 14 Oct 2026, 62,489 in all, on a globe that turns once a minute. The reader drags it, or takes one flight to the ID-WOOD-CONCESSION-0332 fire. No glow, no bloom, no stars. Component: <span class="fw-mono">web/src/FireGlobe.tsx</span>. Preview: <span class="fw-mono">?preview=fire-globe</span>.</p>
+<table>
+<thead><tr><th>Part</th><th>Token</th></tr></thead>
+<tbody>
+<tr><td><span class="swatch" style="background: var(--fw-surface)"></span>Sea</td><td class="fw-mono">--fw-surface</td></tr>
+<tr><td><span class="swatch" style="background: var(--fw-map)"></span>Land, Natural Earth 110m</td><td class="fw-mono">--fw-map</td></tr>
+<tr><td><span class="swatch" style="background: var(--fw-faint)"></span>Coast, about 1 px</td><td class="fw-mono">--fw-faint</td></tr>
+<tr><td><span class="dot"></span>Fire: one dot per 0.01° cell, every detection near the 0332 fire; 2 px, 5 px over the fire</td><td class="fw-mono">--fw-fire</td></tr>
+<tr><td><span class="edge"></span>The concession, after the flight</td><td class="fw-mono">--fw-ink dashed · --fw-concession</td></tr>
+</tbody>
+</table>
+<table>
+<thead><tr><th>State</th><th>What shows</th></tr></thead>
+<tbody>
+<tr><td>Loading</td><td>A <span class="fw-mono">--fw-skeleton</span> block holds the space</td></tr>
+<tr><td>Flat map</td><td>The same fires on an equirectangular map, 60°S to 80°N. Shown first everywhere, and kept on phones, touch screens and without WebGL</td></tr>
+<tr><td>Globe</td><td>On desktop it loads on its own and fades in over the flat map in <span class="fw-mono">--fw-dur-slow</span>; nothing shifts (D76)</td></tr>
+<tr><td>Dragging</td><td>The ground follows the pointer. The arrow keys turn it 10° a press when it has focus</td></tr>
+<tr><td>Flight</td><td>Turns to the 0332 fire and closes in to a view 0.6° tall, in 2.4 s</td></tr>
+<tr><td>Reduced motion</td><td>No turning on its own; the flight jumps straight there</td></tr>
+<tr><td>Didn't load</td><td>A help line in a bordered box: the rest of the page works without it</td></tr>
+</tbody>
+</table>
+<table>
+<thead><tr><th>Budget</th><th>Measured, gzipped</th></tr></thead>
+<tbody>
+<tr><td>three.js 0.186.1 and the scene</td><td>139 kB, desktop only</td></tr>
+<tr><td>Land, the day's fires, the fire's surroundings</td><td>16 kB, 71 kB, 15 kB</td></tr>
+<tr><td>Desktop, all of it</td><td>244 kB of a 250 kB ceiling</td></tr>
+<tr><td>Phones, the flat map</td><td>104 kB</td></tr>
+</tbody>
+</table>
+</div>
+</body>
+</html>
