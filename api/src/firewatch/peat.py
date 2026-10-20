@@ -1,10 +1,23 @@
-"""load-peat: load WRI's Global Peatlands map, cut to the concessions' reach (D62, D69, D70).
+"""load-peat: load WRI's Global Peatlands map, cut to the concessions' reach, and work out a fire's
+damage parts from it (D62, D69–D71).
 
 Usage: load-peat [path] | load-peat --cut
 
 With no path the committed cut is read and its sha256 checked; a path given is read as is, which
 is how tests and the e2e load a smaller cut. --cut redoes the committed cut from the pinned tiles,
 with GFW_API_KEY, against the concessions in DATABASE_URL.
+
+The estimate, so anyone can redo it:
+
+1. Take the fire's detections, as the fire route groups them.
+2. Draw each detection's square in its own UTM zone: 187.5 m each way from the point, along the
+   zone's grid. Zone floor((lon + 180) / 6) + 1, EPSG 326xx north of the equator, 327xx south.
+3. Join the squares. Split the result at the concession's edge into inside and outside.
+4. Intersect each part with the peat pieces. Areas are on the WGS 84 ellipsoid. "Other ground" is
+   a part's area less its peat.
+5. Round each of the four parts to 0.01 ha.
+
+The page applies the factors to the four parts (D71).
 
 The peat cut, so anyone can redo it: every peat pixel of the 10 pinned tiles inside 5.5 km of a
 concession (D13's 5 km, plus half a square's diagonal), vectorized by tile in 4,000-pixel blocks.
@@ -17,6 +30,7 @@ import json
 import os
 import sys
 from pathlib import Path
+from time import perf_counter
 
 import httpx
 
@@ -63,6 +77,47 @@ SELECT %(map_version)s, (ST_Dump(ST_Subdivide(ST_SetSRID(ST_GeomFromGeoJSON(geom
                                                %(vertices)s))).geom
 FROM peat_cut
 """
+HAS_PEAT = "SELECT EXISTS (SELECT 1 FROM peat) AS found"
+DAMAGE = """
+WITH squares AS (
+    SELECT ST_Union(ST_Transform(ST_Expand(ST_Transform(point, zone), 187.5), 4326)) AS geom
+    FROM (
+        SELECT ST_SetSRID(ST_MakePoint(lon_e5 / 1e5, lat_e5 / 1e5), 4326) AS point,
+               CASE WHEN lat_e5 >= 0 THEN 32600 ELSE 32700 END
+                   + floor((lon_e5 / 1e5 + 180) / 6)::integer + 1 AS zone
+        FROM hotspots WHERE record_id = ANY(%(record_ids)s)
+    ) AS d
+), parts AS (
+    SELECT ST_Intersection(s.geom, c.boundary) AS inside,
+           ST_Difference(s.geom, c.boundary) AS outside
+    FROM squares s JOIN concessions c ON c.id = %(id)s
+), areas AS (
+    SELECT ST_Area(inside::geography) AS inside_m2,
+           coalesce((SELECT sum(ST_Area(ST_Intersection(inside, p.geom)::geography))
+                     FROM peat p WHERE ST_Intersects(p.geom, inside)), 0) AS inside_peat_m2,
+           ST_Area(outside::geography) AS outside_m2,
+           coalesce((SELECT sum(ST_Area(ST_Intersection(outside, p.geom)::geography))
+                     FROM peat p WHERE ST_Intersects(p.geom, outside)), 0) AS outside_peat_m2
+    FROM parts
+)
+SELECT round((inside_peat_m2 / 1e4)::numeric, 2)::float8 AS inside_peat_ha,
+       round((greatest(inside_m2 - inside_peat_m2, 0) / 1e4)::numeric, 2)::float8
+           AS inside_other_ha,
+       round((outside_peat_m2 / 1e4)::numeric, 2)::float8 AS outside_peat_ha,
+       round((greatest(outside_m2 - outside_peat_m2, 0) / 1e4)::numeric, 2)::float8
+           AS outside_other_ha
+FROM areas
+"""
+
+
+def damage(conn, concession_id: str, record_ids: list[bytes]) -> tuple[dict | None, int]:
+    """The fire's four parts in hectares, or None while peat is empty, and the milliseconds the
+    query took."""
+    began = perf_counter()
+    found = None
+    if conn.execute(HAS_PEAT).fetchone()["found"]:
+        found = conn.execute(DAMAGE, {"id": concession_id, "record_ids": record_ids}).fetchone()
+    return found, round((perf_counter() - began) * 1000)
 
 
 def committed() -> bytes:

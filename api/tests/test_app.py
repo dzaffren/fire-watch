@@ -1,4 +1,5 @@
 import itertools
+import logging
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -6,12 +7,16 @@ import psycopg
 import pytest
 from fastapi.testclient import TestClient
 
-from firewatch import concessions
+from firewatch import concessions, firms, peat, record_hotspots
 from firewatch.app import SIMPLIFY_DEGREES, create_app
 from firewatch.concessions import MAP_VERSION
+from firewatch.db import connect
 
 SITE = "https://fire-watch.example"
-TRASE_CUT = Path(__file__).parents[2] / "fixtures" / "concessions" / "trase-cut.geojson"
+FIXTURES = Path(__file__).parents[2] / "fixtures"
+TRASE_CUT = FIXTURES / "concessions" / "trase-cut.geojson"
+FIRE_ORIGIN = FIXTURES / "firms" / "fire-origin.csv"
+PEAT_CUT = FIXTURES / "peat" / "peat-cut.geojson.gz"
 C0275, C0332, C0377, C0540 = (
     f"ID-WOOD-CONCESSION-{n}" for n in ("0275", "0332", "0377", "0540")
 )
@@ -30,6 +35,12 @@ def db(migrated_db):
 def client(db, monkeypatch):
     monkeypatch.setenv("DATABASE_URL", db)
     return TestClient(create_app(SITE))
+
+
+@pytest.fixture
+def peat_db(db):
+    peat.load(PEAT_CUT.read_bytes(), db)
+    return db
 
 
 def record(
@@ -90,6 +101,16 @@ def forecast(
 
 def unix(at):
     return int(datetime.fromisoformat(at).timestamp())
+
+
+def fire_origin(url, created_at="2026-10-17T09:00Z"):
+    """Stores the 0332 fire of fire-origin scenario 1 as the recorder does; returns its key."""
+    with connect(url) as conn:
+        hotspots = firms.parse(FIRE_ORIGIN.read_text())
+        new = record_hotspots.store(conn, record_hotspots.match(conn, hotspots))
+        conn.execute("UPDATE hotspots SET created_at = %s", (created_at,))
+    first = min(new, key=lambda h: (h["acquired_at"], h["lat_e5"], h["lon_e5"]))
+    return "0x" + bytes(first["record_id"]).hex()
 
 
 def test_concessions_ranked_by_inside(client, db):
@@ -686,3 +707,67 @@ def test_cors_allows_only_the_site_and_only_get(client):
     assert allowed.headers["access-control-allow-origin"] == SITE
     assert "access-control-allow-origin" not in other.headers
     assert preflight_post.status_code == 400
+
+
+# The parts the plan's query gives for the 0332 fire on the compose database (scenario 4).
+DAMAGE_0332 = {
+    "inside_peat_ha": 59.21, "inside_other_ha": 0.0,
+    "outside_peat_ha": 144.31, "outside_other_ha": 6.3,
+}
+
+
+def test_fire_damage_splits_at_the_edge(client, peat_db, caplog):
+    key = fire_origin(peat_db)
+
+    with caplog.at_level(logging.INFO, logger="firewatch.app"):
+        fire = client.get(f"/api/concessions/{C0332}/fires/{key}").json()
+
+    assert (fire["detections"], fire["passes"]) == (19, 4)
+    assert fire["damage"] == DAMAGE_0332
+    assert "detections=19" in caplog.text and "damage_ms=" in caplog.text
+
+
+def test_fire_damage_off_peat(client, peat_db):
+    b = record(
+        peat_db, "2026-10-14T06:18Z", [(C0377, False, 371), (C0275, False, 1019)],
+        lat_e5=-367525, lon_e5=11535328,
+    )
+
+    fire = client.get(f"/api/concessions/{C0377}/fires/{b}").json()
+
+    assert fire["damage"] == {
+        "inside_peat_ha": 0.0, "inside_other_ha": 0.0,
+        "outside_peat_ha": 0.0, "outside_other_ha": 14.06,
+    }
+
+
+def test_pack_damage_holds_at_its_cut(client, peat_db):
+    key = fire_origin(peat_db, created_at="2026-10-17T09:00Z")
+    made = client.get(f"/api/concessions/{C0332}/fires/{key}").json()
+    for lat_e5, lon_e5 in [(-283100, 11271900), (-283050, 11272250), (-282800, 11271700)]:
+        record(
+            peat_db, "2026-10-17T18:20Z", [(C0332, True, 900)],
+            lat_e5=lat_e5, lon_e5=lon_e5, created_at="2026-10-17T21:00Z",
+        )
+
+    pack = client.get(
+        f"/api/concessions/{C0332}/fires/{key}", params={"as_of": made["as_of_unix"]}
+    ).json()
+    live = client.get(f"/api/concessions/{C0332}/fires/{key}").json()
+
+    assert made["as_of_unix"] == unix("2026-10-17T09:00Z")
+    assert made["damage"] == pack["damage"] == DAMAGE_0332
+    assert live["detections"] == 22
+    assert sum(live["damage"].values()) > sum(DAMAGE_0332.values())
+
+
+def test_no_damage_without_peat(client, db):
+    key = fire_origin(db)
+
+    fire = client.get(f"/api/concessions/{C0332}/fires/{key}").json()
+    pack = client.get(
+        f"/api/concessions/{C0332}/fires/{key}", params={"as_of": fire["as_of_unix"]}
+    ).json()
+
+    assert fire["detections"] == 19
+    assert "damage" not in fire and "damage" not in pack
