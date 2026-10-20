@@ -417,6 +417,12 @@ needs `load-peat` and the test cut.
 
 Recorded as D69, D70, D71.
 
+## Review
+
+2026-10-20 · 2 raw findings, 1 survived, 1 fixed.
+
+- A03 Software Supply Chain Failures · `api/uv.lock:801` · CI's pip-audit now checks the `cut` group's rasterio, numpy, affine and pyparsing · `0f61b04`
+
 ## Open items
 
 | ID | What | Type | Raised at | Owner | Status | Answer |
