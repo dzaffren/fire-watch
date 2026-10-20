@@ -30,7 +30,7 @@ test("forecasts the 0332 fire inside after its third pass, and the next day's pa
   );
   expect(newest.tx_hash).toMatch(/^0x[0-9a-f]{64}$/);
 
-  await page.goto("/");
+  await page.goto("/?tool");
   await page.getByLabel("From").fill("2026-10-12");
   await page.getByLabel("To").fill("2026-10-15");
   await page.getByRole("button", { name: /^ID-WOOD-CONCESSION-0332/ }).click();
@@ -65,7 +65,7 @@ test("every forecast control is at least 44 px to tap on a touch screen", async 
     route.fulfill({ path: FAKE_GOOGLE_MAPS, contentType: "text/javascript" }),
   );
 
-  await page.goto("/");
+  await page.goto("/?tool");
   await page.getByLabel("From").fill("2026-10-12");
   await page.getByLabel("To").fill("2026-10-15");
   await page.getByRole("button", { name: /^ID-WOOD-CONCESSION-0332/ }).click();

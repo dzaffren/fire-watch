@@ -30,7 +30,7 @@ test("opens the 0332 fire first seen outside and its first detection matches the
   );
   expect(first.tx_hash).toMatch(/^0x[0-9a-f]{64}$/);
 
-  await page.goto("/");
+  await page.goto("/?tool");
   await page.getByLabel("From").fill("2026-10-12");
   await page.getByLabel("To").fill("2026-10-15");
   await page.getByRole("button", { name: /^ID-WOOD-CONCESSION-0332/ }).click();
