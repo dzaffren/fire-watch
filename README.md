@@ -18,6 +18,7 @@ for watchdog investigators who file grievances over fires on plantation land.
 - See a concession's fires, where each was first seen against its edge, and its passes in order, from sealed detections.
 - Turn one fire into a pack with its own link, which anyone's browser checks against the chain, and print it to PDF.
 - After each pass, forecast whether a fire near a concession is seen inside within 48 hours, seal it, and list every forecast with its outcome.
+- See how the forecast rule did on a replay of 2023, next to a downwind guess, in the forecast panel; `backtest-2023` redoes it byte for byte.
 
 ## Docs
 
