@@ -175,6 +175,45 @@ describe("ComplaintPack", () => {
     expect(within(title.closest("header")!).getByText(NEVER_SPREAD)).toBeInTheDocument();
   });
 
+  it("holds the damage estimate with its working in full", async () => {
+    // The 0332 fire's four parts from its 19 detections, as the damage query works them out.
+    const damage = { inside_peat_ha: 59.21, inside_other_ha: 0, outside_peat_ha: 144.31, outside_other_ha: 6.3 };
+    render(<ComplaintPack source={sourceOf({ ...packOf(FIRES.outside), damage })} packRef={refOf(FIRES.outside)} />);
+
+    const section = await screen.findByRole("region", { name: "Damage estimate" });
+    const value = (label: string) => within(section).getByText(label, { selector: "dt" }).nextElementSibling!.textContent;
+    expect(value("Ground in its pixels")).toMatch(/^About 210\sha59\sha of it inside the concession\.$/);
+    expect(value("CO₂ released")).toMatch(/^About 120,000\st/);
+
+    // Shown in full, so a printed pack carries it.
+    expect(section.querySelector("details")).toBeNull();
+    expect(within(section).getByRole("heading", { level: 3, name: "How this is worked out" })).toBeInTheDocument();
+    const parts = within(section).getByRole("table", { name: "How this is worked out" });
+    expect(within(parts).getAllByRole("row").slice(1).map((r) => [...r.children].map((c) => c.textContent))).toEqual([
+      ["Inside the concession", "59.21 ha", "0.00 ha"],
+      ["Outside", "144.31 ha", "6.30 ha"],
+    ]);
+    expect(within(section).getByText(/^Methane and carbon monoxide are left out\. This estimate is not sealed\./)).toBeInTheDocument();
+    expect(within(section).getAllByRole("link").map((a) => a.textContent)).toEqual([
+      "IPCC 2013 Wetlands Supplement, Tables 2.6 and 2.7",
+      "IPCC 2006 Guidelines, Volume 4, Tables 2.4 and 2.5",
+      "World Bank, The Cost of Fire (2016)",
+      "WRI Global Peatlands, v20230315, CC BY 4.0",
+      "The peat map's tiles and their sha256",
+    ]);
+    expect(within(section).getByRole("link", { name: "The peat map's tiles and their sha256" })).toHaveAttribute(
+      "href",
+      "https://github.com/dzaffren/fire-watch/blob/main/api/src/firewatch/peat.py",
+    );
+  });
+
+  it("has no damage section when the API sends no damage", async () => {
+    render(<ComplaintPack source={sourceOf(packOf(FIRES.outside))} packRef={refOf(FIRES.outside)} />);
+
+    await screen.findByRole("heading", { level: 1 });
+    expect(screen.queryByRole("region", { name: "Damage estimate" })).toBeNull();
+  });
+
   it("reads Checking on every detection until the chain answers", async () => {
     // Every text the page ever showed, so a state that lasts one render still counts.
     const shown: string[] = [];
