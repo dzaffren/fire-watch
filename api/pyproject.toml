@@ -15,9 +15,16 @@ dependencies = [
 record-hotspots = "firewatch.record_hotspots:main"
 load-concessions = "firewatch.concessions:main"
 backtest-2023 = "firewatch.backtest:main"
+load-peat = "firewatch.peat:main"
 
 [dependency-groups]
-dev = ["pytest"]
+cut = [
+    "rasterio>=1.5.2",
+]
+dev = [
+    "pytest",
+    "rasterio>=1.5.2",
+]
 
 [build-system]
 requires = ["uv_build>=0.12,<0.13"]
