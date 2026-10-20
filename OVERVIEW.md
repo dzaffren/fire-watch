@@ -1,6 +1,6 @@
 # ClimateChain hackathon entry
 
-**Status:** Active · **Updated:** 2026-10-19 by /build season-backtest
+**Status:** Active · **Updated:** 2026-10-20 by /ship season-backtest
 
 Fire Watch, an entry for the IEEE ClimateChain Global Hackathon (deadline 2026-10-25). It shows
 satellite fire hotspots with on-chain proof that each record hasn't changed since it was written,
@@ -34,7 +34,7 @@ for watchdog investigators who file grievances over fires on plantation land.
 | fire-origin      | Shipped | See a concession's fires, where each was first seen against its edge, and its passes in order, from sealed detections. | docs/specs/fire-origin.md         |
 | complaint-pack   | Shipped | Turn one fire into a pack with its own link, which anyone's browser checks against the chain, and print it to PDF. | docs/specs/complaint-pack.md      |
 | spread-forecast  | Shipped | After each pass, forecast whether a fire near a concession is seen inside within 48 hours, seal it, and list every forecast with its outcome. | docs/specs/spread-forecast.md     |
-| season-backtest  | Built   | See how the forecast rule did on a replay of 2023, next to a downwind guess, in the forecast panel; `backtest-2023` redoes it byte for byte. | docs/specs/season-backtest.md     |
+| season-backtest  | Shipped | See how the forecast rule did on a replay of 2023, next to a downwind guess, in the forecast panel; `backtest-2023` redoes it byte for byte. | docs/specs/season-backtest.md     |
 
 ## More
 
