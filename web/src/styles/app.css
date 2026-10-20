@@ -172,6 +172,21 @@ button.fw-link { margin: 0; padding: 0; border: 0; background: none; font: inher
 .forecast .table-box tbody tr:last-child th { border-bottom: 0; }
 .forecast details .table-box { margin-top: var(--fw-space-2); }
 
+/* Damage estimate: a fire's ground, CO2 and cost, split at the edge (docs/specs/damage-estimate.md) */
+.damage h2 { font-size: var(--fw-text-lg); font-weight: var(--fw-weight-semibold); }
+.damage > .fw-help { margin: 0; }
+.damage-value { font-weight: var(--fw-weight-medium); }
+.damage .fw-table thead th { white-space: normal; }
+.damage .table-box tbody th { text-align: left; font-weight: var(--fw-weight-regular); color: var(--fw-muted); background: none; white-space: normal; }
+.damage .table-box tbody tr:last-child th { border-bottom: 0; }
+.damage .fw-link { display: inline; }
+.damage .fw-link svg { vertical-align: -2px; margin-left: var(--fw-space-1); }
+.damage details { border-top: var(--fw-border) solid var(--fw-line); padding-top: var(--fw-space-3); font-size: var(--fw-text-sm); }
+.damage details > :not(summary) { margin: var(--fw-space-2) 0 0; }
+.damage summary { cursor: pointer; color: var(--fw-accent); font-weight: var(--fw-weight-medium); min-height: var(--fw-space-5); }
+.damage summary:hover { color: var(--fw-accent-hover); }
+.damage details[open] > :not(summary) { animation: fw-enter var(--fw-dur) var(--fw-ease) both; }
+
 /* Complaint pack: one fire as it stood when the pack was made, for a grievance (docs/specs/complaint-pack.md) */
 .app-main--pack { grid-template-columns: minmax(440px, 560px) minmax(0, 1fr); }
 .pack { gap: var(--fw-space-6); }
@@ -203,14 +218,14 @@ a.fw-btn { text-decoration: none; }
   .zoom .fw-btn { width: var(--fw-touch-target); }
   .row-open td { height: var(--fw-touch-target); }
   .back { min-height: var(--fw-touch-target); }
-  .rec summary, .fire-reading summary, .forecast summary { padding-block: calc((var(--fw-touch-target) - var(--fw-space-5)) / 2); }
+  .rec summary, .fire-reading summary, .forecast summary, .damage summary { padding-block: calc((var(--fw-touch-target) - var(--fw-space-5)) / 2); }
   .replay-play { width: var(--fw-touch-target); }
   .replay-track { height: var(--fw-touch-target); }
   /* Grow the inline transaction link's tap area to the touch target without moving the row */
   .fw-kv a.fw-link { position: relative; }
   .fw-kv a.fw-link::after { content: ""; position: absolute; inset: calc((var(--fw-touch-target) - 100%) / -2) 0; }
   /* The credit links wrap on a phone, so an overlay can't follow them; each becomes one tall box instead */
-  .credit .fw-link, .pack-foot .fw-link, .forecast details .fw-link { display: inline-flex; align-items: center; min-height: var(--fw-touch-target); }
+  .credit .fw-link, .pack-foot .fw-link, .forecast details .fw-link, .damage .fw-link { display: inline-flex; align-items: center; min-height: var(--fw-touch-target); }
 }
 
 @media (max-width: 720px) {

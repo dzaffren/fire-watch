@@ -98,9 +98,20 @@ export interface Backtest {
   downwind: BacktestTotals;
 }
 
+/** A fire's ground in hectares: its detections' joined 375 m squares, split at the concession's edge
+ *  and by the peat map (D62–D64). */
+export interface Damage {
+  inside_peat_ha: number;
+  inside_other_ha: number;
+  outside_peat_ha: number;
+  outside_other_ha: number;
+}
+
 /** One fire with every detection in it, oldest first, whatever the chosen dates. */
 export interface FireDetail extends FireSummary {
   hotspots: HotspotRecord[];
+  /** Its damage from the detections stored by `as_of_unix` (D65). */
+  damage?: Damage;
   /** When the API answered: a pack made from this view holds the detections stored by then (D33). */
   as_of_unix: number;
   /** Every forecast made for it near this concession, newest first (D41). */

@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import type { FireDetail, HotspotRecord } from "./api";
+import { DamagePanel } from "./Damage";
 import type { Dot } from "./FireMap";
 import type { Area } from "./maps";
 import { count, detected, detectedShort, distance, firePower, firstSeenLine, plural } from "./format";
@@ -98,6 +99,8 @@ export function FireView({ id, load, packHref, forecast, picked, onBack, onPick,
       )}
 
       {load.kind === "ready" && <Reading id={id} fire={load.fire} packHref={packHref} />}
+
+      {load.kind === "ready" && <DamagePanel fire={load.fire} />}
 
       {load.kind === "ready" && forecast}
 
