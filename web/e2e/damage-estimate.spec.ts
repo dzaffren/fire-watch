@@ -20,7 +20,7 @@ async function readFigures(damage: Locator) {
 // fire-origin.csv holds the 19 detections of the ID-WOOD-CONCESSION-0332 fire, and global-setup
 // loads the peat cut around them.
 test("reads the 0332 fire's damage in the fire view and the same in its pack", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/?tool");
   await page.getByLabel("From").fill("2026-10-12");
   await page.getByLabel("To").fill("2026-10-15");
   await page.getByRole("button", { name: /^ID-WOOD-CONCESSION-0332/ }).click();
@@ -49,7 +49,7 @@ test("every damage control is at least 44 px to tap on a touch screen", async ({
     route.fulfill({ path: FAKE_GOOGLE_MAPS, contentType: "text/javascript" }),
   );
 
-  await page.goto("/");
+  await page.goto("/?tool");
   await page.getByLabel("From").fill("2026-10-12");
   await page.getByLabel("To").fill("2026-10-15");
   await page.getByRole("button", { name: /^ID-WOOD-CONCESSION-0332/ }).click();

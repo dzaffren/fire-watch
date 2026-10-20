@@ -26,7 +26,7 @@ async function fakeMaps(context: BrowserContext) {
 
 // fire-origin.csv holds the 19 detections of the ID-WOOD-CONCESSION-0332 fire, recorded and sealed on anvil.
 async function makePack(page: Page): Promise<string> {
-  await page.goto("/");
+  await page.goto("/?tool");
   await page.getByLabel("From").fill("2026-10-12");
   await page.getByLabel("To").fill("2026-10-15");
   await page.getByRole("button", { name: /^ID-WOOD-CONCESSION-0332/ }).click();

@@ -31,7 +31,7 @@ async function fakeMaps(page: Page) {
 
 // fire-record.csv holds 2026-10-11 to 14 near 0540, 0377 and 0275; fire-origin.csv adds a fire near 0332.
 async function openFixtureDates(page: Page) {
-  await page.goto("/");
+  await page.goto("/?tool");
   await page.getByLabel("From").fill("2026-10-11");
   await page.getByLabel("To").fill("2026-10-14");
   await expect(page.getByText(LIST_NOTE)).toBeVisible();
@@ -52,7 +52,7 @@ test.beforeEach(async ({ page }) => {
 
 test("investigator lists the concessions", async ({ page }) => {
   await page.clock.setFixedTime(new Date("2026-10-15T12:00:00Z"));
-  await page.goto("/");
+  await page.goto("/?tool");
   await expect(page.getByLabel("From")).toHaveValue("2026-10-09");
   await expect(page.getByLabel("To")).toHaveValue("2026-10-15");
 
@@ -138,7 +138,7 @@ test("every control is at least 44 px to tap on a touch screen", async ({ browse
         .map((el) => el.getAttribute("aria-label") ?? el.textContent?.trim()),
     );
 
-  await page.goto(WEB_URL);
+  await page.goto(`${WEB_URL}/?tool`);
   await page.getByLabel("From").fill("2026-10-11");
   await page.getByLabel("To").fill("2026-10-14");
   await expect(page.getByText(LIST_NOTE)).toBeVisible();

@@ -184,6 +184,21 @@ afterEach(() => {
 });
 
 describe("FireRecordPage", () => {
+  it("links back to the landing as About Fire Watch, when given its address", async () => {
+    render(<FireRecordPage source={fixtureSource()} today={fixture.today} aboutHref="/" />);
+    await screen.findByText(LIST);
+
+    expect(screen.getByRole("banner")).toHaveTextContent("Records are sealed on Base Sepolia, a test network");
+    expect(screen.getByRole("link", { name: "About Fire Watch" })).toHaveAttribute("href", "/");
+  });
+
+  it("has no About Fire Watch link without the landing's address", async () => {
+    render(<FireRecordPage source={fixtureSource()} today={fixture.today} />);
+    await screen.findByText(LIST);
+
+    expect(screen.queryByRole("link", { name: "About Fire Watch" })).not.toBeInTheDocument();
+  });
+
   it("defaults to the last 7 days", async () => {
     const source = fixtureSource();
     render(<FireRecordPage source={source} today="2026-10-15" />);

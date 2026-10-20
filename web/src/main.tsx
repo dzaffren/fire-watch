@@ -7,8 +7,12 @@ const today = new Date().toISOString().slice(0, 10);
 const params = new URLSearchParams(location.search);
 
 // Each page loads only its own modules: the preview runs without the chain settings the API source needs.
-const HomePage = lazy(() =>
-  import("./api").then(({ apiSource }) => ({ default: () => <FireRecordPage source={apiSource} today={today} /> })),
+// The landing at the site's address (D72), and the tool at its own link (D74).
+const LandingPage = lazy(() => import("./Landing").then(({ Landing }) => ({ default: Landing })));
+const ToolPage = lazy(() =>
+  import("./api").then(({ apiSource }) => ({
+    default: () => <FireRecordPage source={apiSource} today={today} aboutHref="/" />,
+  })),
 );
 // A complaint pack's public link (D34).
 const PackPage = lazy(() =>
@@ -29,7 +33,7 @@ const PREVIEWS = import.meta.env.DEV
     }
   : null;
 const Preview = PREVIEWS?.[params.get("preview") as keyof typeof PREVIEWS] ?? null;
-const Page = Preview ?? (params.has("pack") ? PackPage : HomePage);
+const Page = Preview ?? (params.has("pack") ? PackPage : params.has("tool") ? ToolPage : LandingPage);
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

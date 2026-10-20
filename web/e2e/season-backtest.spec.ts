@@ -96,7 +96,7 @@ test("replays a cut of 2023 and shows the committed result on the 0332 fire", as
   await page.route("https://maps.googleapis.com/**", (route) =>
     route.fulfill({ path: FAKE_GOOGLE_MAPS, contentType: "text/javascript" }),
   );
-  await page.goto("/");
+  await page.goto("/?tool");
   await page.getByLabel("From").fill("2026-10-12");
   await page.getByLabel("To").fill("2026-10-15");
   await page.getByRole("button", { name: /^ID-WOOD-CONCESSION-0332/ }).click();
