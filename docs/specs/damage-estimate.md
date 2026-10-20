@@ -74,10 +74,12 @@ Scenario: The fire view gives a peat fire's damage, split at the edge
   And their 375 m squares join into 209.8 ha: 59.2 ha inside the concession, all on peat, and
     150.6 ha outside, 144.3 ha of it on peat
   When the investigator opens the fire
-  Then it reads "Ground in its detections' pixels: about 210 ha, 59 ha of it inside
-    ID-WOOD-CONCESSION-0332"
-  And "CO2 released: about 120,000 t, likely 59,000 to 190,000 t. 36,000 t of it inside"
-  And "At the 2015 fires' average cost: about US$1.3 million, US$370,000 of it inside"
+  Then its damage estimate reads "Ground in its pixels: About 210 ha" and "59 ha of it inside
+    the concession."
+  And "CO₂ released: About 120,000 t" and "Likely 59,000 to 190,000 t. 36,000 t of it inside the
+    concession."
+  And "Cost: About US$1.3 million" and "At Indonesia's 2015 average of US$6,192 a hectare.
+    US$370,000 of it inside the concession."
   And "An estimate, not a measurement. A detection means fire somewhere in its 375 m pixel, so
     less ground may have burned."
 
@@ -85,21 +87,22 @@ Scenario: A fire off peat counts as burned vegetation
   Given hotspot B of fire-record scenario 1, 2026-10-14 06:18 UTC at 3.67525°S, 115.35328°E,
     370 m outside ID-WOOD-CONCESSION-0377, where the peat map has no peat
   When the investigator opens its fire from ID-WOOD-CONCESSION-0377
-  Then it reads "Ground in its detections' pixels: about 14 ha, none of it inside
-    ID-WOOD-CONCESSION-0377"
-  And "CO2 released: about 940 t", with no range, since none of the ground is peat
-  And "At the 2015 fires' average cost: about US$87,000"
+  Then its damage estimate reads "Ground in its pixels: About 14 ha"
+  And "CO₂ released: About 940 t", with no range, since none of the ground is peat
+  And "Cost: About US$87,000"
+  And "None of this ground is inside the concession."
 
 Scenario: The pack holds the damage as of its cut time
   Given the pack for the 0332 fire made at 2026-10-17 09:00 UTC, as in complaint-pack scenario 1
   And a NOAA-20 pass at 2026-10-17 18:20 UTC adds 3 detections to the fire
   When anyone opens the pack
-  Then it still reads "about 210 ha, 59 ha of it inside" and "about 120,000 t"
+  Then its damage estimate still reads "About 210 ha", "59 ha of it inside the concession." and
+    "About 120,000 t"
   And the fire view gives the estimate from all 22 detections
 
 Scenario: Anyone can redo the estimate
   Given the pack from scenario 3
-  When a reader opens "How this is worked out"
+  When a reader reads the damage estimate's "How this is worked out"
   Then it gives the ground in four parts: 59.22 ha inside on peat, 0 ha inside off peat,
     144.32 ha outside on peat and 6.31 ha outside off peat
   And each factor with its source: IPCC 2013 Wetlands Supplement Tables 2.6 and 2.7, IPCC 2006
@@ -113,10 +116,10 @@ Scenario: A fire that never spread carries its caveat on the estimate
   Given the ID-WOOD-CONCESSION-0540 fire of fire-origin scenario 4: 6 detections on 5 passes,
     none more than 483 m from the first, joining into 58.2 ha inside the concession, all on peat
   When the investigator opens the fire
-  Then the estimate reads "about 58 ha, all of it inside" and "about 35,000 t, likely 17,000 to
-    53,000 t"
-  And above the estimate: "Seen on 5 passes without spreading. If this is a fixed heat source,
-    such as a mill, little or nothing here burned."
+  Then the estimate reads "About 58 ha", "About 35,000 t" and "Likely 17,000 to 53,000 t."
+  And "All of this ground is inside the concession."
+  And above the figures: "This fire never spread. If it is a fixed heat source, such as a mill,
+    little or nothing here burned."
 ```
 
 The numbers in scenarios 1, 2 and 5 come from the real detections, the Trase map v2026-02-20 and
@@ -156,6 +159,74 @@ peat tiles 00N_100E and 00N_110E.
 - Haze, smoke and health effects, other than through the World Bank's average cost: not planned.
 - Damage in the 2023 replay: not planned.
 - Company names: never (shape O10).
+
+## Interface
+
+The fire view gets a "Damage estimate" panel after the reading and before the forecasts. The pack
+gets a "Damage estimate" section between Dates and Basis. Both show the same three figures as a
+key-value list. In the fire view the working sits behind "How this is worked out". In the pack it
+is shown in full, so a printed pack carries it. The record still comes first (D2).
+
+```mermaid
+flowchart LR
+    C["Concession: the fires table"] -- "picks a fire" --> F["Fire view: Damage estimate panel"]
+    F -- "opens How this is worked out" --> D["four exact parts, the factors, five sources"]
+    F -- "Make complaint pack" --> P["Pack: Damage estimate section, working in full"]
+    P -- "Print or save as PDF" --> R["printed pack with the estimate"]
+    D -- "source links" --> X["IPCC, World Bank, WRI, peat.py on GitHub"]
+```
+
+The investigator opens a fire and reads its damage after where it was first seen. The working is
+one click away in the fire view, and always shown in the pack.
+
+| Part | What shows |
+| ---- | ---------- |
+| Title | "Damage estimate" |
+| Never spread, above the figures | "This fire never spread. If it is a fixed heat source, such as a mill, little or nothing here burned." (D67) |
+| Figures, a key-value list | "Ground in its pixels": "About 210 ha". "CO₂ released": "About 120,000 t". "Cost": "About US$1.3 million". Each value is medium weight, with a grey line under it |
+| The grey lines | The ground: "59 ha of it inside the concession." The CO₂: "Likely 59,000 to 190,000 t. 36,000 t of it inside the concession." The cost: "At Indonesia's 2015 average of US$6,192 a hectare. US$370,000 of it inside the concession." |
+| A fire wholly on one side | No "of it inside" parts. One line under the figures: "All of this ground is inside the concession." or "None of this ground is inside the concession." |
+| No peat ground | No "Likely … to …" range on the CO₂ line |
+| Under the figures | "An estimate, not a measurement. A detection means fire somewhere in its 375 m pixel, so less ground may have burned." |
+| How this is worked out | The method in one paragraph. A table of the four parts to two decimals, rows "Inside the concession" and "Outside", columns "On peat" and "Other ground". The three factors as a key-value list, with their per-hectare values. "Methane and carbon monoxide are left out. This estimate is not sealed. Its detections are sealed, and the map and the factors are pinned, so anyone can redo it." Then five links |
+| Links | "IPCC 2013 Wetlands Supplement, Tables 2.6 and 2.7", "IPCC 2006 Guidelines, Volume 4, Tables 2.4 and 2.5", "World Bank, The Cost of Fire (2016)", "WRI Global Peatlands, v20230315, CC BY 4.0", "The peat map's tiles and their sha256" |
+
+All figures round to two significant figures, and a number keeps its unit on its line.
+
+| State | What shows |
+| ----- | ---------- |
+| A fire on both sides of the edge | The three figures, each with its part inside |
+| A fire wholly inside or outside | The three figures, then the one "All" or "None" line |
+| A fire flagged as never spread | The caveat above the figures, in the fire view and the pack |
+| The fire loading, or the server not answering | The fire view's and the pack's own states. The estimate comes with the fire, so it has no state of its own |
+| An answer without `damage` | No panel and no section |
+
+**The page expects:** a `Damage` type in `web/src/api.ts` with four numbers: `inside_peat_ha`,
+`inside_other_ha`, `outside_peat_ha` and `outside_other_ha`, to two decimals. `FireDetail`, and so
+`PackDetail`, carry an optional `damage`. The fire route and the pack route fill it from the
+detections stored by the answer's `as_of_unix`. The page holds the factors and does the arithmetic
+in `web/src/Damage.tsx`. The last link points at `api/src/firewatch/peat.py` on GitHub, which pause
+3 places.
+
+**Motion tier:** 1. The panel enters with the fire view (`--fw-dur`), and the disclosure opens as
+the reading's does. There is no motion of its own.
+
+**Components used:** `fw-panel`, `fw-kv` with `sub` lines, `fw-help`, `table-box` with `fw-table`
+and row headers as in the 2023 block, the disclosure from the reading panel, `fw-link` with the
+external icon, and `pack-section` with its `h2` and `h3`. There is no new component and no new
+token. `app.css` adds `.damage` rules and `.damage-value` from existing tokens.
+
+**Design system:** Fire Watch, `docs/design/design-system/` (D2, D4).
+
+**Preview:** real components in `web/src`: `Damage.tsx` (new), `FireView.tsx`, `ComplaintPack.tsx`
+and `api.ts`. Run `cd web && pnpm dev` and open `http://localhost:5173/?preview=damage-estimate`.
+Pickers switch between 6 states and the themes, and `&state=offPeat&theme=dark` links straight to
+one. "Make complaint pack" in the fire view opens the same fire's pack state. Each fire's four parts
+come from its real detections, the Trase map and WRI's peat tiles 00N_100E and 00N_110E. Seals,
+transactions and forecasts are made up. The drift check passed over the 7 files written. All 17
+tokens the new CSS uses exist in `docs/design/design-system/tokens/`. `tsc -b` is clean, and the 161
+web unit tests pass. At 390 px, in both themes and with the disclosure open, no state has a
+sideways scroll. On a touch phone the disclosure and the five links are each 44 px tall.
 
 ## Open items
 
