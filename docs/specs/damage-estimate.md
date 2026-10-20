@@ -1,6 +1,6 @@
 # Damage estimate
 
-**Version:** v1 · **Status:** Draft · **Type:** Feature · **Project type:** Web UI
+**Version:** v1 · **Status:** Refined · **Type:** Feature · **Project type:** Web UI
 
 **Shape doc:** docs/specs/fire-watch/shape.md
 **Depends on:** fire-record, fire-origin, complaint-pack
@@ -103,8 +103,8 @@ Scenario: The pack holds the damage as of its cut time
 Scenario: Anyone can redo the estimate
   Given the pack from scenario 3
   When a reader reads the damage estimate's "How this is worked out"
-  Then it gives the ground in four parts: 59.22 ha inside on peat, 0 ha inside off peat,
-    144.32 ha outside on peat and 6.31 ha outside off peat
+  Then it gives the ground in four parts: 59.21 ha inside on peat, 0.00 ha inside off peat,
+    144.31 ha outside on peat and 6.30 ha outside off peat
   And each factor with its source: IPCC 2013 Wetlands Supplement Tables 2.6 and 2.7, IPCC 2006
     Volume 4 Tables 2.4 and 2.5, and the World Bank's "The Cost of Fire" (2016)
   And the peat map: WRI Global Peatlands, gfw_peatlands v20230315, CC BY 4.0, each tile's sha256
@@ -114,7 +114,7 @@ Scenario: Anyone can redo the estimate
 
 Scenario: A fire that never spread carries its caveat on the estimate
   Given the ID-WOOD-CONCESSION-0540 fire of fire-origin scenario 4: 6 detections on 5 passes,
-    none more than 483 m from the first, joining into 58.2 ha inside the concession, all on peat
+    none more than 483 m from the first, joining into 58.25 ha inside the concession, all on peat
   When the investigator opens the fire
   Then the estimate reads "About 58 ha", "About 35,000 t" and "Likely 17,000 to 53,000 t."
   And "All of this ground is inside the concession."
@@ -123,7 +123,7 @@ Scenario: A fire that never spread carries its caveat on the estimate
 ```
 
 The numbers in scenarios 1, 2 and 5 come from the real detections, the Trase map v2026-02-20 and
-peat tiles 00N_100E and 00N_110E.
+the peat cut, worked out by the plan's query on the compose PostGIS.
 
 ## Scope
 
@@ -228,6 +228,223 @@ tokens the new CSS uses exist in `docs/design/design-system/tokens/`. `tsc -b` i
 web unit tests pass. At 390 px, in both themes and with the disclosure open, no state has a
 sideways scroll. On a touch phone the disclosure and the five links are each 44 px tall.
 
+## Technical plan
+
+### Approach
+
+WRI's peat map goes into Neon once, as polygons cut to the concessions' reach. The cut is made once
+from the pinned tiles and committed (D70), and `load-peat` loads it (D69). The fire route already
+groups the fire from the stored detections (D31). It now also runs one PostGIS query over those
+detections. The query draws each detection's 375 m square, joins the squares, and splits them at
+the concession's edge and by the peat polygons. It sends four hectare figures, and the page applies
+the factors (D71).
+
+Relies on: D13, D18, D24, D31, D33, D37, D58, D61, D62, D63, D64, D65, D66, D67, D68, D69, D70, D71
+
+```mermaid
+flowchart TB
+    subgraph operator["operator, once per peat map version"]
+        CUT["load-peat --cut"] -- "writes" --> GZ[("fixtures/peat/gfw-peatlands-v20230315.geojson.gz")]
+        GZ -- "load-peat" --> PEAT
+    end
+    subgraph neon["Neon + PostGIS"]
+        PEAT[(peat)]
+        HOT[(hotspots)]
+        CON[(concessions)]
+    end
+    API["GET /api/concessions/{id}/fires/{key}"] -- "fires.stored(), then DAMAGE" --> HOT
+    API -- "edge" --> CON
+    API -- "peat pieces in the squares" --> PEAT
+    PAGE["FireView, ComplaintPack (Damage.tsx)"] -- "fire, or pack with as_of" --> API
+    API -- "damage: four hectare parts" --> PAGE
+```
+
+The operator loads the peat once. On each fire or pack request, the API reads the detections, the
+edge and the peat pieces, and sends four hectare parts that the page turns into the figures.
+
+```mermaid
+sequenceDiagram
+    participant P as Page (FireView or ComplaintPack)
+    participant A as API fire route
+    participant D as Neon
+    P->>A: GET /api/concessions/0332/fires/0x48f2…?as_of=…
+    A->>D: fires.stored(): detections stored by as_of
+    D-->>A: 19 detections → the fire
+    A->>D: FIRE_HOTSPOTS for the 19 record IDs
+    A->>D: DAMAGE(record IDs, concession), when peat has rows
+    D-->>A: 59.21, 0.00, 144.31, 6.30 ha
+    A-->>P: fire JSON with damage
+    P->>P: estimate(): 210 ha, 122,648 t CO₂, US$1.3 million
+```
+
+The page asks for the fire. The API groups it, reads its records and its damage parts in the same
+connection, and the page does the arithmetic.
+
+```mermaid
+flowchart LR
+    G[("GFW data API: 10 tiles, v20230315")] -- "GeoTIFF, with GFW_API_KEY" --> C["load-peat --cut on the compose db"]
+    T[("concessions: Trase v2026-02-20")] -- "5.5 km reach" --> C
+    C -- "38,537 polygons, 2.0 MB gzipped" --> R[("git: fixtures/peat")]
+    R -- "load-peat, sha256 checked" --> N[(Neon peat)]
+    N -- "SELECT, read-only role" --> API[API]
+```
+
+The peat crosses two boundaries. It comes from GFW with a key that stays in the operator's `.env`,
+and it reaches Neon only through the committed, sha256-checked cut.
+
+**The estimate, so anyone can redo it** (written into `peat.py`'s docstring):
+
+1. Take the fire's detections, as the fire route groups them.
+2. Draw each detection's square in its own UTM zone: 187.5 m each way from the point, along the
+   zone's grid. Zone `floor((lon + 180) / 6) + 1`, EPSG 326xx north of the equator, 327xx south.
+3. Join the squares. Split the result at the concession's edge into inside and outside.
+4. Intersect each part with the peat pieces. Areas are on the WGS 84 ellipsoid. "Other ground" is
+   a part's area less its peat.
+5. Round each of the four parts to 0.01 ha.
+
+The peat cut, so anyone can redo it: every peat pixel of the 10 pinned tiles inside 5.5 km of a
+concession (D13's 5 km, plus half a square's diagonal), vectorized by tile in 4,000-pixel blocks.
+
+### Changes
+
+| File | What changes | Why |
+| ---- | ------------ | --- |
+| `api/migrations/004_peat.up.sql` (new) | `peat (id bigserial, map_version text, geom geometry(Polygon, 4326))`, a GiST index, and the reader grant inside the `DO` block, as `003_forecasts.up.sql` does | Scenarios 1, 2, 5 |
+| `api/migrations/004_peat.down.sql` (new) | `DROP TABLE peat` | The reverse path |
+| `api/src/firewatch/peat.py` (new) | The method docstring. `TILES`: the 10 tile IDs with their sha256. `MAP_VERSION`, the committed cut's path and sha256. `DAMAGE`, the query. `load()`: copies the cut into a temporary table, then fills `peat` with `ST_Subdivide(geom, 256)` in one transaction, replacing the old rows. `cut()`: downloads each tile through `concessions.download()` with its sha256, reads the reach from PostGIS, vectorizes with rasterio, and writes the gzip with mtime 0 and the polygons in a fixed order. `main()`: `load-peat [path]` and `load-peat --cut` | Scenarios 1–5, D69, D70 |
+| `api/src/firewatch/app.py:251` | After `ids` (`:275`), run `peat.DAMAGE` when `peat` has rows. Add `damage` to the answer (`:299`), for the fire view and for a pack. Add `damage_ms` to the "served fire" log line (`:288`) | Scenarios 1–3 |
+| `api/pyproject.toml`, `api/uv.lock` | Script `load-peat`. Dependency group `cut = ["rasterio"]`, and rasterio in `dev` for the tests. The API image installs neither (`uv sync --no-dev`) | D70 |
+| `fixtures/peat/gfw-peatlands-v20230315.geojson.gz` (new) | The full cut, about 2.0 MB | D70 |
+| `fixtures/peat/peat-cut.geojson.gz` (new) | The full cut's polygons within 0.1° of the detections in `fire-record.csv` and `fire-origin.csv` | Tests and the e2e load it in seconds |
+| `infra/neon-reader.sql:6` | Add `peat` to the reader's grant | A new database's reader can read it |
+| `api/tests/test_peat.py` (new) | Load a path; reload replaces; a changed file is refused; `--cut` on a small GeoTIFF that the test writes gives the same bytes twice | Scenario 4 |
+| `api/tests/test_app.py` | The 0332 fire's damage, hotspot B's, a pack cut before a later detection, and no `damage` while `peat` is empty | Scenarios 1–3 |
+| `api/tests/test_migrations.py:69` | `peat` in the reader-role test | The grant |
+| `web/src/Damage.test.tsx` (new) | `twoFigures`, `estimate`, and the panel's text for scenarios 1, 2, 5, with the disclosure's parts and links | Scenarios 1, 2, 4, 5 |
+| `web/src/ComplaintPack.test.tsx` | The pack's damage section, with the working shown | Scenarios 3, 4 |
+| `web/e2e/global-setup.ts:136` | `load-peat ../fixtures/peat/peat-cut.geojson.gz` after `load-concessions` | The e2e |
+| `web/e2e/damage-estimate.spec.ts` (new) | The e2e below | All scenarios' path |
+| `README.md`, `docs/ARCHITECTURE.md`, `CHANGELOG.md` | `load-peat` in "Run it locally", "First deploy" and "Updating"; WRI's CC BY 4.0 credit; the component row; one changelog line | Operators |
+
+Reusing: `concessions.download()` for each tile's sha256 check, `fires.stored()` and
+`FIRE_HOTSPOTS` for the detections, `migrate.up()` and `migrate.down()`, and the e2e's `run()`.
+`Damage.tsx`, its CSS and the preview exist from pause 2.
+
+### Data
+
+```mermaid
+erDiagram
+    CONCESSIONS ||--o{ HOTSPOT_CONCESSIONS : "matched in reach"
+    HOTSPOTS ||--o{ HOTSPOT_CONCESSIONS : "matched to"
+    PEAT {
+        bigserial id
+        text map_version
+        geometry geom "Polygon 4326, at most 256 vertices"
+    }
+```
+
+`peat` stands alone. The damage query joins it to a fire's squares by `ST_Intersects`, not by a key.
+
+**Migration:** expand only. `004` adds `peat`. The backfill is `load-peat` on Neon, before the
+merge. The switch is the API change, which sends no `damage` while `peat` is empty. There is no
+contract step.
+**Reverse:** `004_peat.down.sql` drops the table. `test_up_down_up` runs it. Reverting the merge
+alone also works, and `peat` stays unread.
+
+### Earn-it
+
+| Added | Triggered by |
+| ----- | ------------ |
+| `peat` table and migration 004 | Scenarios 1, 2 and 5 need peat or not for each piece of ground (D62) |
+| `load-peat` | The table is filled once per map version, from the pinned cut (D69) |
+| `--cut`, and rasterio in the `cut` and `dev` groups | Anyone can redo the committed cut from the pinned tiles (scenario 4, D70) |
+| The committed full cut, 2.0 MB | GFW serves tiles only with a key, and no key goes in the repo (D70) |
+| The small test cut | The API tests and the e2e need peat in seconds, not the 9 minutes the full cut took in the spike |
+| `DAMAGE` in `peat.py` | Scenarios 1–5 |
+| `damage` in the fire route | Scenarios 1–3 |
+
+### Non-functionals
+
+|                      |                                                                               |
+| -------------------- | ----------------------------------------------------------------------------- |
+| **Load**             | A few fire and pack requests an hour. On the compose database the query took 0.9 ms for hotspot B, 4.7 ms for the 19-detection 0332 fire, and 121 ms for the 188-detection fire. Neon's 0.25 CU may be about 2 to 3 times slower |
+| **Breaks first**     | A fire with thousands of detections: the union and the intersections grow with it. At 10 times the largest fire, expect about a second. Then work out the squares' union once per pass, not per request |
+| **Security surface** | The same public, read-only API. The concession ID and the key are already checked and passed as parameters. The reader role gets `SELECT` on `peat`. `GFW_API_KEY` is used only by `--cut`, from the operator's untracked `.env`. `peat` holds public CC BY 4.0 polygons |
+| **Proof it works**   | `served fire id=ID-WOOD-CONCESSION-0332 key=0x… detections=19 … damage_ms=5` in the API log, and `load-peat` printing `Loaded 42,121 peat pieces from gfw_peatlands v20230315` |
+| **Rollout**          | No flag: the page shows no estimate while the answer has no `damage`. Before the merge, run migration 004 and `load-peat` on Neon. The merge deploys the API, then the page (D21). Rollback: revert the merge |
+
+### Test plan
+
+| Scenario | Test | Command |
+| -------- | ---- | ------- |
+| 1. Peat fire, split at the edge | `test_app.py::test_fire_damage_splits_at_the_edge`, `Damage.test.tsx` | `cd api && PATH=$HOME/.foundry/bin:$PATH uv run pytest tests/test_app.py -k damage`; `cd web && pnpm test Damage` |
+| 2. Off peat | `test_app.py::test_fire_damage_off_peat`, `Damage.test.tsx` | the same |
+| 3. Pack as of its cut | `test_app.py::test_pack_damage_holds_at_its_cut`, `ComplaintPack.test.tsx` | the same, and `pnpm test ComplaintPack` |
+| 4. Anyone can redo it | `test_peat.py`, `Damage.test.tsx` | `cd api && uv run pytest tests/test_peat.py` |
+| 5. Never spread | `Damage.test.tsx` | `cd web && pnpm test Damage` |
+| No peat loaded | `test_app.py::test_no_damage_without_peat` | `cd api && uv run pytest tests/test_app.py -k damage` |
+
+**E2E:** `web/e2e/damage-estimate.spec.ts`. It opens the ID-WOOD-CONCESSION-0332 fire from
+`fire-origin.csv`, reads "About 210 ha", "59 ha of it inside the concession." and "About 120,000 t".
+It opens "How this is worked out" and reads "59.21 ha". It makes a complaint pack and reads the same
+figures and parts in it. `cd web && pnpm e2e`.
+
+Run one API suite at a time, because every worktree shares `firewatch_test`.
+
+### Chunks
+
+| Chunk | Scenarios | Files owned |
+| ----- | --------- | ----------- |
+| A | 1–5, API side | `api/migrations/004_peat.*`, `api/src/firewatch/peat.py`, `api/src/firewatch/app.py`, `api/pyproject.toml`, `api/uv.lock`, `api/tests/test_peat.py`, `api/tests/test_app.py`, `api/tests/test_migrations.py`, `fixtures/peat/`, `infra/neon-reader.sql`, `README.md`, `docs/ARCHITECTURE.md`, `CHANGELOG.md` |
+| B | 1–5, page side, and the e2e | `web/src/Damage.tsx`, `web/src/Damage.test.tsx`, `web/src/ComplaintPack.test.tsx`, `web/src/preview/DamageEstimatePreview.tsx`, `web/e2e/damage-estimate.spec.ts`, `web/e2e/global-setup.ts` |
+
+Chunk A owns the lockfile and the shared docs. Chunk B's e2e runs after chunk A is in, because it
+needs `load-peat` and the test cut.
+
+### Risks
+
+| Risk | Mitigation |
+| ---- | ---------- |
+| The figures read as a measured loss. One peat pixel counts as about 8,400 t CO₂ | The caveat under the figures, the range, the never-spread line (D67), and the exact parts under "How this is worked out" |
+| Neon's GEOS 3.11 and PROJ 9.1 differ from the compose image's GEOS 3.9 and PROJ 7.2, so an exact part can differ by about 0.01 ha between them | The page rounds to two figures. Tests run on the compose image. The parts in the pack are Neon's |
+| `load-peat` is slow over the network: the spike's row-by-row load of the full cut took 540 s on the compose database | One `COPY` into a temporary table, then one `INSERT … ST_Subdivide`. It runs once, before the merge |
+| Someone forgets `load-peat` on Neon | The API sends no `damage` while `peat` is empty, so the page shows no estimate rather than a wrong one. "First deploy" and "Updating" in the README list it |
+| GFW withdraws the key or the tiles | The committed cut still loads. Only `--cut` needs GFW |
+
+### Decisions to record
+
+```
+## D69 · 2026-10-20 · Keep WRI's peat as polygons in PostGIS, cut to the concessions' reach
+
+Why: the peat within 5.5 km of the 294 concessions is 38,537 polygons with 767,181 vertices. Cut
+to 256 vertices a piece it is a 14 MB table, and Neon holds 36 MB today. The damage query took 1 to
+7 ms for most fires and 121 ms for a 188-detection fire. Matching is already in PostGIS (D18).
+Rejected: the raster in PostGIS (about 260 million pixels in reach), reading the tiles in the API
+with rasterio (GDAL and 42 MB of tiles in the API image), the peat of each detection worked out
+when the recorder stores it (a recorder change and a backfill, and joined squares still need the
+polygons).
+Source: docs/specs/damage-estimate.md
+Status: active
+
+## D70 · 2026-10-20 · Commit the peat cut, made once from the pinned tiles
+
+Why: GFW serves the tiles only with an API key, and no key goes in the repo. The cut is 2.0 MB
+gzipped. Anyone with a GFW key redoes it with `load-peat --cut`, as `--fetch-wind` redoes the wind
+(D58).
+Rejected: downloading the tiles on each load (every operator and the e2e would need a key),
+committing the 10 tiles (42 MB).
+Source: docs/specs/damage-estimate.md
+Status: active
+
+## D71 · 2026-10-20 · The API sends a fire's four hectare parts, and the page holds the factors
+
+Why: the parts come from stored detections and the peat table. The factors are fixed numbers that
+the page also cites, so one file states and applies them.
+Rejected: the API also sends the CO2 and the cost (the factors in Python and in the page's text).
+Source: docs/specs/damage-estimate.md
+Status: active
+```
+
 ## Open items
 
 | ID | What | Type | Raised at | Owner | Status | Answer |
@@ -242,6 +459,8 @@ sideways scroll. On a touch phone the disclosure and the five links are each 44 
 | O8 | What fuel counts for ground off peat: IPCC secondary forest, nothing, or IPCC primary forest | question | spec p1 | user | Resolved | 2026-10-20: IPCC 2006 secondary tropical forest, 42.2 t dry matter per ha (D66) |
 | O9 | A fire that never spread may be a mill, where nothing burned. The 0540 fire of fire-origin scenario 4 would read about 35,000 t CO2 | question | spec p1 | user | Resolved | 2026-10-20: show the estimate, with the caveat on top. It may also be peat smouldering in place, which is real damage (D67) |
 | O10 | Whether the estimate counts methane: IPCC gives 21 g CH4 per kg for peat, about 200 t CO2-equivalent per ha more | question | spec p1 | user | Resolved | 2026-10-20: CO2 only. The page says methane and carbon monoxide are left out (D68) |
+| O11 | WRI's peat polygons within the concessions' reach fit Neon Free, and PostGIS works out a fire's parts on each request fast enough. Neon's PostGIS can transform to UTM | unproven | spec p3 | spike | Resolved | 2026-10-20, measured: 38,537 polygons, 767,181 vertices, 2.0 MB gzipped; 42,121 pieces and 14 MB in PostGIS; Neon holds 36 MB. The query took 0.9 to 7.2 ms, and 121 ms for a 188-detection fire, on the compose database. Read-only on Neon: PostGIS 3.5.7, PROJ 9.1.1, `ST_Transform` to EPSG:32749 works (D69) |
+| O12 | GFW serves the peat tiles only with an API key, which `load-peat --cut` needs. Whose key goes in the untracked `.env` as `GFW_API_KEY` | question | spec p3 | user | Resolved | 2026-10-20: the key GFW publishes in its own Global Peatlands layer. `/build` adds it to `.env` for the one cut; it is never committed (D70) |
 
 _Never delete this section or its rows. See references/ledger.md._
 
@@ -259,3 +478,9 @@ _Never delete this section or its rows. See references/ledger.md._
 - **sha256** — a fingerprint of a file. Any change to the file changes it.
 - **Pinned** — fixed to one exact version, checked by its sha256.
 - **e2e** — end-to-end: one test that walks the whole slice as a user would.
+- **UTM zone** — one of 60 north-south strips of the earth, each with a flat metre grid.
+- **GeoTIFF** — an image file whose pixels carry map positions; GFW's peat tiles are GeoTIFFs.
+- **rasterio** — a Python library that reads GeoTIFFs and turns pixels into polygons.
+- **GiST index** — the PostGIS index that finds shapes overlapping a given area quickly.
+- **GEOS, PROJ** — the geometry and projection libraries under PostGIS; versions can differ by host.
+- **CU** — Neon's compute unit; the free plan runs at 0.25 CU.
