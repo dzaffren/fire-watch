@@ -818,3 +818,30 @@ Rejected: the fire of fire-origin scenario 1 (on the full record it reads "first
 sides", so its pack opens with that caveat; it read "outside" only on a 19-row test cut).
 Source: docs/specs/landing-page.md
 Status: active
+
+## D79 · 2026-10-20 · Make the globe's data with a globe-day command, from pinned sources
+
+Why: the landing's numbers are dated facts (D73), so anyone with a FIRMS key should get the same
+three files, as load-peat --cut redoes the peat (D70). The FIRMS file, Natural Earth's land and
+Trase's map are each pinned by sha256.
+Rejected: committing the files with their sources described in words (no one could redo them
+exactly).
+Source: docs/specs/landing-page.md
+Status: active
+
+## D80 · 2026-10-20 · Fall back to the flat map when the globe runs under 30 fps
+
+Why: the brief's budget says never below 30 fps, and no one can measure every machine. The first 2 s
+after the globe shows decide; the flat map has the same fires and the same flight.
+Rejected: always showing the globe on a desktop with WebGL (a weak GPU would turn it under 30 fps).
+Source: docs/specs/landing-page.md
+Status: active
+
+## D81 · 2026-10-20 · Ship the landing without a flag; a revert rolls it back
+
+Why: it is a static page, a revert redeploys the old home page in minutes, and pack links don't
+change.
+Rejected: a build-time flag, off by default (one more GitHub variable, and two home pages to keep
+working until it is removed).
+Source: docs/specs/landing-page.md
+Status: active
