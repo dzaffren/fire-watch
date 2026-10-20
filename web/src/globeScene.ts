@@ -36,6 +36,9 @@ const MAX_PITCH = 70 * DEG;
 // map covers the near box, where the world texture would be stretched a hundredfold.
 const TEXTURE_WIDTH = 4096;
 const PATCH_WIDTH = 2048;
+// The brief's floor of 30 fps, judged over the globe's first 2 s of frames (D80).
+const CHECK_MS = 2000;
+const MIN_FRAMES = 60;
 
 interface Flight {
   from: { yaw: number; pitch: number; distance: number };
@@ -92,6 +95,7 @@ export function startGlobe(
   data: GlobeData,
   still: boolean,
   onFirstFrame: () => void,
+  onSlow: () => void,
 ): GlobeScene {
   const renderer = new WebGLRenderer({ canvas, antialias: true, alpha: true });
   const ratio = Math.min(devicePixelRatio, 2);
@@ -177,6 +181,8 @@ export function startGlobe(
   let visible = true;
   let last = performance.now();
   let first = true;
+  let watched = 0;
+  let frames = 0;
 
   function fit() {
     const width = canvas.clientWidth;
@@ -221,6 +227,11 @@ export function startGlobe(
     if (first) {
       first = false;
       onFirstFrame();
+    } else if (watched < CHECK_MS) {
+      // Summed from the capped frame times, so a tab in the background doesn't count as slow.
+      watched += dt;
+      frames++;
+      if (watched >= CHECK_MS && frames < MIN_FRAMES) onSlow();
     }
   }
 
