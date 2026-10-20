@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { zeroHash, type Hex } from "viem";
 import type { HotspotRecord, PackDetail, PackRef } from "./api";
+import { DamageSection } from "./Damage";
 import { FireMap } from "./FireMap";
 import { fireArea, fireDots, passTimes, Replay, where } from "./FireView";
 import { count, detected, detectedShort, distance, firstSeenLine, location, plural, shortHash } from "./format";
@@ -308,6 +309,8 @@ export function ComplaintPack({ source, packRef, initialOpen = null }: Props) {
                   <dd>{detected(pack.last_seen_unix)}</dd>
                 </dl>
               </section>
+
+              <DamageSection pack={pack} />
 
               <section className="pack-section enter" aria-labelledby="h-basis">
                 <h2 id="h-basis">Basis</h2>
