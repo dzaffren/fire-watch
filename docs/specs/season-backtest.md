@@ -336,17 +336,20 @@ files.
 | File | What | Why |
 | ---- | ---- | --- |
 | `api/src/firewatch/backtest.py` (new) | The replay and the guess above, and `main()`. Arguments: `--firms <path>` and `--map <path>` read files as given, or download the pinned ones. `--wind <path>` defaults to `fixtures/backtest/2023-wind.csv`. `--fetch-wind` fetches the hours it needs from Open-Meteo, at most 100 points a request and 35 s apart, with three tries each. It writes each answer to the wind file at once, and asks only for the hours the file lacks. `--out <dir>` defaults to `fixtures/backtest`. It loads the map into `DATABASE_URL` with `concessions.load()` and uses only that map's concession IDs. A missing wind hour stops it, naming the point and the hour. It writes nothing until the replay ends | Scenarios 1–5 |
-| `api/src/firewatch/forecast.py:71` | Split rule step 3 out of `_lead_h()` as `advance_rate(passes)`, and rename `_rounded_h()` (`:67`) to `rounded_h()`. The recorder's forecasts don't change | Scenario 3; D60 |
+| `api/src/firewatch/forecast.py:71` | Split rule step 3 out of `_lead_h()` as `advance_rate(passes)`, with `passes_of(fire)` to give it a fire's passes, and rename `_rounded_h()` (`:67`) to `rounded_h()`. The recorder's forecasts don't change | Scenario 3; D60 |
 | `api/src/firewatch/concessions.py:37` | `download()` takes `url` and `sha256`, defaulting to the map's, so the FIRMS file is checked the same way | Scenario 5 |
 | `api/pyproject.toml` | `backtest-2023 = "firewatch.backtest:main"` | Scenario 5 |
 | `fixtures/backtest/2023.json`, `2023-forecasts.csv`, `2023-wind.csv` (new, generated) | The committed result and the wind it used. The CSV has one row per forecast: `concession_id`, the fire's first detection (time, latitude, longitude), `after_pass_at`, `made_at`, `rule_inside_by`, `downwind_inside_by`, `outcome`, `seen_inside_at`. Rows are sorted by concession, made time and fire. It is 2.4 MB | D55, D58 |
 | `fixtures/backtest/2023-cut.csv`, `trase-cut.geojson`, `2023-wind-cut.csv` (new) | Every 2023 row within 5 km of ID-WOOD-CONCESSION-0263, 0264 and 0332, 2023-09-20 to 10-20. Also those three boundaries, and the wind hours their forecasts need. All public data | Tests, e2e |
 | `api/tests/test_backtest.py` (new) | On the cut: the 0263 forecast reads scenario 1, the 0332 and 0264 forecasts read scenario 2, and the guess reads scenario 3. Two runs write identical bytes, and a changed FIRMS file stops it with nothing written. A forecast made 2023-12-30 is "ends after 2023". The replay over `fixtures/firms/fire-origin.csv` gives the 0332 fire's three forecasts as `test_forecast.py` has them, so the replay's loop matches the recorder's | Scenarios 1–3, 5 |
+| `api/tests/test_forecast.py`, `api/tests/test_concessions.py` | Follow the rename to `rounded_h()` and the new `download()` arguments | — |
 | `README.md` | "Redo the 2023 replay": the compose db, the command, the sha256, and the credit to Open-Meteo and Copernicus (CC BY 4.0) | Scenario 5; O11 |
 | `web/src/api.ts:171` | `apiSource.backtest` is `fixtures/backtest/2023.json`, imported | Scenario 4; D59 |
 | `web/vite.config.ts:9` | Allow `../fixtures/backtest` for the dev server; the build needs nothing | Preview |
 | `web/src/ForecastPanel.tsx` (pause 2) | Copy: "ERA5's hourly wind, from Open-Meteo". The two links point at the files above | Scenario 4; O11 |
 | `web/src/preview/SeasonBacktestPreview.tsx` | The committed totals in place of the scratch ones | Preview |
+| `web/src/preview/SpreadForecastPreview.tsx` | Export `AS_OF`, `State`, `makeSource()` and `initialView()`, which the new preview reuses | Preview |
+| `web/src/main.tsx` | Register `?preview=season-backtest`, in dev builds only | Preview |
 | `web/src/ForecastPanel.test.tsx` | The block and the counts table for a rule version 1 forecast; none for version 2 or no forecasts; "None warned of" | Pause 2 states |
 | `web/e2e/season-backtest.spec.ts` (new) | Runs the command on the cut against its own database, `firewatch_e2e_backtest`, into a temp folder. Checks the 0263, 0332 and 0264 rows. Then opens the 0332 fire and sees the committed totals | E2E |
 
