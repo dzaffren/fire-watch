@@ -1,6 +1,6 @@
 # Landing page
 
-**Version:** v1 · **Status:** Draft · **Type:** Feature · **Project type:** Web UI
+**Version:** v1 · **Status:** Refined · **Type:** Feature · **Project type:** Web UI
 
 **Shape doc:** docs/specs/fire-watch/shape.md
 **Depends on:** complaint-pack
@@ -196,6 +196,183 @@ is clean and the 171 web unit tests pass. At 390 px, in both themes, no page has
 fire cells, and the full detail near the example fire. Routes: `/` the landing, `/?tool` the tool
 (D74), `/?pack=` a pack, as today.
 
+## Technical plan
+
+### Approach
+
+The page decides what to show from its address: a pack link opens the pack, `?tool` opens the tool,
+and anything else opens the landing (D72, D74). The landing and the globe are static. The globe's
+data is three gzipped files under `web/public/globe/`, made by a `globe-day` command from pinned
+sources (D79), and served beside the page by Static Web Apps. three.js loads only on a desktop with
+WebGL. When the globe runs under 30 fps over its first 2 s, it fades back to the flat map (D80). The
+API, the recorder and the database don't change.
+
+Relies on: D2, D3, D4, D29, D36, D37, D72, D73, D74, D75, D76, D77, D78, D79, D80, D81
+
+```mermaid
+flowchart TB
+    subgraph browser["reader's browser"]
+        M["main.tsx: ?pack, ?tool or neither"] -- "neither" --> L[Landing]
+        M -- "?tool" --> T["FireRecordPage, About Fire Watch"]
+        M -- "?pack=" --> P[ComplaintPack]
+        L -- "atFire" --> G[FireGlobe]
+        G -- "desktop with WebGL: import()" --> S["globeScene.ts + three.js"]
+    end
+    subgraph swa["Static Web Apps"]
+        F[("globe/*.bin, gzipped")]
+        C["staticwebapp.config.json: .bin MIME type"]
+    end
+    G -- "GET three files, DecompressionStream" --> F
+    T -- "GET /api/concessions" --> A[API, unchanged]
+```
+
+The address picks the page. The landing's globe reads three static files, and loads three.js only
+where it can draw it.
+
+```mermaid
+sequenceDiagram
+    participant R as Reader
+    participant L as Landing
+    participant G as FireGlobe
+    participant W as Static Web Apps
+    R->>L: opens /
+    L->>G: mount
+    G->>W: land-110m.bin, fires-2026-10-14.bin, near-0332.bin
+    W-->>G: 102 kB, gzipped as committed
+    G->>G: flat map drawn
+    G->>W: globeScene chunk with three.js, desktop only
+    G->>G: globe fades in; first 2 s at 30 fps or more, else back to flat
+    R->>L: Go to the example fire
+    G-->>L: arrived, after 2.4 s or at once
+    L->>R: caption and See its complaint pack
+```
+
+The text shows at once. The flat map follows the data, and the globe follows three.js, where the
+machine can hold 30 fps.
+
+```mermaid
+flowchart LR
+    F[("FIRMS area API, 14 Oct 2026, sha256 pinned")] -- "CSV, FIRMS_MAP_KEY" --> D[globe-day]
+    N[("Natural Earth 110m and 10m land, v5.1.2, sha256 pinned")] -- "GeoJSON" --> D
+    T[("Trase v2026-02-20, sha256 pinned")] -- "0332's edge" --> D
+    D -- "three gzipped files" --> R[("git: web/public/globe")]
+    R -- "pnpm build, then deploy" --> S[Static Web Apps]
+    S -- "GET" --> B((browser))
+```
+
+The data crosses from FIRMS to git once, through an operator who holds the FIRMS key. After that it
+is a committed static file.
+
+### Changes
+
+| File | What changes | Why |
+| ---- | ------------ | --- |
+| `web/src/main.tsx:32` | `Page` is the preview, else the pack for `?pack`, else the tool for `?tool` with `aboutHref="/"`, else the landing, each lazily loaded as now | Scenarios 1, 5; D72, D74 |
+| `web/src/Landing.tsx` (pause 2) | As built at pause 2 | Scenarios 1, 2, 4 |
+| `web/src/globeScene.ts:90` | `startGlobe()` takes `onSlow`. It counts frames for 2 s after the first frame and calls `onSlow` when there are fewer than 60 | Scenario 3; D80 |
+| `web/src/FireGlobe.tsx:80` | On `onSlow`, disposes the scene and keeps the flat map | Scenario 3; D80 |
+| `web/src/FireRecordPage.tsx` (pause 2) | `aboutHref` puts "About Fire Watch" in the header | Scenario 5 |
+| `web/public/staticwebapp.config.json` (new) | `{"mimeTypes": {".bin": "application/octet-stream"}}`; Vite copies it to the root of `dist`, where the deploy reads it | O10 |
+| `web/public/globe/*.bin` (pause 2) | Rewritten by `globe-day`, the same bytes | D79 |
+| `api/src/firewatch/globe_day.py` (new) | `globe-day [--out <dir>]`. Downloads the 14 Oct FIRMS file with `FIRMS_MAP_KEY`, Natural Earth 110m and 10m land, and Trase, each through `concessions.download()` with its sha256. Writes the three files, gzipped with mtime 0. The docstring gives the method: 0.01° cells outside the box, every detection inside it, land clipped 0.1° beyond the box | D79 |
+| `api/pyproject.toml` | Script `globe-day` | D79 |
+| `api/tests/test_globe_day.py` (new) | On small inputs written by the test: the same bytes twice; a detection in the box comes out in full and one outside as its cell; land is clipped to the box | D79 |
+| `web/src/globe.test.ts` (new) | `loadGlobe()` on the committed files: 41,380 dots, 128 land rings, the box, 0332's two edge rings | D75 |
+| `web/src/FireGlobe.test.tsx` (new) | The skeleton while loading, the "didn't load" line, the flat map when `flat`, `onArrive` at once on the flat map, the arrow keys | Scenarios 2, 3 |
+| `web/src/Landing.test.tsx` (new) | The headline, the lede, both links and their addresses, the dated facts, the four steps and four words, the caption after arriving | Scenarios 1, 2, 4 |
+| `web/src/FireRecordPage.test.tsx` | "About Fire Watch" with `aboutHref`, none without | Scenario 5 |
+| `web/e2e/landing-page.spec.ts` (new) | The e2e below, and a phone tap check | All scenarios' path |
+| `web/e2e/fire-record.spec.ts:34`, `:55`, `:141`, `complaint-pack.spec.ts:29`, `damage-estimate.spec.ts:23`, `:52`, `fire-origin.spec.ts:33`, `spread-forecast.spec.ts:33`, `:68`, `season-backtest.spec.ts:99` | Open `/?tool` where they opened `/` | Scenario 5 |
+| `README.md`, `docs/ARCHITECTURE.md`, `CHANGELOG.md` | The landing and the tool's link; `globe-day` in "Run it locally" and a "Redo the globe's data" section; Natural Earth's credit; the component rows; one changelog line | Operators |
+
+Reusing: `concessions.download()` for every pinned source, `firms.parse()`'s field names for the
+CSV, `format.count()`, `maps.themeFill()`, the design system's `fw-*` primitives, and the e2e's
+fake Google Maps.
+
+### Earn-it
+
+| Added | Triggered by |
+| ----- | ------------ |
+| three.js, in the page's dependencies | Scenario 2: the globe of D3, D76 |
+| `staticwebapp.config.json` | O10: `.bin` may not be served without a MIME type |
+| `globe-day` | D79: anyone with a FIRMS key can redo the committed files |
+| The frame-rate fallback | D80: the brief's "never below 30", on machines no one measured |
+| `aboutHref` | Scenario 5: the tool links back to the landing |
+
+### Non-functionals
+
+|                      |                                                                               |
+| -------------------- | ----------------------------------------------------------------------------- |
+| **Load**             | Static. A first visit on desktop downloads 244 kB for the globe after the text shows; a phone 104 kB. The browser caches the files |
+| **Breaks first**     | A desktop with a weak GPU: the globe falls back to the flat map (D80). Visitors don't matter: Static Web Apps serves the files from its edge |
+| **Security surface** | No input and no new endpoint. The links stay on the site. three.js is a new runtime dependency, checked by CI's `pnpm audit --prod`. `globe-day` reads `FIRMS_MAP_KEY` from the operator's untracked `.env`. The files hold public data: FIRMS detections, Natural Earth land and one Trase edge |
+| **Proof it works**   | After the deploy, the site's `/` reads "Where did the fire start?", and `/globe/fires-2026-10-14.bin` answers 200 with `content-type: application/octet-stream` and 71,256 bytes |
+| **Rollout**          | No flag (D81). The merge deploys the page. Rollback: revert the merge, and Deploy ships the old home page |
+
+### Test plan
+
+| Scenario | Test | Command |
+| -------- | ---- | ------- |
+| 1. A newcomer learns what it is | `Landing.test.tsx` | `cd web && pnpm test Landing` |
+| 2. The globe flies to a real fire | `FireGlobe.test.tsx`, `Landing.test.tsx`, the e2e | `cd web && pnpm test FireGlobe` |
+| 3. Phone, reduced motion, no 3D | `FireGlobe.test.tsx`; the preview at 390 px | the same |
+| 4. The example pack | `Landing.test.tsx` (its address), the e2e | `cd web && pnpm test Landing` |
+| 5. Each address opens its own page | `FireRecordPage.test.tsx`, the e2e, the six e2e files at `/?tool` | `cd web && pnpm e2e` |
+| The committed data | `globe.test.ts`, `test_globe_day.py` | `cd web && pnpm test globe`; `cd api && uv run pytest tests/test_globe_day.py` |
+
+**E2E:** `web/e2e/landing-page.spec.ts`. It opens `/` and reads the headline, "62,489 worldwide" and
+the four words. It presses "Go to the example fire" and reads "first saw it on 12 Oct", and checks
+that "See its complaint pack" points at the example pack. It presses "Open the tool", lands on
+`/?tool` with the concession list, and comes back through "About Fire Watch". On a 375 px touch
+screen, every link and button on the landing is at least 44 px to tap. The e2e's API has no example
+fire, so it checks the pack link's address, not the pack. `cd web && pnpm e2e`.
+
+### Chunks
+
+Single chunk. The web and API changes are small, and the six e2e files move with the routing.
+
+### Risks
+
+| Risk | Mitigation |
+| ---- | ---------- |
+| Static Web Apps doesn't serve `.bin` (O10) | The declared MIME type; if it still fails, the landing shows its "didn't load" line and the rest works. `/ship` checks the file after the deploy |
+| The example pack's link stops working | A pack cut keeps its key after a join (`test_pack_keeps_its_key_after_a_join_to_an_older_fire`). The e2e checks the address |
+| A busy machine misses 30 fps in the first 2 s and keeps the flat map | The flat map shows the same fires and the same flight. The reader loses only the 3D |
+| FIRMS changes the 14 Oct file, so `globe-day` refuses it | The committed files still stand. The sha256 in the refusal says what changed |
+| three.js grows past the budget on a later version | `^0.186.1` stays within 0.186; the budget's numbers are in the brief to check against |
+| The slice competes with the demo video for the days left (O2) | Single chunk, no new screens beyond pause 2 |
+
+### Decisions to record
+
+```
+## D79 · 2026-10-20 · Make the globe's data with a globe-day command, from pinned sources
+
+Why: the landing's numbers are dated facts (D73), so anyone with a FIRMS key should get the same
+three files, as load-peat --cut redoes the peat (D70). The FIRMS file, Natural Earth's land and
+Trase's map are each pinned by sha256.
+Rejected: committing the files with their sources described in words (no one could redo them
+exactly).
+Source: docs/specs/landing-page.md
+Status: active
+
+## D80 · 2026-10-20 · Fall back to the flat map when the globe runs under 30 fps
+
+Why: the brief's budget says never below 30 fps, and no one can measure every machine. The first 2 s
+after the globe shows decide; the flat map has the same fires and the same flight.
+Rejected: always showing the globe on a desktop with WebGL (a weak GPU would turn it under 30 fps).
+Source: docs/specs/landing-page.md
+Status: active
+
+## D81 · 2026-10-20 · Ship the landing without a flag; a revert rolls it back
+
+Why: it is a static page, a revert redeploys the old home page in minutes, and pack links don't
+change.
+Rejected: a build-time flag, off by default (one more GitHub variable, and two home pages to keep
+working until it is removed).
+Source: docs/specs/landing-page.md
+Status: active
+```
+
 ## Open items
 
 | ID | What | Type | Raised at | Owner | Status | Answer |
@@ -208,6 +385,10 @@ fire cells, and the full detail near the example fire. Routes: `/` the landing, 
 | O6 | When the 3D globe loads: on a press, as the design brief's tier 3 budget says ("nothing downloads until asked"), or on its own on desktop | question | spec p1 | user | Resolved | 2026-10-20: on its own on desktop. The flat map shows first and holds the space; phones keep the flat map (D76) |
 | O7 | What the reader can do with the globe: drag it and take one flight to the example fire, watch a fixed sequence, or explore freely with zoom and a card per fire | question | spec p1 | user | Resolved | 2026-10-20: drag to turn, and one flight to the 0332 fire (D77) |
 | O8 | Which fire the landing flies to and opens as its example pack. The spec named the fire of fire-origin scenario 1. On the full production record that fire reads "first seen on both sides of the edge", since the scenario used a 19-row cut | question | spec p2 | user | Resolved | 2026-10-20: 0332's fire first seen on 12 Oct 2026 at 05:16 UTC, outside the concession and 3,100 m from its edge, inside from 13 Oct. Its pack is cut at 17 Oct 2026 09:00 UTC: 283 sealed detections (D78) |
+| O9 | How the globe's committed data files can be redone: a `globe-day` command and its test, or the files with their sources described in the README | question | spec p3 | user | Resolved | 2026-10-20: a `globe-day` command in `api/`, from sources pinned by sha256, with a test (D79) |
+| O10 | Azure Static Web Apps may not serve a `.bin` file without a declared MIME type. The docs describe `mimeTypes` but don't say what happens without it | unproven | spec p3 | user | Accepted risk | 2026-10-20: declare `.bin` in `web/public/staticwebapp.config.json` and check the file after the deploy, rather than a spike on a staging app. If it still fails, the landing shows its "didn't load" line |
+| O11 | The globe's frame rate is unmeasured: this machine draws WebGL in software and its browser stops at 20 fps | question | spec p3 | user | Resolved | 2026-10-20: fall back to the flat map when the first 2 s after the globe shows run under 30 fps (D80) |
+| O12 | Whether the landing ships behind a flag | question | spec p3 | user | Resolved | 2026-10-20: no flag; a revert rolls it back (D81) |
 _Never delete this section or its rows. See references/ledger.md._
 
 ## Glossary
@@ -221,4 +402,9 @@ _Never delete this section or its rows. See references/ledger.md._
 - **NOAA-20** — the satellite whose VIIRS sensor gives each detection; it passes over twice a day.
 - **three.js** — the JavaScript library that draws the 3D globe in the browser.
 - **Reduced motion** — a setting in the reader's system asking sites not to animate.
+- **WebGL** — the browser feature that draws 3D; a few old machines and locked-down browsers lack it.
+- **fps** — frames per second: how many times a second the globe is redrawn.
+- **Static Web Apps** — the Azure service that hosts the page's files.
+- **MIME type** — the label a server sends with a file to say what kind of file it is.
+- **Natural Earth** — a public-domain map of the world's land, at 1:110 million and 1:10 million here.
 - **e2e** — end-to-end: one test that walks the whole slice as a user would.
