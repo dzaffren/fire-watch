@@ -8,9 +8,9 @@ import { enrich, fingerprintOf, FIRES, fireHotspots, fixture, param, syncPreview
 import { AS_OF, makeSource as forecastSource } from "./SpreadForecastPreview";
 import "./preview.css";
 
-// Each fire's four parts, worked out from its real detections, Trase's map v2026-02-20 and WRI's
-// peat tiles 00N_100E and 00N_110E, v20230315. Seals, transactions and forecasts are made up, as in
-// the earlier previews.
+// Each fire's four parts, worked out by the damage query on the compose PostGIS from its real
+// detections, Trase's map v2026-02-20 and WRI's peat map v20230315. Seals, transactions and
+// forecasts are made up, as in the earlier previews.
 
 // FireRecords on Base Sepolia, as deployed.
 const CONTRACT: Hex = "0x6a55489a05a9c79d2cd35212878d113557dceb2a";
@@ -47,9 +47,9 @@ const B_FIRE: FireSummary = {
 };
 
 const DAMAGE: Record<Hex, Damage> = {
-  [FIRES.outside.key]: { inside_peat_ha: 59.22, inside_other_ha: 0, outside_peat_ha: 144.32, outside_other_ha: 6.31 },
-  [FIRES.still.key]: { inside_peat_ha: 58.21, inside_other_ha: 0, outside_peat_ha: 0, outside_other_ha: 0 },
-  [FIRES.largest.key]: { inside_peat_ha: 221.09, inside_other_ha: 442.6, outside_peat_ha: 372.87, outside_other_ha: 507.62 },
+  [FIRES.outside.key]: { inside_peat_ha: 59.21, inside_other_ha: 0, outside_peat_ha: 144.31, outside_other_ha: 6.3 },
+  [FIRES.still.key]: { inside_peat_ha: 58.25, inside_other_ha: 0, outside_peat_ha: 0, outside_other_ha: 0 },
+  [FIRES.largest.key]: { inside_peat_ha: 221.48, inside_other_ha: 446.27, outside_peat_ha: 372.35, outside_other_ha: 503.75 },
   [B_FIRE.key]: { inside_peat_ha: 0, inside_other_ha: 0, outside_peat_ha: 0, outside_other_ha: 14.06 },
 };
 
