@@ -1,5 +1,5 @@
-"""Read-only API: pulpwood concessions, their hotspot records, fires and forecasts, and a health
-check."""
+"""Read-only API: pulpwood concessions, their hotspot records, fires with their forecasts and
+damage, and a health check."""
 
 import logging
 import math
@@ -14,7 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
 
-from firewatch import fires
+from firewatch import fires, peat
 from firewatch.concessions import MAP_VERSION
 from firewatch.db import connect
 from firewatch.fingerprint import forecast_fields
@@ -274,6 +274,8 @@ def create_app(allowed_origin: str) -> FastAPI:
                 raise HTTPException(status_code=404, detail="No such fire")
             ids = [d.record_id for d in found.detections]
             rows = conn.execute(FIRE_HOTSPOTS, {"record_ids": ids}).fetchall()
+            # From the detections stored by as_of, so a pack holds it as of its cut (D37).
+            damage, damage_ms = peat.damage(conn, concession_id, ids)
             # A pack doesn't carry forecasts (D43). A fire lists those of fires that joined it.
             forecasts = {}
             if site is None:
@@ -285,9 +287,10 @@ def create_app(allowed_origin: str) -> FastAPI:
                 }
         by_id = {row["record_id"]: row for row in rows}
         log.info(
-            "served fire id=%s key=%s as_of=%d detections=%d passes=%d forecasts=%d group_ms=%d",
+            "served fire id=%s key=%s as_of=%d detections=%d passes=%d forecasts=%d group_ms=%d"
+            " damage_ms=%d",
             concession_id, key, as_of, len(ids), found.passes,
-            len(forecasts.get("forecasts", [])), group_ms,
+            len(forecasts.get("forecasts", [])), group_ms, damage_ms,
         )
         pack = {} if site is None else {
             "concession_id": site["id"],
@@ -301,6 +304,8 @@ def create_app(allowed_origin: str) -> FastAPI:
             "as_of_unix": as_of,
             **forecasts,
             **pack,
+            # None while the peat table is empty: no estimate rather than a wrong one.
+            **({"damage": damage} if damage else {}),
             "hotspots": [
                 {**_record(by_id[record_id]), "pass": number}
                 for record_id, number in zip(ids, found.pass_numbers)
