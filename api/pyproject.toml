@@ -16,6 +16,7 @@ record-hotspots = "firewatch.record_hotspots:main"
 load-concessions = "firewatch.concessions:main"
 backtest-2023 = "firewatch.backtest:main"
 load-peat = "firewatch.peat:main"
+globe-day = "firewatch.globe_day:main"
 
 [dependency-groups]
 cut = [
