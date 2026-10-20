@@ -647,3 +647,74 @@ Rejected: exact hours from the detection nearest the edge (measures the rounding
 direction).
 Source: docs/specs/season-backtest.md
 Status: active
+
+## D61 · 2026-10-20 · Estimate a fire's damage as area, CO2 and cost at the World Bank's 2015 average
+
+Why: the shape keeps this slice for the economic-impact ask, so it needs a cost. The World Bank's
+2015 figure is Indonesia's own, US$16.1 billion over 2.6 million ha, about US$6,192 per ha, and it
+counts haze, health and crop losses.
+Rejected: CO2 at EPA's US$190 per t (the US government stopped using it in 2025), area and CO2 only
+(no cost), area only.
+Source: docs/specs/damage-estimate.md
+Status: active
+
+## D62 · 2026-10-20 · Tell peat from other ground with WRI's Global Peatlands map, pinned by sha256
+
+Why: peat changes the CO2 about 9 times, 600.6 against 66.7 t per ha. The map is CC BY 4.0, about
+28 m, covers all of Indonesia, and answers for each piece of ground, also outside a concession.
+Rejected: Trase's peat share per concession (no answer per detection, none outside a concession),
+every detection as peat (overstates fires on other ground 9 times).
+Source: docs/specs/damage-estimate.md
+Status: active
+
+## D63 · 2026-10-20 · Count a fire's ground as the joined 375 m squares of its detections
+
+Why: ground seen on several passes counts once. The 0332 fire's 19 detections cover 209.8 ha, not
+267.2.
+Rejected: detections times 14.06 ha (counts the same ground again on each pass).
+Source: docs/specs/damage-estimate.md
+Status: active
+
+## D64 · 2026-10-20 · Show the estimate in the fire view and the pack, split at the concession's edge
+
+Why: the pack is what reaches the buyer, and the buyer weighs the damage on the supplier's land.
+Each piece of ground is already placed against the edge.
+Rejected: a total per concession on the concession view (a third screen), the fire view only (the
+buyer never sees it), one total for the whole fire.
+Source: docs/specs/damage-estimate.md
+Status: active
+
+## D65 · 2026-10-20 · Seal nothing new for the damage estimate
+
+Why: the detections are sealed, and the peat map and the factors are pinned, so anyone can redo the
+estimate, as fire origin is redone (D24).
+Rejected: sealing each estimate (a new fingerprint version and recorder work, for a number the
+sealed inputs already fix).
+Source: docs/specs/damage-estimate.md
+Status: active
+
+## D66 · 2026-10-20 · Burn ground off peat at IPCC's secondary tropical forest values
+
+Why: it is the closest IPCC 2006 category to cleared land and acacia. 42.2 t dry matter per ha at
+1,580 g CO2 per kg gives 66.7 t CO2 per ha.
+Rejected: peat only (calls fires on other ground carbon-free), primary tropical forest (119.6 t per
+ha, too high for plantation land).
+Source: docs/specs/damage-estimate.md
+Status: active
+
+## D67 · 2026-10-20 · Show a never-spread fire's estimate, with the fixed-heat-source caveat on top
+
+Why: a fire seen on 4 or more passes without spreading may be a mill, or peat smouldering in place
+(D27). Smouldering peat is real damage, so the caveat goes on top and the numbers stay.
+Rejected: withholding the estimate (smouldering peat would get none).
+Source: docs/specs/damage-estimate.md
+Status: active
+
+## D68 · 2026-10-20 · Count CO2 only, and say methane and carbon monoxide are left out
+
+Why: one gas keeps one factor for each number. Methane would add about 200 t CO2-equivalent per ha
+of peat, and it needs a warming factor from one more source.
+Rejected: CO2-equivalent with methane at IPCC AR6's 27 over 100 years (a third more on peat, and
+one more factor to defend).
+Source: docs/specs/damage-estimate.md
+Status: active
