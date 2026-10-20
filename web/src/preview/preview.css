@@ -12,5 +12,8 @@
   .preview { display: block; height: auto; }
   .preview-bar { display: none; }
 }
-.globe-preview { padding: var(--fw-space-6); display: grid; gap: var(--fw-space-4); align-content: start; overflow-y: auto; }
+.globe-preview { padding: var(--fw-space-6); display: grid; gap: var(--fw-space-4); align-content: start; justify-items: start; overflow-y: auto; }
+.globe-preview .globe { width: min(100%, 720px); }
 .globe-preview-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--fw-space-4); }
+/* A page that scrolls as a whole, such as the landing, under the picker. */
+.preview--page { height: auto; min-height: 100vh; display: block; }

@@ -37,6 +37,12 @@ const MAX_PITCH = 70 * DEG;
 const TEXTURE_WIDTH = 4096;
 const PATCH_WIDTH = 2048;
 
+interface Flight {
+  from: { yaw: number; pitch: number; distance: number };
+  started: number;
+  done: () => void;
+}
+
 export interface GlobeScene {
   /** Turns to the example fire and closes in; resolves on arrival. */
   flyTo(): Promise<void>;
@@ -81,7 +87,12 @@ function roundDot(): CanvasTexture {
   return new CanvasTexture(canvas);
 }
 
-export function startGlobe(canvas: HTMLCanvasElement, data: GlobeData, still: boolean, onFirstFrame: () => void): GlobeScene {
+export function startGlobe(
+  canvas: HTMLCanvasElement,
+  data: GlobeData,
+  still: boolean,
+  onFirstFrame: () => void,
+): GlobeScene {
   const renderer = new WebGLRenderer({ canvas, antialias: true, alpha: true });
   const ratio = Math.min(devicePixelRatio, 2);
   renderer.setPixelRatio(ratio);
@@ -106,7 +117,9 @@ export function startGlobe(canvas: HTMLCanvasElement, data: GlobeData, still: bo
   const localTexture = new CanvasTexture(local);
   localTexture.colorSpace = SRGBColorSpace;
   const patch = new Mesh(
-    new SphereGeometry(1.0002, 32, 32, (west + 180) * DEG, (east - west) * DEG, (90 - north) * DEG, (north - south) * DEG),
+    new SphereGeometry(
+      1.0002, 32, 32, (west + 180) * DEG, (east - west) * DEG, (90 - north) * DEG, (north - south) * DEG,
+    ),
     new MeshBasicMaterial({ map: localTexture }),
   );
   globe.add(patch);
@@ -126,10 +139,8 @@ export function startGlobe(canvas: HTMLCanvasElement, data: GlobeData, still: bo
   const inside = new MeshBasicMaterial({ transparent: true, depthWrite: false });
   for (const ring of data.near.concession) {
     const points = ring.slice(0, -1);
-    const edge = new Line(
-      new BufferGeometry().setAttribute("position", new Float32BufferAttribute(ring.flatMap((p) => onSphere(p, 1.0006)), 3)),
-      edges,
-    );
+    const along = new Float32BufferAttribute(ring.flatMap((p) => onSphere(p, 1.0006)), 3);
+    const edge = new Line(new BufferGeometry().setAttribute("position", along), edges);
     edge.computeLineDistances();
     const faces = ShapeUtils.triangulateShape(points.map(([x, y]) => new Vector2(x, y)), []);
     const tint = new Mesh(
@@ -156,11 +167,12 @@ export function startGlobe(canvas: HTMLCanvasElement, data: GlobeData, still: bo
   }
   recolour();
 
-  let { yaw, pitch } = facing([60, 10]);
+  // It opens over Indonesia and turns as the earth does, so the ground moves east and the west comes into view.
+  let { yaw, pitch } = facing([125, 0]);
   let far = 4;
   let distance = far;
   let turning = !still;
-  let flight: { from: { yaw: number; pitch: number; distance: number }; started: number; done: () => void } | null = null;
+  let flight: Flight | null = null;
   let drag: { x: number; y: number } | null = null;
   let visible = true;
   let last = performance.now();
@@ -173,9 +185,9 @@ export function startGlobe(canvas: HTMLCanvasElement, data: GlobeData, still: bo
     renderer.setSize(width, height, false);
     camera.aspect = width / height;
     camera.updateProjectionMatrix();
-    // The whole globe fits the narrower side, with a margin.
+    // The whole globe fits the narrower side, with a small margin.
     const half = Math.min(FOV / 2, (Math.atan(Math.tan((FOV / 2) * DEG) * camera.aspect) / DEG)) * DEG;
-    const fitted = 1.12 / Math.sin(half);
+    const fitted = 1.04 / Math.sin(half);
     if (distance === far) distance = fitted;
     far = fitted;
   }
@@ -193,7 +205,8 @@ export function startGlobe(canvas: HTMLCanvasElement, data: GlobeData, still: bo
       yaw = flight.from.yaw + (to.yaw - flight.from.yaw) * turn;
       pitch = flight.from.pitch + (to.pitch - flight.from.pitch) * turn;
       // Closing in on a log scale keeps the speed even as the ground comes near.
-      distance = 1 + Math.exp(Math.log(flight.from.distance - 1) + (Math.log(NEAR - 1) - Math.log(flight.from.distance - 1)) * close);
+      const from = Math.log(flight.from.distance - 1);
+      distance = 1 + Math.exp(from + (Math.log(NEAR - 1) - from) * close);
       fires.material.size = (FIRE_DOT + (NEAR_DOT - FIRE_DOT) * close) * ratio;
       if (t === 1) {
         flight.done();
