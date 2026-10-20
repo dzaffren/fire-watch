@@ -249,3 +249,18 @@ a.fw-btn { text-decoration: none; }
   .map-col { height: 12cm; margin-top: var(--fw-space-5); border: var(--fw-border) solid var(--fw-line); break-inside: avoid; }
   .legend-dot, .legend-area { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
 }
+
+/* Fire globe: 14 Oct 2026's fires, the tier 3 piece (docs/design/system-brief.md, D76). The flat map holds the space;
+   the globe fades in over it, so nothing shifts. */
+.globe { position: relative; aspect-ratio: 16 / 9; }
+.globe canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.globe-3d { opacity: 0; cursor: grab; touch-action: none; border-radius: var(--fw-radius-panel); transition: opacity var(--fw-dur-slow) var(--fw-ease); }
+.globe-3d:active { cursor: grabbing; }
+.globe-flat { transition: opacity var(--fw-dur-slow) var(--fw-ease); }
+.globe[data-shown="globe"] .globe-3d { opacity: 1; }
+.globe[data-shown="globe"] .globe-flat { opacity: 0; }
+.globe-wait { position: absolute; inset: 0; border-radius: var(--fw-radius-panel); background: var(--fw-skeleton); }
+.globe--failed { display: grid; place-items: center; border: var(--fw-border) solid var(--fw-line); border-radius: var(--fw-radius-panel); }
+@media (max-width: 720px) {
+  .globe { aspect-ratio: 2 / 1; }
+}
