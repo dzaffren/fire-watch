@@ -17,6 +17,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Make a complaint pack from any fire: a page with its own link that holds the fire's site, dates and basis as of when it was made, checks every detection against Base Sepolia in the reader's browser, and prints to PDF.
 - After each satellite pass, every fire near a concession and not yet seen inside gets a forecast, sealed on Base Sepolia, of whether and when it will be seen inside within 48 hours. Open a fire to see each forecast, checked in your browser, with how it turned out.
 - The forecast panel shows how the forecast rule did on a replay of 2023, next to a downwind guess, and links to every replayed forecast. `backtest-2023` redoes the replay byte for byte from pinned files.
+- Each fire and complaint pack gives an estimate of the ground in the fire's pixels, the CO₂ it released and its cost, split at the concession's edge, from WRI's peat map and IPCC and World Bank factors. Operators load the peat map with `load-peat`.
 
 ### Changed
 

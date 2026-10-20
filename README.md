@@ -42,6 +42,7 @@ Needs Docker, uv, pnpm and Foundry (`forge`, `anvil` on the path).
 | End-to-end test | `cd web && pnpm exec playwright install chromium && pnpm e2e` |
 | Migrate | `cd api && uv run --env-file ../.env python -m firewatch.migrate up` (or `down`) |
 | Load the concession map | `cd api && uv run --env-file ../.env load-concessions` |
+| Load the peat map | `cd api && uv run --env-file ../.env load-peat` |
 | Record hotspots | `cd api && uv run --env-file ../.env record-hotspots` |
 
 The database runs PostGIS. A container made before that is plain Postgres; recreate it once
@@ -52,6 +53,11 @@ it a path and it loads that file as is. `record-hotspots` reads `DATABASE_URL`,
 `FIRMS_MAP_KEY`, `RPC_URL`, `CONTRACT_ADDRESS` and `RECORDER_PRIVATE_KEY` from the
 environment; `load-concessions` needs only `DATABASE_URL`. Keep them in the untracked `.env` at
 the repo root; `--env-file ../.env` loads it, since `uv run` doesn't on its own.
+
+`load-peat` loads the committed cut of WRI's peat map,
+`fixtures/peat/gfw-peatlands-v20230315.geojson.gz`, and refuses it if its sha256 differs; give it
+a path and it loads that file as is. Each load replaces the peat already there. The API sends no
+damage estimate while the `peat` table is empty.
 
 ## Redo the 2023 replay
 
@@ -81,10 +87,29 @@ again from Open-Meteo, 35 seconds between requests, in about 10 minutes.
 Wind data by [Open-Meteo.com](https://open-meteo.com/): ERA5 hourly reanalysis from the
 Copernicus Climate Change Service, under CC BY 4.0.
 
+## Redo the peat cut
+
+The damage estimate tells peat from other ground with
+`fixtures/peat/gfw-peatlands-v20230315.geojson.gz`: every peat pixel of WRI's Global Peatlands
+map, gfw_peatlands v20230315, within 5.5 km of a concession. `api/src/firewatch/peat.py` pins
+the 10 tiles it comes from by sha256. GFW serves the tiles only with an API key, so put one in
+`.env` as `GFW_API_KEY`. Then, with the full concession map loaded in `DATABASE_URL`:
+
+```sh
+cd api && uv run --env-file ../.env load-peat --cut
+git diff --stat ../fixtures/peat
+```
+
+`load-peat --cut` stops if a tile's sha256 has changed. It took about 2 minutes on the compose
+database. An empty `git diff` means you got the same bytes.
+
+Peat map: [WRI Global Peatlands](https://data.globalforestwatch.org/datasets/gfw::global-peatlands/about),
+under CC BY 4.0.
+
 ## First deploy
 
 1. **Neon:** create a free project. Put its owner URL in `.env` as `DATABASE_URL`, run the
-   migration and `load-concessions`, then create the API's read-only login with
+   migration, `load-concessions` and `load-peat`, then create the API's read-only login with
    `infra/neon-reader.sql`.
 2. **Base Sepolia:** fund the recorder wallet from a faucet, then deploy the contract:
    `cd contracts && RECORDER_ADDRESS=<recorder> forge script script/Deploy.s.sol --rpc-url https://sepolia.base.org --private-key <deployer key> --broadcast`.
@@ -129,3 +154,9 @@ the page); then point the recorder job at the merged sha's image by digest, as a
 count only from their seal, so each day between the merge and the job update loses that day's
 forecasts. The next run's log line shows `forecasts=` and `forecast_ms=`. To roll back, point the
 job at its previous digest; `migrate down` only if the table must go.
+
+Turning on the damage estimate, in order, before the merge: `migrate up`, which adds the `peat`
+table and lets the read-only role read it; `load-peat`; then merge to main (Deploy ships the API,
+then the page). The API sends no estimate while `peat` is empty, so a page never shows a wrong
+one. The fire's log line shows `damage_ms=`. To roll back, revert the merge; `migrate down` only
+if the table must go.
