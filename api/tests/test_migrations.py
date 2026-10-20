@@ -3,7 +3,7 @@ import psycopg
 from firewatch import migrate
 
 FIRE_RECORD_TABLES = {"concessions", "hotspot_concessions", "recorder_runs"}
-READER_TABLES = FIRE_RECORD_TABLES | {"forecasts"}
+READER_TABLES = FIRE_RECORD_TABLES | {"forecasts", "peat"}
 
 
 def _tables(url):
@@ -36,13 +36,18 @@ def _assert_up(url):
     assert {"hotspots", *READER_TABLES} <= _tables(url)
     assert {"fingerprint_version", "map_version"} <= _hotspot_columns(url)
     assert _postgis(url)
-    assert _applied(url) == ["001_hotspots", "002_fire_record", "003_forecasts"]
+    assert _applied(url) == ["001_hotspots", "002_fire_record", "003_forecasts", "004_peat"]
 
 
 def test_up_down_up(database_url):
     migrate.up(database_url)
     migrate.up(database_url)
     _assert_up(database_url)
+
+    assert migrate.down(database_url) == "004_peat"
+    assert "peat" not in _tables(database_url)
+    assert "forecasts" in _tables(database_url)
+    assert _applied(database_url) == ["001_hotspots", "002_fire_record", "003_forecasts"]
 
     assert migrate.down(database_url) == "003_forecasts"
     assert "forecasts" not in _tables(database_url)

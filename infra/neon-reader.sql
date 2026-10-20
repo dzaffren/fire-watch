@@ -3,4 +3,4 @@
 --   psql "$OWNER_DATABASE_URL" -v reader_password="<new password>" -f infra/neon-reader.sql
 CREATE ROLE firewatch_reader LOGIN PASSWORD :'reader_password';
 GRANT USAGE ON SCHEMA public TO firewatch_reader;
-GRANT SELECT ON hotspots, concessions, hotspot_concessions, recorder_runs, forecasts TO firewatch_reader;
+GRANT SELECT ON hotspots, concessions, hotspot_concessions, recorder_runs, forecasts, peat TO firewatch_reader;
