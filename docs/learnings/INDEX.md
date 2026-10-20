@@ -25,3 +25,7 @@
 - Ask Open-Meteo's archive for `models=era5`; its default blends finer models — [open-meteo-ask-for-era5](open-meteo-ask-for-era5.md)
 - Filter tap checks with `checkVisibility()`; a closed `<details>` keeps `offsetParent` — [tap-checks-skip-closed-details](tap-checks-skip-closed-details.md)
 - Add a uv group that runs with secrets to CI's `pip-audit` export — [audit-groups-that-run-with-secrets](audit-groups-that-run-with-secrets.md)
+- Read one key from `.env` with grep; never `source` it — [never-source-dotenv](never-source-dotenv.md)
+- Gzip committed files with `GzipFile(mtime=0)`; `gzip.compress` writes another header byte — [gzip-header-os-byte](gzip-header-os-byte.md)
+- Commit before an A/B check that restores files with `git checkout` — [commit-before-ab-checkout](commit-before-ab-checkout.md)
+- Ask once whether the browser can draw WebGL; check the globe through the DOM — [webgl-probe-once](webgl-probe-once.md)
