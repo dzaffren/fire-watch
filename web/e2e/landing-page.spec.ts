@@ -33,8 +33,12 @@ test("a newcomer reads the landing, goes to the example fire, then opens the too
   ]);
   await expect(page.getByRole("link", { name: "See a real example" })).toHaveAttribute("href", EXAMPLE_PACK);
 
+  // Nothing on the page shifts, whether the globe stays or goes back to the flat map.
+  const globe = page.locator(".globe");
+  const height = (await globe.boundingBox())!.height;
   await page.getByRole("button", { name: "Go to the example fire" }).click();
   await expect(page.getByText(/The satellite first saw it on 12 Oct, outside the concession/)).toBeVisible();
+  expect((await globe.boundingBox())!.height).toBe(height);
   await expect(page.getByRole("link", { name: "See its complaint pack" })).toHaveAttribute("href", EXAMPLE_PACK);
   // The landing needs nothing from the API, so it shows while the API wakes from zero.
   expect(asked).toEqual([]);
