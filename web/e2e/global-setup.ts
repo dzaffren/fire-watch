@@ -35,6 +35,8 @@ const RUNS = ["2026-10-13T20:00:00Z", "2026-10-14T09:00:00Z", "2026-10-14T20:00:
 // The real boundaries of ID-WOOD-CONCESSION-0540, 0377, 0275, 0332, 0356 and 0372, so matches come at real
 // distances.
 const CONCESSIONS = resolve(ROOT, "fixtures/concessions/trase-cut.geojson");
+// WRI's peat polygons near the detections in both FIRMS files, so each fire gets its damage parts.
+const PEAT = resolve(ROOT, "fixtures/peat/peat-cut.geojson.gz");
 // Multicall3 as deployed on Base Sepolia; a pack reads its seals through it (D38), and anvil has none.
 const MULTICALL3 = resolve(ROOT, "fixtures/chain/multicall3.hex");
 const MULTICALL3_ADDRESS = "0xcA11bde05977b3631167028862bE2a173976CA11";
@@ -134,6 +136,7 @@ export default async function globalSetup() {
     await resetDatabase();
     await run("uv", ["run", "python", "-m", "firewatch.migrate", "up"], API, apiEnv);
     await run("uv", ["run", "load-concessions", CONCESSIONS], API, apiEnv);
+    await run("uv", ["run", "load-peat", PEAT], API, apiEnv);
 
     await new Promise<void>((done) => firms.listen(FIRMS_PORT, "127.0.0.1", done));
     for (const at of RUNS) {
