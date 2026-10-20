@@ -153,7 +153,7 @@ Rejected: map view as the area (thousands of dots when zoomed out, needs cluster
 picker (up to 50 concessions in one province), keeping the latest-hotspot screen beside it (two
 screens to explain; the latest hotspot is often far from any concession).
 Source: docs/specs/fire-record.md
-Status: active
+Status: superseded by D72
 
 ## D15 · 2026-10-16 · Record hourly from a scheduled Azure job
 
@@ -373,7 +373,7 @@ Rejected: a link for every view with Back stepping out (routing for the whole pa
 that fails the slice test; fire-record O10), the link with no print layout (a grievance sent as a
 document loses the pack), a JSON file of the records (each raw record already opens on the page).
 Source: docs/specs/complaint-pack.md
-Status: active
+Status: superseded by D74
 
 ## D35 · 2026-10-17 · Verify FireRecords on Basescan
 
@@ -747,4 +747,64 @@ Why: the parts come from stored detections and the peat table. The factors are f
 the page also cites, so one file states and applies them.
 Rejected: the API also sends the CO2 and the cost (the factors in Python and in the page's text).
 Source: docs/specs/damage-estimate.md
+Status: active
+
+## D72 · 2026-10-20 · Put a landing page at the site's address, with the tool one click away
+
+Why: judges and new investigators don't know what a concession or a seal is, and the tool opens
+on concession IDs. Inside the tool, a grievance still names one supplier's land, so the tool opens
+on dates, then a concession list ranked by hotspots inside, worst first.
+Rejected: an explainer block above the date picker (a newcomer still lands in the tool), map view
+as the area (thousands of dots when zoomed out), province picker (up to 50 concessions in one
+province), keeping the latest-hotspot screen beside it (two screens to explain).
+Supersedes: D14
+Source: docs/specs/landing-page.md
+Status: active
+
+## D73 · 2026-10-20 · Put dated facts on the landing, not live counts
+
+Why: a number with its date stays true, and the landing then needs nothing from a server that may
+be asleep. 14 Oct 2026 had 62,489 NOAA-20 detections worldwide, 9,923 around Indonesia.
+Rejected: live counts from the API (a new endpoint, a second area), no numbers (the scale is half
+the story).
+Source: docs/specs/landing-page.md
+Status: active
+
+## D74 · 2026-10-20 · Give the tool its own link, as the complaint pack has
+
+Why: an investigator who comes back bookmarks the tool and skips the landing. The pack keeps its
+own link and prints to PDF, since it is what goes to a buyer. Other views keep their on-page back
+links: one entry link is not routing for every view.
+Rejected: the browser remembering a visit (a judge on a used machine never sees the landing), one
+click through the landing every time, a link for every view (routing for the whole page), the
+pack link with no print layout, a JSON file of the records.
+Supersedes: D34
+Source: docs/specs/landing-page.md
+Status: active
+
+## D75 · 2026-10-20 · Show 14 Oct 2026's fires on the globe, from a committed file
+
+Why: the example 0332 fire burns that day, on the 06:18 and 17:20 UTC passes, so the flight ends
+on a live fire. A committed day needs no server and can't change under the demo.
+Rejected: 12 Oct 2026, the day the brief measured (the 0332 fire hadn't started), the latest day
+(a FIRMS fetch on the server, a second area).
+Source: docs/specs/landing-page.md
+Status: active
+
+## D76 · 2026-10-20 · Load the globe on its own on desktop; phones keep the flat map
+
+Why: a judge sees the globe without looking for a button. The flat map of the same fires shows
+first and holds the space, so nothing shifts. This replaces the design brief's "nothing downloads
+until asked"; tier 3 stays for the globe alone (D3).
+Rejected: loading on a press, as the brief's tier 3 budget said (a judge may never press it).
+Source: docs/specs/landing-page.md
+Status: active
+
+## D77 · 2026-10-20 · The reader drags the globe, and one flight goes to the example fire
+
+Why: dragging lets a judge find their own region; the flight ends the story on a record that can
+be checked.
+Rejected: a fixed sequence with no dragging (nothing to explore), free zoom with a card for every
+fire (most to build; each record already opens in the tool).
+Source: docs/specs/landing-page.md
 Status: active

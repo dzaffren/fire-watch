@@ -1,6 +1,6 @@
 # Fire watch · design system brief
 
-**Status:** Approved · **Updated:** 2026-10-16 by /design-system
+**Status:** Approved · **Updated:** 2026-10-20 by /spec landing-page
 
 The look of the one product in `docs/specs/fire-watch/shape.md`. Watchdog investigators use
 it at a desk to build a case: a map of fires next to a record panel. What they produce is
@@ -68,7 +68,7 @@ working screens. How one fire spread over time stays on the tier 2 replay.
 | Frame rate | 60 fps target on a laptop from the last five years, never below 30. Not measured yet |
 | Phones | The flat world map with the same fires, no 3D |
 | Reduced motion | No turning on its own; flights jump straight to the place |
-| Loading | Nothing downloads until asked; the flat map holds the same space until then, so nothing shifts |
+| Loading | The flat map shows first and holds the same space. On desktop the globe downloads on its own and swaps in, so nothing shifts (D76). Phones keep the flat map |
 
 ## Glossary
 
