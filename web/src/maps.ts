@@ -46,13 +46,14 @@ export function themeFill(name: string): string {
 // The catch-all geometry rule paints roads the land colour too, so roads get their own rules after it.
 export function mapStyles(): google.maps.MapTypeStyle[] {
   const land = themeColour("--fw-map");
-  const water = themeColour("--fw-surface");
+  const water = themeColour("--fw-water");
+  const road = themeColour("--fw-surface");
   const line = themeColour("--fw-line");
   const muted = themeColour("--fw-muted");
   return [
     { elementType: "geometry", stylers: [{ color: land }] },
     { featureType: "water", elementType: "geometry", stylers: [{ color: water }] },
-    { featureType: "road", elementType: "geometry.fill", stylers: [{ color: water }] },
+    { featureType: "road", elementType: "geometry.fill", stylers: [{ color: road }] },
     { featureType: "road", elementType: "geometry.stroke", stylers: [{ color: line }] },
     { elementType: "labels.text.fill", stylers: [{ color: muted }] },
     { elementType: "labels.text.stroke", stylers: [{ color: land }] },

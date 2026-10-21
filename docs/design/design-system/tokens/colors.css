@@ -1,17 +1,17 @@
-/* Fire Watch colour tokens, Peatland palette. Each value traces to docs/design/system-brief.md. */
+/* Fire Watch colour tokens, deeper Peatland palette. Each value traces to docs/design/system-brief.md. */
 :root,
 [data-theme="light"] {
-  --fw-bg: #f3f3f0;
-  --fw-surface: #ffffff;
+  --fw-bg: #eef3e4;
+  --fw-surface: #fafcf6;
   --fw-ink: #1f2421;
-  --fw-muted: #5c635c;
-  --fw-faint: #8b9189;
-  --fw-line: #dcdcd5;
-  --fw-control: #7b827a;
-  --fw-hover-fill: #ededea;
-  --fw-disabled-fill: #e4e4df;
-  --fw-field-disabled: #ededea;
-  --fw-table-head: #f3f3f0;
+  --fw-muted: #596055;
+  --fw-faint: #8e9589;
+  --fw-line: #d6dccc;
+  --fw-control: #777f73;
+  --fw-hover-fill: #e9ede0;
+  --fw-disabled-fill: #e1e5d9;
+  --fw-field-disabled: #e9ede0;
+  --fw-table-head: #eef3e4;
 
   --fw-accent: #0b6e6e;
   --fw-accent-hover: #085858;
@@ -22,27 +22,30 @@
   --fw-ok: #2e6b2e;
   --fw-bad: #b42318;
 
-  --fw-map: #e7ebe4;
-  --fw-concession: #1f242110; /* ink at 6%: inside a concession, under its dashed edge */
-  --fw-skeleton: #e8e8e3;
-  --fw-skeleton-2: #ededea;
-  --fw-tick-off: #a3a99f;
+  --fw-map: #d9e8c4;
+  --fw-water: #bdd6e0;
+  --fw-concession: #2a744924; /* acacia green at 14%: inside a concession, under its dashed edge */
+  --fw-band-moss: #e0ecce;
+  --fw-band-peat: #e9e0d1;
+  --fw-skeleton: #e6eade;
+  --fw-skeleton-2: #edf0e6;
+  --fw-tick-off: #a1a79a;
   color-scheme: light;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --fw-bg: #121412;
-    --fw-surface: #1a1d1a;
+    --fw-bg: #121610;
+    --fw-surface: #1a1f17;
     --fw-ink: #e8e9e4;
-    --fw-muted: #a3a99f;
-    --fw-faint: #636a61;
-    --fw-line: #2c312c;
-    --fw-control: #6f776d;
-    --fw-hover-fill: #232823;
-    --fw-disabled-fill: #232823;
-    --fw-field-disabled: #161916;
-    --fw-table-head: #161916;
+    --fw-muted: #aeb3a6;
+    --fw-faint: #60655b;
+    --fw-line: #2d3229;
+    --fw-control: #71776b;
+    --fw-hover-fill: #23281f;
+    --fw-disabled-fill: #23281f;
+    --fw-field-disabled: #161a13;
+    --fw-table-head: #161a13;
 
     --fw-accent: #5cc0bb;
     --fw-accent-hover: #7fd1cc;
@@ -53,27 +56,30 @@
     --fw-ok: #6fcf7f;
     --fw-bad: #ff7b6e;
 
-    --fw-map: #161a16;
-    --fw-concession: #e8e9e412; /* ink at 7% */
-    --fw-skeleton: #262b26;
-    --fw-skeleton-2: #202420;
-    --fw-tick-off: #4d554b;
+    --fw-map: #1e2613;
+    --fw-water: #112028;
+    --fw-concession: #8ec89921; /* light acacia green at 13% */
+    --fw-band-moss: #1d2514;
+    --fw-band-peat: #251e15;
+    --fw-skeleton: #282d25;
+    --fw-skeleton-2: #1f231c;
+    --fw-tick-off: #494f44;
     color-scheme: dark;
   }
 }
 
 [data-theme="dark"] {
-  --fw-bg: #121412;
-  --fw-surface: #1a1d1a;
+  --fw-bg: #121610;
+  --fw-surface: #1a1f17;
   --fw-ink: #e8e9e4;
-  --fw-muted: #a3a99f;
-  --fw-faint: #636a61;
-  --fw-line: #2c312c;
-  --fw-control: #6f776d;
-  --fw-hover-fill: #232823;
-  --fw-disabled-fill: #232823;
-  --fw-field-disabled: #161916;
-  --fw-table-head: #161916;
+  --fw-muted: #aeb3a6;
+  --fw-faint: #60655b;
+  --fw-line: #2d3229;
+  --fw-control: #71776b;
+  --fw-hover-fill: #23281f;
+  --fw-disabled-fill: #23281f;
+  --fw-field-disabled: #161a13;
+  --fw-table-head: #161a13;
 
   --fw-accent: #5cc0bb;
   --fw-accent-hover: #7fd1cc;
@@ -84,10 +90,37 @@
   --fw-ok: #6fcf7f;
   --fw-bad: #ff7b6e;
 
-  --fw-map: #161a16;
-  --fw-concession: #e8e9e412;
-  --fw-skeleton: #262b26;
-  --fw-skeleton-2: #202420;
-  --fw-tick-off: #4d554b;
+  --fw-map: #1e2613;
+  --fw-water: #112028;
+  --fw-concession: #8ec89921;
+  --fw-band-moss: #1d2514;
+  --fw-band-peat: #251e15;
+  --fw-skeleton: #282d25;
+  --fw-skeleton-2: #1f231c;
+  --fw-tick-off: #494f44;
   color-scheme: dark;
+}
+
+/* Print: a white page with the light theme's ink, whatever the screen's theme (D95). The map keeps its colours. */
+@media print {
+  :root,
+  :root:not([data-theme="light"]),
+  [data-theme] {
+    --fw-bg: #ffffff;
+    --fw-surface: #ffffff;
+    --fw-ink: #1f2421;
+    --fw-muted: #596055;
+    --fw-faint: #8e9589;
+    --fw-line: #d6dccc;
+    --fw-control: #777f73;
+    --fw-table-head: #ffffff;
+    --fw-band-moss: #ffffff;
+    --fw-band-peat: #ffffff;
+    --fw-accent: #0b6e6e;
+    --fw-fire: #c2410c;
+    --fw-ok: #2e6b2e;
+    --fw-bad: #b42318;
+    --fw-concession: #2a744924;
+    color-scheme: light;
+  }
 }

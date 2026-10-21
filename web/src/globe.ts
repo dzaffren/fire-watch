@@ -90,7 +90,7 @@ export async function loadGlobe(): Promise<GlobeData> {
 
 export function globeColours(): GlobeColours {
   return {
-    sea: themeFill("--fw-surface"),
+    sea: themeFill("--fw-water"),
     land: themeFill("--fw-map"),
     // In dark the land and sea tokens are close, and the globe has no labels to show where the coast is.
     coast: themeFill("--fw-faint"),

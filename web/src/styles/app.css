@@ -268,8 +268,10 @@ a.fw-btn { text-decoration: none; }
    the one bold element. */
 .landing { min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; }
 .landing a.fw-btn { text-decoration: none; }
-.landing-main { width: 100%; max-width: 1080px; margin: 0 auto; box-sizing: border-box; padding: var(--fw-space-7) var(--fw-space-6); display: grid; gap: var(--fw-space-7); }
-.landing-hero { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); align-items: center; gap: var(--fw-space-6); }
+.landing-main { width: 100%; max-width: 1080px; margin: 0 auto; box-sizing: border-box; padding: 0 var(--fw-space-6) var(--fw-space-7); display: grid; gap: var(--fw-space-7); }
+/* The hero and the real case sit on full-width bands (D94). The border image paints the band past the column's edges
+   without widening the page. */
+.landing-hero { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); align-items: center; gap: var(--fw-space-6); padding-block: var(--fw-space-7); border-image: conic-gradient(var(--fw-band-moss) 0 0) fill 0 / / 0 100vmax; }
 .landing-intro { display: grid; gap: var(--fw-space-4); max-width: 68ch; }
 .landing-intro h1 { font-size: var(--fw-text-2xl); font-weight: var(--fw-weight-semibold); }
 .landing-lede { margin: 0; font-size: var(--fw-text-lg); }
@@ -293,7 +295,7 @@ a.fw-btn { text-decoration: none; }
 /* The real case: a scroll story over one map that holds still (D82). The step at the reading line is in ink, the rest
    muted; the map shows that step at once, and the reader's scroll is the only motion (tier 1). The map comes first in
    the page and first on screen, left of the captions or above them, so Tab order follows what the reader sees. */
-.case { display: grid; gap: var(--fw-space-4); padding-top: var(--fw-space-6); border-top: var(--fw-border) solid var(--fw-line); }
+.case { display: grid; gap: var(--fw-space-4); padding-block: var(--fw-space-6) var(--fw-space-7); border-image: conic-gradient(var(--fw-band-peat) 0 0) fill 0 / / 0 100vmax; }
 .case h2 { font-size: var(--fw-text-xl); font-weight: var(--fw-weight-semibold); }
 .case-story { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); grid-template-areas: "map steps"; gap: var(--fw-space-6); align-items: start; }
 .case-map { grid-area: map; position: sticky; top: var(--fw-space-5); height: calc(100vh - 2 * var(--fw-space-5)); height: calc(100dvh - 2 * var(--fw-space-5)); }
@@ -314,7 +316,8 @@ a.fw-btn { text-decoration: none; }
 .case-wait { height: 60vh; border-radius: var(--fw-radius-panel); background: var(--fw-skeleton); }
 
 @media (max-width: 720px) {
-  .landing-main { padding: var(--fw-space-6) var(--fw-space-4); gap: var(--fw-space-6); }
+  .landing-main { padding: 0 var(--fw-space-4) var(--fw-space-6); gap: var(--fw-space-6); }
+  .landing-hero { padding-block: var(--fw-space-6); }
   .landing-hero { grid-template-columns: minmax(0, 1fr); }
   .landing-section { grid-template-columns: minmax(0, 1fr); }
   .landing-words { grid-template-columns: minmax(0, 1fr); }
@@ -322,7 +325,7 @@ a.fw-btn { text-decoration: none; }
   .landing-foot { padding: var(--fw-space-5) var(--fw-space-4) var(--fw-space-6); }
   /* The map sits above the captions and stays in view as they scroll under it. */
   .case-story { grid-template-columns: minmax(0, 1fr); grid-template-areas: "map" "steps"; gap: 0; }
-  .case-map { top: 0; z-index: 1; height: 45vh; height: 45dvh; padding-bottom: var(--fw-space-3); background: var(--fw-bg); }
+  .case-map { top: 0; z-index: 1; height: 45vh; height: 45dvh; padding-bottom: var(--fw-space-3); background: var(--fw-band-peat); }
   .case-step { min-height: 45vh; }
   .case-step--pass { min-height: 30vh; }
   /* At 45% of a phone's height the legend would hide the fire; the captions say what each mark is. */
