@@ -1,6 +1,6 @@
 # Replay pace
 
-**Version:** v1 · **Status:** Refined · **Type:** Enhancement · **Project type:** Web UI
+**Version:** v1 · **Status:** Built · **Type:** Enhancement · **Project type:** Web UI
 
 **Depends on:** fire-origin
 
@@ -12,7 +12,8 @@ builder found the play button too fast to follow, and newcomer-walkthrough split
 The builder read the site as a newcomer on 2026-10-21 and found the play button too fast to follow.
 Play steps one pass every 600 ms (D30). The walkthrough's 8-pass 0332 fire plays in 4.2 s. The
 longest live fire, 18 passes in the 25 busiest concessions, plays in 10.2 s. Half a second is too
-short to see a pass's new dots land and read its date.
+short to see a pass's new dots land and read its date. The built page was faster still: it read the
+step as 0.6 ms, so play ran to the last pass almost at once (O4).
 
 ## Slice test
 
@@ -134,8 +135,8 @@ sequenceDiagram
 | File | What changes | Why |
 | ---- | ------------ | --- |
 | `docs/design/design-system/tokens/motion.css:8` | `--fw-replay-step: 600ms` becomes `1500ms` | Scenario 1 |
-| `web/src/FireView.tsx:239` | the fallback `\|\| 600` becomes `\|\| 1500` | Scenario 1, when the token is missing |
-| `web/src/FireView.test.tsx:262` | the test token becomes `1500ms`; the play test checks pass 1 at 1499 ms and pass 2 at 1500 ms; the pause and drag tests wait 4500 ms, not 1800 ms | Scenarios 1 and 2 |
+| `web/src/FireView.tsx:239` | `Replay` reads the token's unit, so the built `1.5s` is 1500 ms (O4); the fallback `\|\| 600` becomes `\|\| 1500` | Scenario 1 |
+| `web/src/FireView.test.tsx:262` | the test token becomes `1500ms`; the play test checks pass 1 at 1499 ms and pass 2 at 1500 ms; a new test sets the built form, `1.5s`; the pause and drag tests wait 4500 ms, not 1800 ms | Scenarios 1 and 2 |
 | `web/e2e/fire-origin.spec.ts:49` | install Playwright's clock before `page.goto`, pause it before Play, then step it with `runFor` through the 4 passes | Scenario 1 in a browser |
 | `docs/design/design-system/guidelines/motion.html:25` | `--fw-replay-step 1500ms` | the guideline matches the token |
 | `docs/design/design-system/guidelines/detections.html:60` | "every 1500 ms, so a 4-pass fire plays in 4.5 s and an 18-pass fire in 25.5 s" | the guideline matches the token |
@@ -155,7 +156,7 @@ Reusing: `Replay` and its `--fw-replay-step` read; the fire-origin e2e's 0332 fi
 | **Load**             | None on the server. One timer runs in the visitor's browser while play runs |
 | **Breaks first**     | Length, not load: a 40-pass fire would play for 58.5 s. Drag and the arrow keys still jump to any pass at once |
 | **Security surface** | No change: no new input, secret or stored data |
-| **Proof it works**   | On the live site, `getComputedStyle(document.documentElement).getPropertyValue("--fw-replay-step")` returns `1500ms` |
+| **Proof it works**   | On the live site, `getComputedStyle(document.documentElement).getPropertyValue("--fw-replay-step")` returns `1.5s`, and the 0332 fire's play takes 10.5 s |
 | **Rollout**          | No flag (light path). It ships with the deploy on main; a `git revert` of the token commit puts back 600 ms |
 
 ### Test plan
@@ -164,6 +165,7 @@ Reusing: `Replay` and its `--fw-replay-step` read; the fire-origin e2e's 0332 fi
 | -------- | ---- | ------- |
 | 1 Play holds each pass | `web/src/FireView.test.tsx` › "plays from the first pass, one pass every --fw-replay-step, and stops on the last" | `cd web && pnpm test` |
 | 1 in a browser | `web/e2e/fire-origin.spec.ts` › "opens the 0332 fire first seen outside and its first detection matches the chain" | `cd web && pnpm e2e fire-origin` |
+| 1 The built `1.5s` token | `web/src/FireView.test.tsx` › "reads the step in seconds, as the build's minifier writes 1500ms" | `cd web && pnpm test` |
 | 2 Dragging stops play | `web/src/FireView.test.tsx` › "moves to the pass dragged to and stops playing" | `cd web && pnpm test` |
 
 **E2E:** `web/e2e/fire-origin.spec.ts` opens the 0332 fire, presses Play and sees passes 1 to 4 at
@@ -191,6 +193,7 @@ Recorded as D93.
 | O1 | How long play holds each pass. D30 set 600 ms: the 8-pass 0332 fire plays in 4.2 s, the longest live fire (18 passes) in 10.2 s | question | spec p1 | user | Resolved | 2026-10-21: 1500 ms a pass, so 0332 plays in 10.5 s and an 18-pass fire in 25.5 s (D93) |
 | O2 | Whether stepping one pass at a time gets its own control: Back and Next buttons, or a marker for the newest pass | question | spec p1 | user | Resolved | 2026-10-21: slower play only; drag and the arrow keys already step one pass (D93) |
 | O3 | The build branch goes off the default branch, `main`. `main` lacks newcomer-walkthrough, so it has no D82 to D92 and D93 would collide | flag | build | user | Decided alone | Chose: `feat/replay-pace` off `docs/spec-replay-pace`, which sits on `feat/newcomer-walkthrough`; merge newcomer-walkthrough first. Other: branch off `main` and renumber D93 to D82. Undo: rebase `feat/replay-pace` onto `main` after newcomer-walkthrough merges. 2026-10-21 |
+| O4 | The plan said only the fallback changes in `Replay`. The build's CSS minifier writes `600ms` as `.6s`, and `Replay` read it with `parseFloat`, so play on the built site waited 0.6 ms a pass | flag | build | user | Decided alone | Chose: `Replay` scales a value without `ms` by 1000 (`a6744fe`), with a Fixed line in the CHANGELOG. Other: keep `ms` in the built CSS through a minifier setting. Undo: revert `a6744fe`; play then waits 1.5 ms a pass. 2026-10-21 |
 
 _Never delete this section or its rows. See references/ledger.md._
 
