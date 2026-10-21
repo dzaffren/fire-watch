@@ -146,6 +146,22 @@ describe("FireGlobe", () => {
     expect(onArrive).toHaveBeenCalledOnce();
   });
 
+  it("keeps the flat map over the fire when the reader gets there before the globe shows", async () => {
+    const onArrive = vi.fn();
+    const { container, rerender } = render(<FireGlobe atFire={false} onArrive={onArrive} flat={false} still={false} />);
+    await waitFor(() => expect(startGlobe).toHaveBeenCalled());
+
+    rerender(<FireGlobe atFire onArrive={onArrive} flat={false} still={false} />);
+    act(() => callbacks().onFirstFrame());
+
+    expect(onArrive).toHaveBeenCalledOnce();
+    expect(scene.flyTo).not.toHaveBeenCalled();
+    expect(scene.dispose).toHaveBeenCalledOnce();
+    expect(box(container)).toHaveAttribute("data-shown", "flat");
+    expect(globe3d()).not.toBeInTheDocument();
+    expect(vi.mocked(drawFlat).mock.lastCall![2]).toBe(DATA.near.box);
+  });
+
   it("goes back to the flat map for good when the globe runs under 30 fps (D80)", async () => {
     const { container } = await showGlobe();
 

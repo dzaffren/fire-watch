@@ -270,7 +270,7 @@ is a committed static file.
 | `web/src/main.tsx:32` | `Page` is the preview, else the pack for `?pack`, else the tool for `?tool` with `aboutHref="/"`, else the landing, each lazily loaded as now | Scenarios 1, 5; D72, D74 |
 | `web/src/Landing.tsx` (pause 2) | As built at pause 2 | Scenarios 1, 2, 4 |
 | `web/src/globeScene.ts:90` | `startGlobe()` takes `onSlow`. It counts frames over the globe's first 2 s of frame time, each frame's time capped at 100 ms, and calls `onSlow` when there are fewer than 60 (O13) | Scenario 3; D80 |
-| `web/src/FireGlobe.tsx:80` | On `onSlow`, disposes the scene, removes the 3D canvas and keeps the flat map in the square box. It asks `canDraw3d()` once for the page's life | Scenario 3; D80. Each ask made a WebGL context. Past the browser's limit the globe's own was dropped, and the box shrank from 537 px to 209 px after the flight |
+| `web/src/FireGlobe.tsx:80` | On `onSlow`, disposes the scene, removes the 3D canvas and keeps the flat map in the square box. It does the same when the reader arrives before the globe's first frame (O15). It asks `canDraw3d()` once for the page's life | Scenario 3; D80. Each ask made a WebGL context. Past the browser's limit the globe's own was dropped, and the box shrank from 537 px to 209 px after the flight |
 | `web/src/FireRecordPage.tsx` (pause 2) | `aboutHref` puts "About Fire Watch" in the header | Scenario 5 |
 | `web/public/staticwebapp.config.json` (new) | `{"mimeTypes": {".bin": "application/octet-stream"}}`; Vite copies it to the root of `dist`, where the deploy reads it | O10 |
 | `web/public/globe/*.bin` (pause 2) | Rewritten by `globe-day`, the same bytes | D79 |
@@ -365,6 +365,7 @@ Recorded as D79, D80, D81.
 | O12 | Whether the landing ships behind a flag | question | spec p3 | user | Resolved | 2026-10-20: no flag; a revert rolls it back (D81) |
 | O13 | The plan said `startGlobe()` "counts frames for 2 s after the first frame and calls `onSlow` when there are fewer than 60". By the clock, a tab sent to the background in those 2 s pauses its frames and reads as slow | flag | build | user | Decided alone | Chose: count over 2 s of frame time, each frame's time capped at 100 ms, as the turning already is (a03f65e). Below 10 fps the check takes longer than 2 s. Other: 2 s by the clock. Undo: in `tick()`, compare `now` with the first frame's time instead of summing `dt`. 2026-10-20 |
 | O14 | The Risks row said "`^0.186.1` stays within 0.186". Review A03: three.js is a new runtime dependency, and a range lets any 0.186 release in | flag | review | user | Decided alone | Chose: pin `three` at exactly 0.186.1 in `web/package.json`. Other: keep `^0.186.1`; the frozen lockfile and CI's `pnpm audit --prod` still hold it. Undo: revert the pin commit. 2026-10-21 |
+| O15 | Review: on desktop, a press of "Go to the example fire" before the globe's first frame arrived on the flat map. The globe then faded in on the world and flew to the fire a second time | flag | review | user | Decided alone | Chose: once the reader arrives on the flat map, it stays for good, as under 30 fps. Other: start the globe already over the fire. Undo: revert the fix commit, and give `startGlobe()` a starting view. 2026-10-21 |
 _Never delete this section or its rows. See references/ledger.md._
 
 ## Glossary
