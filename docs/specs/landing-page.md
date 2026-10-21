@@ -174,8 +174,8 @@ straight from the hero.
 | After "Go to the example fire" | The flight, then the second caption; reduced motion jumps straight there |
 | The globe's data didn't load | A help line in its place; the rest of the page works |
 
-**Motion tier:** 3 for the globe alone, within the brief's budget: 244 kB on desktop of the 250 kB
-ceiling, and 104 kB for the flat map. Tier 1 for the rest: the buttons' hover. Nothing else on the
+**Motion tier:** 3 for the globe alone, within the brief's budget: 242 kB on desktop of the 250 kB
+ceiling, and 102 kB for the flat map. Tier 1 for the rest: the buttons' hover. Nothing else on the
 page moves.
 
 **Components used:** `app-top`, `fw-btn`, `fw-btn--secondary`, `fw-link`, `fw-kv`, `fw-help`, and
@@ -238,7 +238,7 @@ sequenceDiagram
     R->>L: opens /
     L->>G: mount
     G->>W: land-110m.bin, fires-2026-10-14.bin, near-0332.bin
-    W-->>G: 102 kB, gzipped as committed
+    W-->>G: 100 kB, gzipped as committed
     G->>G: flat map drawn
     G->>W: globeScene chunk with three.js, desktop only
     G->>G: globe fades in; first 2 s at 30 fps or more, else back to flat
@@ -303,7 +303,7 @@ fake Google Maps.
 
 |                      |                                                                               |
 | -------------------- | ----------------------------------------------------------------------------- |
-| **Load**             | Static. A first visit on desktop downloads 244 kB for the globe after the text shows; a phone 104 kB. The browser caches the files |
+| **Load**             | Static. A first visit on desktop downloads 242 kB for the globe after the text shows; a phone 102 kB. The browser caches the files |
 | **Breaks first**     | A desktop with a weak GPU: the globe falls back to the flat map (D80). Visitors don't matter: Static Web Apps serves the files from its edge |
 | **Security surface** | No input and no new endpoint. The links stay on the site. three.js is a new runtime dependency, checked by CI's `pnpm audit --prod`. `globe-day` reads `FIRMS_MAP_KEY` from the operator's untracked `.env`. The files hold public data: FIRMS detections, Natural Earth land and one Trase edge |
 | **Proof it works**   | After the deploy, the site's `/` reads "Where did the fire start?", and `/globe/fires-2026-10-14.bin` answers 200 with `content-type: application/octet-stream` and 71,256 bytes |
