@@ -41,8 +41,9 @@ export function FireGlobe({ atFire, onArrive, flat = !desktop3d(), still = reduc
   const [data, setData] = useState<GlobeData | null>(null);
   const [failed, setFailed] = useState(false);
   const [globe, setGlobe] = useState(false);
-  // Under 30 fps the globe goes for good, and the flat map stays (D80).
-  const [slow, setSlow] = useState(false);
+  // The flat map stays for good under 30 fps (D80), or once the reader arrives on it: a globe shown after would open on
+  // the world again.
+  const [stayFlat, setStayFlat] = useState(false);
 
   useEffect(() => {
     let live = true;
@@ -77,14 +78,14 @@ export function FireGlobe({ atFire, onArrive, flat = !desktop3d(), still = reduc
 
   useEffect(() => {
     const canvas = globeCanvas.current;
-    if (!data || flat || slow || !canvas) return;
+    if (!data || flat || stayFlat || !canvas) return;
     let live = true;
     const scheme = matchMedia("(prefers-color-scheme: dark)");
     const recolour = () => scene.current?.recolour();
     import("./globeScene").then(
       ({ startGlobe }) => {
         if (live) {
-          scene.current = startGlobe(canvas, data, still, () => live && setGlobe(true), () => live && setSlow(true));
+          scene.current = startGlobe(canvas, data, still, () => live && setGlobe(true), () => live && setStayFlat(true));
         }
       },
       // Without three.js the flat map stays.
@@ -98,7 +99,7 @@ export function FireGlobe({ atFire, onArrive, flat = !desktop3d(), still = reduc
       scene.current = null;
       setGlobe(false);
     };
-  }, [data, flat, still, slow]);
+  }, [data, flat, still, stayFlat]);
 
   useEffect(() => {
     if (!atFire) return;
@@ -109,6 +110,7 @@ export function FireGlobe({ atFire, onArrive, flat = !desktop3d(), still = reduc
     }
     if (!data) return;
     if (!globe) {
+      setStayFlat(true);
       arrive.current?.();
       return;
     }
@@ -141,7 +143,7 @@ export function FireGlobe({ atFire, onArrive, flat = !desktop3d(), still = reduc
         }
         aria-hidden={globe}
       />
-      {!flat && !slow && (
+      {!flat && !stayFlat && (
         <canvas
           ref={globeCanvas}
           className="globe-3d"
