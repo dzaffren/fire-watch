@@ -845,3 +845,69 @@ Rejected: a build-time flag, off by default (one more GitHub variable, and two h
 working until it is removed).
 Source: docs/specs/landing-page.md
 Status: active
+
+## D82 · 2026-10-21 · Walk the example fire on the landing as a scroll story, one pass per stop
+
+Why: the builder, reading as a newcomer, couldn't tell what Fire Watch is for; one real fire told
+step by step shows it. The map holds still as the text scrolls, and each of the fire's 8 passes
+has its own scroll stop, so the judge sets the pace.
+Rejected: Back and Next buttons (the user chose to read by scrolling), a sequence that plays on its
+own (the judge can't set the pace, as with the tool's play button), one stop that plays the 8 passes
+(the judge can't stop on one pass).
+Source: docs/specs/newcomer-walkthrough.md
+Status: active
+
+## D83 · 2026-10-21 · Check the example fire's 283 seals live on the landing
+
+Why: showing a later change is a seal's one job. At the seal step the judge's browser reads all 283
+from Base Sepolia, as a pack does (D7).
+Rejected: a link to the pack for the check (one more click before the proof).
+Source: docs/specs/newcomer-walkthrough.md
+Status: active
+
+## D84 · 2026-10-21 · Keep 0332's fire for the walkthrough, and say when each pass was sealed
+
+Why: it is the globe's fire on 14 Oct (D75, D78), first seen outside and inside from 13 Oct. Its
+first six passes, 12 to 15 Oct, were sealed on 16 Oct when recording began, 23 hours to 4 days
+after the satellite; passes 7 and 8 about 3 hours after. Saying so keeps the claim true.
+Rejected: 0363's fire, sealed live from its first pass (29 detections on 6 passes, first seen
+16 Oct, not on the globe's day).
+Source: docs/specs/newcomer-walkthrough.md
+Status: active
+
+## D85 · 2026-10-21 · Commit a copy of the example fire's pack for the walkthrough
+
+Why: the landing needs nothing from an API that may be asleep (D73), and a pack holds its fire as it
+stood at its cut (D33, D37), so a copy cut at 17 Oct 2026 09:00 UTC can't go stale. Its 283 records
+are public FIRMS detections and their seals.
+Rejected: reading the pack from the API on each visit (up to a minute after a quiet hour).
+Source: docs/specs/newcomer-walkthrough.md
+Status: active
+
+## D86 · 2026-10-21 · Say Indonesia's pulpwood concessions are the first map, not the limit
+
+Why: the globe shows 62,489 fires worldwide on 14 Oct 2026. Sealing them all is 25 times the
+busiest day's 2,495 seals, and would spend the wallet in under 2 days at one seal per transaction
+(D19). No public concession map exists outside Trase's Indonesian pulpwood map (D12).
+Rejected: recording the world now (the seal volume, and no land-holder map), opening any globe
+fire's raw record (new globe work for a record with no concession and no seal).
+Source: docs/specs/newcomer-walkthrough.md
+Status: active
+
+## D87 · 2026-10-21 · The landing is the hero, the real case, how you use it, and the words
+
+Why: the case tells the problem, so "Two accounts of the same fire" goes. "How it works" becomes
+"How you use it", the tool's four steps, so the page says how to use the tool.
+Rejected: every section kept with the case added (the problem told twice), the hero and the case
+only (nothing says how to use the tool).
+Source: docs/specs/newcomer-walkthrough.md
+Status: active
+
+## D88 · 2026-10-21 · The landing speaks first to a judge reading once
+
+Why: judges read the site once before 2026-10-25, in about two minutes, and don't know what a
+concession is.
+Rejected: an investigator (the tool's screens serve them), anyone curious about fires near them (a
+different use that changes what the tool shows).
+Source: docs/specs/newcomer-walkthrough.md
+Status: active
