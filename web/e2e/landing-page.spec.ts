@@ -63,6 +63,10 @@ test("a newcomer reads the landing, walks the real case to its seals, then opens
   await page.getByRole("link", { name: "Walk through a real case" }).click();
   await expect(page).toHaveURL(`${WEB_URL}/#case`);
   const steps = page.getByRole("region", { name: "A real case" }).getByRole("listitem");
+  // The map comes first in the page, so it sits first on screen too: Tab reaches its zoom buttons before the captions.
+  const mapBox = (await page.locator(".case-map").boundingBox())!;
+  const stepsBox = (await page.locator(".case-steps").boundingBox())!;
+  expect(mapBox.x + mapBox.width).toBeLessThanOrEqual(stepsBox.x);
   await toStep(page, 2);
   await expect(steps.nth(2)).toContainText("outside the concession and 3,100 m from its edge");
   await toStep(page, 3);
