@@ -289,6 +289,29 @@ a.fw-btn { text-decoration: none; }
 .landing-words dt { font-weight: var(--fw-weight-medium); color: var(--fw-ink); }
 .landing-foot { width: 100%; max-width: 1080px; margin: auto auto 0; box-sizing: border-box; padding: var(--fw-space-5) var(--fw-space-6) var(--fw-space-7); }
 .landing-foot p { margin: 0; max-width: 72ch; }
+
+/* The real case: a scroll story over one map that holds still (D82). The step at the reading line is in ink, the rest
+   muted; the map shows that step at once, and the reader's scroll is the only motion (tier 1). */
+.case { display: grid; gap: var(--fw-space-4); padding-top: var(--fw-space-6); border-top: var(--fw-border) solid var(--fw-line); }
+.case h2 { font-size: var(--fw-text-xl); font-weight: var(--fw-weight-semibold); }
+.case-story { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); grid-template-areas: "steps map"; gap: var(--fw-space-6); align-items: start; }
+.case-map { grid-area: map; position: sticky; top: var(--fw-space-5); height: calc(100vh - 2 * var(--fw-space-5)); height: calc(100dvh - 2 * var(--fw-space-5)); }
+.case-map .map-col { height: 100%; border: var(--fw-border) solid var(--fw-line); border-radius: var(--fw-radius-panel); }
+.case-pass { position: absolute; top: var(--fw-space-4); left: var(--fw-space-4); padding: var(--fw-space-2) var(--fw-space-3); }
+.case-pass .fw-mono { font-size: var(--fw-text-sm); white-space: nowrap; }
+.case-steps { grid-area: steps; margin: 0; padding: 0; list-style: none; }
+.case-step { min-height: 50vh; display: grid; align-content: center; gap: var(--fw-space-3); color: var(--fw-muted); max-width: 46ch; }
+.case-step--pass { min-height: 30vh; }
+.case-step[aria-current="step"] { color: var(--fw-ink); }
+.case-step h3 { font-size: var(--fw-text-lg); font-weight: var(--fw-weight-semibold); }
+.case-step p { margin: 0; }
+.case-step .fw-mono { font-size: var(--fw-text-sm); }
+.case-check { display: flex; flex-wrap: wrap; align-items: center; gap: var(--fw-space-2) var(--fw-space-3); }
+.case-check p { margin: 0; }
+.case-check-title { font-weight: var(--fw-weight-semibold); }
+.case-changed { flex-basis: 100%; margin: 0; padding: 0; list-style: none; color: var(--fw-bad); }
+.case-wait { height: 60vh; border-radius: var(--fw-radius-panel); background: var(--fw-skeleton); }
+
 @media (max-width: 720px) {
   .landing-main { padding: var(--fw-space-6) var(--fw-space-4); gap: var(--fw-space-6); }
   .landing-hero { grid-template-columns: minmax(0, 1fr); }
@@ -296,4 +319,11 @@ a.fw-btn { text-decoration: none; }
   .landing-words { grid-template-columns: minmax(0, 1fr); }
   .landing-words dd + dt { margin-top: var(--fw-space-2); }
   .landing-foot { padding: var(--fw-space-5) var(--fw-space-4) var(--fw-space-6); }
+  /* The map sits above the captions and stays in view as they scroll under it. */
+  .case-story { grid-template-columns: minmax(0, 1fr); grid-template-areas: "map" "steps"; gap: 0; }
+  .case-map { top: 0; z-index: 1; height: 45vh; height: 45dvh; padding-bottom: var(--fw-space-3); background: var(--fw-bg); }
+  .case-step { min-height: 45vh; }
+  .case-step--pass { min-height: 30vh; }
+  /* At 45% of a phone's height the legend would hide the fire; the captions say what each mark is. */
+  .case-map .map-legend { display: none; }
 }
