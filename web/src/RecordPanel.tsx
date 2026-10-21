@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import type { Hex } from "viem";
+import { zeroHash, type Hex } from "viem";
 import type { HotspotRecord } from "./api";
 import { confidence, count, detected, firePower, gap, location, plural, satellite, shortHash, whereFromEdge } from "./format";
 import { AlertIcon, BadIcon, CheckingIcon, ExternalIcon, OkIcon, PendingIcon } from "./icons";
@@ -37,6 +37,10 @@ const STATUS: Record<Exclude<Check["state"], "error">, { chip: string; icon: Rea
     note: "The stored record has changed since it was sealed. The chain still holds the original fingerprint.",
   },
 };
+
+/** One record's check from its seal: zero is not on the chain yet, its own fingerprint matches, anything else changed. */
+export const checkOf = (sealed: Hex, fingerprint: Hex): Check =>
+  sealed === zeroHash ? { state: "pending" } : sealed === fingerprint ? { state: "matches" } : { state: "mismatch", sealed };
 
 /** The headline count: how many of the pack's detections match their seals. */
 export function checkTitle(checks: Check[]): string {

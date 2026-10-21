@@ -1,12 +1,12 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
-import { zeroHash, type Hex } from "viem";
+import type { Hex } from "viem";
 import type { HotspotRecord, PackDetail, PackRef } from "./api";
 import { DamageSection } from "./Damage";
 import { FireMap } from "./FireMap";
 import { fireArea, fireDots, passTimes, Replay, where } from "./FireView";
 import { count, detected, detectedShort, distance, firstSeenLine, location, plural, shortHash } from "./format";
 import { AlertIcon, ExternalIcon, OkIcon } from "./icons";
-import { checkTitle, Chip, overall, RecordPanel, type Check } from "./RecordPanel";
+import { checkOf, checkTitle, Chip, overall, RecordPanel, type Check } from "./RecordPanel";
 
 /** Where the pack gets its data; the preview passes fixtures, the app passes the API and the chain. */
 export interface PackSource {
@@ -98,10 +98,7 @@ export function ComplaintPack({ source, packRef, initialOpen = null }: Props) {
         live &&
         setChecked({
           pack,
-          checks: seals.map((sealed, i): Check => {
-            if (sealed === zeroHash) return { state: "pending" };
-            return sealed === fps[i] ? { state: "matches" } : { state: "mismatch", sealed };
-          }),
+          checks: seals.map((sealed, i) => checkOf(sealed, fps[i])),
         }),
       () => live && setChecked({ pack, checks: all({ state: "error" }) }),
     );
