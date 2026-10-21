@@ -2,7 +2,13 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { afterEach, expect, it, vi } from "vitest";
-import { loadGlobe } from "./globe";
+import { globeColours, loadGlobe } from "./globe";
+
+// Colours by token name, so a test can read which token each part is drawn with.
+vi.mock("./maps", async (original) => ({
+  ...(await original<typeof import("./maps")>()),
+  themeFill: (name: string) => name,
+}));
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -25,4 +31,8 @@ it("reads the committed files: 41,380 fires, 128 land rings, and 0332's box and 
   }
   const [west, south, east, north] = data.near.box;
   expect(data.near.fires.every(([x, y]) => x >= west && x <= east && y >= south && y <= north)).toBe(true);
+});
+
+it("draws the sea in --fw-water and the land in --fw-map", () => {
+  expect(globeColours()).toMatchObject({ sea: "--fw-water", land: "--fw-map" });
 });
