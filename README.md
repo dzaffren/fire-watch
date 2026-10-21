@@ -22,6 +22,7 @@ for watchdog investigators who file grievances over fires on plantation land.
 - Each fire gets an estimate of the ground it burned, the CO₂ it released and what that cost, split at the concession's edge, in the fire view and the pack.
 - A page at the site's address says what Fire Watch is for a newcomer, with a globe of 14 Oct 2026's fires that flies to a real fire; the tool moves to `/?tool`.
 - The landing walks a judge through one real fire, from the company's claim to a seal check in their own browser, then says how to use the tool.
+- Play in a fire's replay holds each satellite pass for 1.5 s, not 0.6 s, so the spread can be followed pass by pass.
 
 ## Docs
 

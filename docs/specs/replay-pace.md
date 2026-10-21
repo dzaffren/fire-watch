@@ -1,6 +1,6 @@
 # Replay pace
 
-**Version:** v1 · **Status:** Built · **Type:** Enhancement · **Project type:** Web UI
+**Version:** v1 · **Status:** Shipped · **Type:** Enhancement · **Project type:** Web UI
 
 **Depends on:** fire-origin
 
@@ -196,8 +196,8 @@ Recorded as D93.
 | -- | ---- | ---- | --------- | ----- | ------ | ------ |
 | O1 | How long play holds each pass. D30 set 600 ms: the 8-pass 0332 fire plays in 4.2 s, the longest live fire (18 passes) in 10.2 s | question | spec p1 | user | Resolved | 2026-10-21: 1500 ms a pass, so 0332 plays in 10.5 s and an 18-pass fire in 25.5 s (D93) |
 | O2 | Whether stepping one pass at a time gets its own control: Back and Next buttons, or a marker for the newest pass | question | spec p1 | user | Resolved | 2026-10-21: slower play only; drag and the arrow keys already step one pass (D93) |
-| O3 | The build branch goes off the default branch, `main`. `main` lacks newcomer-walkthrough, so it has no D82 to D92 and D93 would collide | flag | build | user | Decided alone | Chose: `feat/replay-pace` off `docs/spec-replay-pace`, which sits on `feat/newcomer-walkthrough`; merge newcomer-walkthrough first. Other: branch off `main` and renumber D93 to D82. Undo: rebase `feat/replay-pace` onto `main` after newcomer-walkthrough merges. 2026-10-21 |
-| O4 | The plan said only the fallback changes in `Replay`. The build's CSS minifier writes `600ms` as `.6s`, and `Replay` read it with `parseFloat`, so play on the built site waited 0.6 ms a pass | flag | build | user | Decided alone | Chose: `Replay` scales a value without `ms` by 1000 (`a6744fe`), with a Fixed line in the CHANGELOG. Other: keep `ms` in the built CSS through a minifier setting. Undo: revert `a6744fe`; play then waits 1.5 ms a pass. 2026-10-21 |
+| O3 | The build branch goes off the default branch, `main`. `main` lacks newcomer-walkthrough, so it has no D82 to D92 and D93 would collide | flag | build | user | Decided alone | Chose: `feat/replay-pace` off `docs/spec-replay-pace`, which sits on `feat/newcomer-walkthrough`; merge newcomer-walkthrough first. Other: branch off `main` and renumber D93 to D82. Undo: rebase `feat/replay-pace` onto `main` after newcomer-walkthrough merges; /ship did this after PR 13 merged. 2026-10-21 |
+| O4 | The plan said only the fallback changes in `Replay`. The build's CSS minifier writes `600ms` as `.6s`, and `Replay` read it with `parseFloat`, so play on the built site waited 0.6 ms a pass | flag | build | user | Decided alone | Chose: `Replay` scales a value without `ms` by 1000 (`3a219bb`), with a Fixed line in the CHANGELOG. Other: keep `ms` in the built CSS through a minifier setting. Undo: revert `3a219bb`; play then waits 1.5 ms a pass. 2026-10-21 |
 
 _Never delete this section or its rows. See references/ledger.md._
 
