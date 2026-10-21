@@ -44,7 +44,7 @@ Rejected: Survey ink blue (clean but a generic map-office look), Haze indigo (ca
 toward report software), Canopy green (its green accent forced "matches" into blue to stay
 distinct).
 Source: docs/design/system-brief.md
-Status: active
+Status: superseded by D94
 
 ## D5 · 2026-10-13 · Google Maps for the base map, not Azure Maps
 
@@ -319,7 +319,7 @@ an area and keeps fire dots at 3.8:1 and 6.3:1 against it.
 Rejected: the dashed edge alone (the map can't back up an inside or outside reading), a teal accent
 wash (the accent means "you can act", D4).
 Source: docs/design/system-brief.md
-Status: active
+Status: superseded by D96
 
 ## D30 · 2026-10-16 · Replay one satellite pass every 600 ms
 
@@ -958,4 +958,38 @@ Rejected: 600 ms (too fast to follow, found on 2026-10-21), 1000 ms (0332 in 7 s
 pass), Back and Next pass buttons (new interface; drag and the arrow keys already step one pass).
 Supersedes: D30
 Source: docs/specs/replay-pace.md
+Status: active
+
+## D94 · 2026-10-21 · Deeper Peatland: colour on the maps, the ground and the landing's bands
+
+Why: on 2026-10-21 the builder found the site too grey as a newcomer; colour sat only on links,
+buttons and fire dots. Peatland still ties the look to the land the product watches. Teal stays the
+one accent, only for "you can act", and sits far from ember, so it never reads as fire. Ember stays
+for fire marks only. Every pair passes WCAG AA in both themes.
+Rejected: D4's near-grey stone (too grey for a newcomer), a new family such as Survey ink blue, Haze
+indigo or Canopy green (more of the half day, and D4's reasons against each still hold), teal on
+headings and icons (teal means "you can act"), colour on the maps alone (the landing's first screen
+stays grey).
+Supersedes: D4
+Source: docs/specs/palette.md
+Status: active
+
+## D95 · 2026-10-21 · Print the pack on a white page, with its map in colour
+
+Why: a buyer prints the pack to PDF. A tinted ground costs ink and prints only when forced, while the
+map's colours carry meaning: land, water, the concession and the fire.
+Rejected: full colour print (the ground and panels print only when forced, and use more ink).
+Source: docs/specs/palette.md
+Status: active
+
+## D96 · 2026-10-21 · Wash the inside of a concession acacia green with --fw-concession on every map
+
+Why: a dashed edge alone doesn't show which side is inside (D29), and the ink tint reads grey on the
+new moss land. Acacia green at 14% (light) and light acacia at 13% (dark) reads as the plantation, and
+keeps fire at 3.38:1 and 5.11:1 against it.
+Rejected: ink at 6% and 7% (D29; grey on moss), peat brown (reads as burned ground, and sits near
+ember), a teal wash (teal means "you can act", D94), the dashed edge alone (the map can't back up an
+inside or outside reading).
+Supersedes: D29
+Source: docs/specs/palette.md
 Status: active
