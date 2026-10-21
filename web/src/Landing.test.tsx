@@ -2,6 +2,7 @@ import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { FireGlobe } from "./FireGlobe";
 import { Landing } from "./Landing";
+import type { CaseSource } from "./RealCase";
 
 // The globe arrives at once; FireGlobe.test.tsx covers the flight.
 vi.mock("./FireGlobe", async () => {
@@ -16,33 +17,38 @@ vi.mock("./FireGlobe", async () => {
   };
 });
 
+// The case has its own tests; here it is only placed.
+vi.mock("./RealCase", () => ({ RealCase: () => null }));
+const caseSource = {} as CaseSource;
+
 // The 0332 fire first seen 12 Oct 05:16 UTC outside the concession, cut at 17 Oct 2026 09:00 UTC (D78).
 const EXAMPLE_PACK =
   "/?pack=ID-WOOD-CONCESSION-0332&fire=0x13b417c6f54dd95c7c418b5df3f34963cf00f46555d5cae74693cdffbb1d1cf7&as_of=1792227600";
 
 describe("Landing", () => {
-  it("says what Fire Watch does and for whom, and the problem it answers", () => {
-    render(<Landing />);
+  it("says what Fire Watch does, who uses it, and that Indonesia is the first map", () => {
+    render(<Landing caseSource={caseSource} />);
 
-    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Where did the fire start?");
-    expect(
-      screen.getByText(/^Fire Watch records every satellite fire detection on or near Indonesia's pulpwood plantations/),
-    ).toHaveTextContent("Watchdog investigators use it to show a company's buyers where a fire started and how it spread");
-    const problem = screen.getByRole("region", { name: "Two accounts of the same fire" });
-    expect(problem).toHaveTextContent(
-      "The company often answers that the fire started outside its concession and spread in, or that the complaint has no site, date or basis.",
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
+      "Show where a plantation fire started, on records anyone can check.",
     );
+    expect(screen.getByText(/^Watchdog groups use Fire Watch to report a fire on plantation land/)).toHaveTextContent(
+      "the buyer checks every record in their own browser",
+    );
+    expect(screen.getByText(/^Today it watches Indonesia's pulpwood concessions, the first map loaded\./)).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "A real case" })).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Two accounts of the same fire" })).not.toBeInTheDocument();
   });
 
-  it("gives the four steps, the dated facts and the four words", () => {
-    render(<Landing />);
+  it("gives the tool's four steps, the dated facts and the four words", () => {
+    render(<Landing caseSource={caseSource} />);
 
-    const steps = within(screen.getByRole("region", { name: "How it works" })).getAllByRole("listitem");
+    const steps = within(screen.getByRole("region", { name: "How you use it" })).getAllByRole("listitem");
     expect(steps.map((s) => s.querySelector("strong")?.textContent)).toEqual([
-      "Satellites spot fires.",
-      "Each record is sealed.",
-      "An investigator finds where it started.",
-      "The buyer checks it.",
+      "Pick dates.",
+      "Pick a concession.",
+      "Open a fire.",
+      "Make a pack and send its link.",
     ]);
     expect(
       screen.getByText(
@@ -54,22 +60,22 @@ describe("Landing", () => {
   });
 
   it("names no company", () => {
-    const { container } = render(<Landing />);
+    const { container } = render(<Landing caseSource={caseSource} />);
 
     expect(container.textContent).not.toMatch(/\bPT\b|\bTbk\b|\bLtd\b|\bGroup\b/);
   });
 
-  it("links to the tool at its own address, and to the example fire's pack", () => {
-    render(<Landing />);
+  it("links to the tool at its own address, and to the real case", () => {
+    render(<Landing caseSource={caseSource} />);
 
     const tool = screen.getAllByRole("link", { name: "Open the tool" });
-    expect(tool).toHaveLength(2);
+    expect(tool).toHaveLength(3);
     tool.forEach((link) => expect(link).toHaveAttribute("href", "/?tool"));
-    expect(screen.getByRole("link", { name: "See a real example" })).toHaveAttribute("href", EXAMPLE_PACK);
+    expect(screen.getByRole("link", { name: "Walk through a real case" })).toHaveAttribute("href", "#case");
   });
 
   it("goes to the example fire, then gives its story and its pack", () => {
-    render(<Landing />);
+    render(<Landing caseSource={caseSource} />);
     expect(vi.mocked(FireGlobe).mock.lastCall![0].atFire).toBe(false);
 
     fireEvent.click(screen.getByRole("button", { name: "Go to the example fire" }));

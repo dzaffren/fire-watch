@@ -8,7 +8,11 @@ const params = new URLSearchParams(location.search);
 
 // Each page loads only its own modules: the preview runs without the chain settings the API source needs.
 // The landing at the site's address (D72), and the tool at its own link (D74).
-const LandingPage = lazy(() => import("./Landing").then(({ Landing }) => ({ default: Landing })));
+const LandingPage = lazy(() =>
+  Promise.all([import("./Landing"), import("./api")]).then(([{ Landing }, { caseSource }]) => ({
+    default: () => <Landing caseSource={caseSource} />,
+  })),
+);
 const ToolPage = lazy(() =>
   import("./api").then(({ apiSource }) => ({
     default: () => <FireRecordPage source={apiSource} today={today} aboutHref="/" />,
@@ -30,6 +34,7 @@ const PREVIEWS = import.meta.env.DEV
       "damage-estimate": lazy(() => import("./preview/DamageEstimatePreview")),
       "fire-globe": lazy(() => import("./preview/FireGlobePreview")),
       "landing-page": lazy(() => import("./preview/LandingPagePreview")),
+      "newcomer-walkthrough": lazy(() => import("./preview/NewcomerWalkthroughPreview")),
     }
   : null;
 const Preview = PREVIEWS?.[params.get("preview") as keyof typeof PREVIEWS] ?? null;

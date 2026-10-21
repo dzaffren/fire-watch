@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import type { Hex } from "viem";
 import type { HotspotRecord } from "./api";
-import { confidence, detected, firePower, gap, location, satellite, shortHash, whereFromEdge } from "./format";
+import { confidence, count, detected, firePower, gap, location, plural, satellite, shortHash, whereFromEdge } from "./format";
 import { AlertIcon, BadIcon, CheckingIcon, ExternalIcon, OkIcon, PendingIcon } from "./icons";
 
 export type Check =
@@ -37,6 +37,27 @@ const STATUS: Record<Exclude<Check["state"], "error">, { chip: string; icon: Rea
     note: "The stored record has changed since it was sealed. The chain still holds the original fingerprint.",
   },
 };
+
+/** The headline count: how many of the pack's detections match their seals. */
+export function checkTitle(checks: Check[]): string {
+  const n = checks.length;
+  const tally = (state: Check["state"]) => checks.filter((c) => c.state === state).length;
+  const [matches, mismatch, pending, checking, failed] = (["matches", "mismatch", "pending", "checking", "error"] as const).map(tally);
+  if (checking) return `Checking ${plural(n, "detection", "detections")} against the chain`;
+  if (failed) return `Couldn't check ${count(failed)} of ${plural(n, "detection", "detections")}`;
+  let title = `${count(matches)} of ${plural(n, "detection", "detections")} ${matches === 1 ? "matches" : "match"} the chain`;
+  if (mismatch) title += `. ${count(mismatch)} ${mismatch === 1 ? "does" : "do"} not.`;
+  if (pending) title += `${mismatch ? "" : "."} ${count(pending)} ${pending === 1 ? "is" : "are"} not on the chain yet.`;
+  return title;
+}
+
+export function overall(checks: Check[]): Check {
+  for (const state of ["checking", "error", "mismatch", "pending"] as const) {
+    const found = checks.find((c) => c.state === state);
+    if (found) return found;
+  }
+  return { state: "matches" };
+}
 
 /** A record's check in a list: the status label alone, or "Couldn't check". */
 export function Chip({ check }: { check: Check }) {

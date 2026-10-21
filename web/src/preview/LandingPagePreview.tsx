@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { FireRecordPage } from "../FireRecordPage";
 import { Landing } from "../Landing";
 import { fixture, param, syncPreview, THEMES, type Theme } from "./fixture";
+import { makeSource as makeCaseSource } from "./NewcomerWalkthroughPreview";
 import { AS_OF, makeSource } from "./SpreadForecastPreview";
 import "./preview.css";
 
@@ -18,6 +19,7 @@ export default function LandingPagePreview() {
   const [state, setState] = useState<State>(() => param("state", STATES, "landing"));
   const [theme, setTheme] = useState<Theme>(() => param("theme", THEMES, "system"));
   const tool = useMemo(() => makeSource("concession"), []);
+  const real = useMemo(() => makeCaseSource("match"), []);
 
   useEffect(() => syncPreview(state, theme), [state, theme]);
 
@@ -46,7 +48,7 @@ export default function LandingPagePreview() {
         </label>
       </div>
       {state === "landing" ? (
-        <Landing key={theme} />
+        <Landing key={theme} caseSource={real} />
       ) : (
         <FireRecordPage
           key={theme}

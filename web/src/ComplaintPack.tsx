@@ -6,7 +6,7 @@ import { FireMap } from "./FireMap";
 import { fireArea, fireDots, passTimes, Replay, where } from "./FireView";
 import { count, detected, detectedShort, distance, firstSeenLine, location, plural, shortHash } from "./format";
 import { AlertIcon, ExternalIcon, OkIcon } from "./icons";
-import { Chip, RecordPanel, type Check } from "./RecordPanel";
+import { checkTitle, Chip, overall, RecordPanel, type Check } from "./RecordPanel";
 
 /** Where the pack gets its data; the preview passes fixtures, the app passes the API and the chain. */
 export interface PackSource {
@@ -39,27 +39,6 @@ function passSides(detections: HotspotRecord[], id: string): string {
     parts.push(`${count(edges.length)} ${inside ? "inside" : "outside"}, ${span}`);
   }
   return parts.join("; ");
-}
-
-/** The headline count: how many of the pack's detections match their seals. */
-function checkTitle(checks: Check[]): string {
-  const n = checks.length;
-  const tally = (state: Check["state"]) => checks.filter((c) => c.state === state).length;
-  const [matches, mismatch, pending, checking, failed] = (["matches", "mismatch", "pending", "checking", "error"] as const).map(tally);
-  if (checking) return `Checking ${plural(n, "detection", "detections")} against the chain`;
-  if (failed) return `Couldn't check ${count(failed)} of ${plural(n, "detection", "detections")}`;
-  let title = `${count(matches)} of ${plural(n, "detection", "detections")} ${matches === 1 ? "matches" : "match"} the chain`;
-  if (mismatch) title += `. ${count(mismatch)} ${mismatch === 1 ? "does" : "do"} not.`;
-  if (pending) title += `${mismatch ? "" : "."} ${count(pending)} ${pending === 1 ? "is" : "are"} not on the chain yet.`;
-  return title;
-}
-
-function overall(checks: Check[]): Check {
-  for (const state of ["checking", "error", "mismatch", "pending"] as const) {
-    const found = checks.find((c) => c.state === state);
-    if (found) return found;
-  }
-  return { state: "matches" };
 }
 
 interface Props {
