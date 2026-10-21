@@ -414,34 +414,7 @@ Single chunk. Pause 2 built the screens, and what remains touches the same few f
 
 ### Decisions to record
 
-```
-## D90 · 2026-10-21 · Commit the example pack as the API's own JSON, redone by one curl line
-
-Why: the API answers the same 156,600 bytes for the same cut (two fetches two hours apart matched,
-sha256 d1a43d1e…), so one curl line redoes it exactly, and a test pins its 283 records and 8 passes.
-It stays readable in git.
-Rejected: a case-pack command in api/, as globe-day (D79) (more to build for a file that is one API
-answer), a gzipped .bin like the globe's files (not readable in git).
-Source: docs/specs/newcomer-walkthrough.md
-Status: active
-
-## D91 · 2026-10-21 · Load the seal-check code at the real case's seal step
-
-Why: viem is 79 kB gzipped. The landing's first load stays without chain code, and the code
-downloads while the step reads "Checking".
-Rejected: loading it with the landing (79 kB more on every visit, mostly for readers who never
-reach the seals).
-Source: docs/specs/newcomer-walkthrough.md
-Status: active
-
-## D92 · 2026-10-21 · Seal the example pack's 283 records on the e2e's anvil in global setup
-
-Why: the e2e then reads real seals through Multicall3, as production does, and sees "283 of 283".
-Rejected: a canned RPC answer from Playwright (the e2e no longer runs the real read), checking only
-that "Checking" shows (the count goes untested end to end).
-Source: docs/specs/newcomer-walkthrough.md
-Status: active
-```
+Recorded as D90, D91, D92.
 
 ## Open items
 
