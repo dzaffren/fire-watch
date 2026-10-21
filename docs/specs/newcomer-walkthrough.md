@@ -190,9 +190,9 @@ Scenario: The landing says how to use the tool
 
 ## Interface
 
-The landing keeps its hero and globe, with new words. Below them, "A real case" is a scroll story: the
-captions scroll on the left and one map holds still on the right. Each caption changes one thing on
-the map. "How you use it" and "Words used here" follow.
+The landing keeps its hero and globe, with new words. Below them, "A real case" is a scroll story: one
+map holds still on the left, on top on a phone, and the captions scroll beside it. Each caption
+changes one thing on the map. "How you use it" and "Words used here" follow.
 
 ```mermaid
 flowchart LR
@@ -416,6 +416,12 @@ Single chunk. Pause 2 built the screens, and what remains touches the same few f
 
 Recorded as D90, D91, D92.
 
+## Review
+
+2026-10-21 · 2 raw findings, 1 survived, 1 fixed.
+
+- correctness · `web/src/styles/app.css:298` · the case's map left of its captions on desktop, so Tab order follows the screen · `583dfb5`
+
 ## Open items
 
 | ID | What | Type | Raised at | Owner | Status | Answer |
@@ -438,6 +444,7 @@ Recorded as D90, D91, D92.
 | O15 | The e2e's anvil has none of the copy's 283 seals | question | spec p3 | user | Resolved | 2026-10-21: global setup seals them as the recorder wallet (D92) |
 | O16 | Static Web Apps compresses the live site's JS with Brotli, checked 2026-10-21. Nobody has checked JSON; without it the copy costs 157 kB, not 31 kB | unproven | spec p3 | user | Accepted risk | 2026-10-21: `/ship` checks the deployed file's content-encoding. At worst the case loads 157 kB after the hero shows |
 | O17 | Pause 2 stood in for the chain, so "283 of 283" on Base Sepolia was unchecked | unproven | spec p3 | — | Resolved | 2026-10-21: one Multicall3 read from `sepolia.base.org` of the copy's 283 record IDs against FireRecords `0x6A55…Eb2a`: 283 match, 0 changed, 0 unsealed |
+| O18 | The Interface said "the captions scroll on the left and one map holds still on the right". Review: the map comes first in the page, so Tab reached its zoom buttons before the captions' controls on their left | flag | review | user | Decided alone | Chose: the map on the left on desktop and on top on phones, so the page order and the screen agree (`583dfb5`). Other: the captions first in the page, which puts the zoom buttons last while a phone shows the map on top. Undo: revert `583dfb5`. 2026-10-21 |
 _Never delete this section or its rows. See references/ledger.md._
 
 ## Glossary
