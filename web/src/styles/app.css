@@ -291,10 +291,11 @@ a.fw-btn { text-decoration: none; }
 .landing-foot p { margin: 0; max-width: 72ch; }
 
 /* The real case: a scroll story over one map that holds still (D82). The step at the reading line is in ink, the rest
-   muted; the map shows that step at once, and the reader's scroll is the only motion (tier 1). */
+   muted; the map shows that step at once, and the reader's scroll is the only motion (tier 1). The map comes first in
+   the page and first on screen, left of the captions or above them, so Tab order follows what the reader sees. */
 .case { display: grid; gap: var(--fw-space-4); padding-top: var(--fw-space-6); border-top: var(--fw-border) solid var(--fw-line); }
 .case h2 { font-size: var(--fw-text-xl); font-weight: var(--fw-weight-semibold); }
-.case-story { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); grid-template-areas: "steps map"; gap: var(--fw-space-6); align-items: start; }
+.case-story { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); grid-template-areas: "map steps"; gap: var(--fw-space-6); align-items: start; }
 .case-map { grid-area: map; position: sticky; top: var(--fw-space-5); height: calc(100vh - 2 * var(--fw-space-5)); height: calc(100dvh - 2 * var(--fw-space-5)); }
 .case-map .map-col { height: 100%; border: var(--fw-border) solid var(--fw-line); border-radius: var(--fw-radius-panel); }
 .case-pass { position: absolute; top: var(--fw-space-4); left: var(--fw-space-4); padding: var(--fw-space-2) var(--fw-space-3); }
