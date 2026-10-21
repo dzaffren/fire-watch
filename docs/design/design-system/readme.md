@@ -9,7 +9,7 @@ as evidence: precise, sober, trustworthy; never alarmist, playful or salesy.
   map markers, replay timeline, fire globe. One guideline page each in `guidelines/`.
 - **Rules:** fire colour is for fire marks only. The accent means "you can act". Status labels
   always carry an icon and words. Motion is tier 1 on working screens, tier 2 for the replay,
-  tier 3 only for the fire globe; the replay steps one pass every 600 ms. Fire dots are 3 px below
+  tier 3 only for the fire globe; the replay steps one pass every 1500 ms. Fire dots are 3 px below
   zoom 12 and size by fire power from zoom 12. A concession is a dashed edge over a faint
   `--fw-concession` tint, so the map shows which side is inside.
 

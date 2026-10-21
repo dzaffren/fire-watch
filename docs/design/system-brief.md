@@ -28,7 +28,7 @@ Choices were made on the directions page
 | Oldest target | Current desktop and phone browsers, last two versions | user, confirmed 2026-10-13 |
 | Crowded detections | 3 px dots below zoom 12, fire-power sizes from zoom 12 | user, crowded detections page (https://claude.ai/artifact/DUQSyn4LBJeX9iPCi2fWpe), 2026-10-16 |
 | Which side is inside | A faint ink tint inside the concession, under the dashed edge | user, fire-origin spec pause 2 (O9), 2026-10-16 |
-| Replay speed | 600 ms a pass | user, fire-origin spec pause 2 (O10), 2026-10-16 |
+| Replay speed | 1500 ms a pass | user, replay-pace spec (O1), 2026-10-21 |
 | Globe's day | 14 Oct 2026, every NOAA-20 detection, committed | user, landing-page spec pause 1 (O5, D75), 2026-10-20 |
 | Globe's loading | On its own on desktop, the flat map first; phones keep the flat map | user, landing-page spec pause 1 (O6, D76), 2026-10-20 |
 | Globe's controls | Drag to turn, and one flight to the 0332 fire | user, landing-page spec pause 1 (O7, D77), 2026-10-20 |
@@ -58,7 +58,7 @@ Stripe-like, never "rounded-2xl"   → radius 6px on controls, 8px on panels
                                      from zoom 12 dots size by fire power, 6 / 9 / 13 px, 1px surface edge
 detail on request                  → raw record behind a disclosure, not on screen by default
 motion ceiling tier 3              → tier 1: 120–240 ms, cubic-bezier(.2,.8,.2,1)
-                                     tier 2: pass-by-pass replay, 600 ms a step (a 4-pass fire in about 2 s)
+                                     tier 2: pass-by-pass replay, 1500 ms a step (a 4-pass fire in 4.5 s)
                                      tier 3: the globe only, inside the budget below
 fire globe, no new tokens           → sea --fw-surface and land --fw-map, as on the tool's map; coast 1px
                                      --fw-faint, since dark land and sea are too close to read without it;

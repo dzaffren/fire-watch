@@ -38,7 +38,7 @@ your own layout. Never hard-code a colour, size or font that has a token.
   `--fw-radius-control`, `--fw-radius-panel`.
 - Type: `--fw-font-sans`, `--fw-font-mono`, `--fw-text-xs`…`--fw-text-2xl` (12–32px),
   `--fw-weight-regular|medium|semibold`.
-- Motion: `--fw-dur-fast`, `--fw-dur`, `--fw-dur-slow`, `--fw-ease`, `--fw-replay-step` (600ms, one pass).
+- Motion: `--fw-dur-fast`, `--fw-dur`, `--fw-dur-slow`, `--fw-ease`, `--fw-replay-step` (1500ms, one pass).
 
 ## Rules
 
