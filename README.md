@@ -130,6 +130,20 @@ Trase's concession map. It stops if a file's sha256 has changed. It takes a few 
 
 Land: [Natural Earth](https://www.naturalearthdata.com/) v5.1.2, in the public domain.
 
+## Redo the real case's data
+
+The landing's real case reads `web/public/case/pack-0332.json`: the complaint pack of the example
+fire in ID-WOOD-CONCESSION-0332, cut at 17 Oct 2026 09:00 UTC, as the API answers it (D90). A pack
+holds its fire as it stood at its cut, so the API gives the same bytes each time:
+
+```sh
+curl -s "https://firewatch-api.thankfulhill-89a2c8ca.southeastasia.azurecontainerapps.io/api/concessions/ID-WOOD-CONCESSION-0332/fires/0x13b417c6f54dd95c7c418b5df3f34963cf00f46555d5cae74693cdffbb1d1cf7?as_of=1792227600" -o web/public/case/pack-0332.json
+sha256sum web/public/case/pack-0332.json
+```
+
+The sha256 is `d1a43d1e71fb51bdf0ea0ca28137675d3ad077df53b19afe56aa4aa04b1fd419`. The first call after a
+quiet hour can take up to a minute while the API wakes.
+
 ## First deploy
 
 1. **Neon:** create a free project. Put its owner URL in `.env` as `DATABASE_URL`, run the
