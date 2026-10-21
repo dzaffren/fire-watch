@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { zeroHash, type Hex } from "viem";
 import type { HotspotRecord, PackDetail } from "./api";
 import { FireMap, type Dot } from "./FireMap";
 import { fireArea, fireDots, passTimes } from "./FireView";
@@ -10,9 +9,8 @@ import { checkTitle, Chip, overall, type Check } from "./RecordPanel";
 export interface CaseSource {
   /** The example fire's pack, as committed (D85). */
   pack(): Promise<PackDetail>;
-  /** Each record's sealed fingerprint, in order, in one read; zero for one not sealed yet. */
-  sealsOf(records: HotspotRecord[]): Promise<Hex[]>;
-  fingerprint(record: HotspotRecord): Hex;
+  /** Each record's check against its seal, in order, in one read. */
+  check(records: HotspotRecord[]): Promise<Check[]>;
 }
 
 type Step = { kind: "fire" } | { kind: "claim" } | { kind: "pass"; pass: number } | { kind: "seals" } | { kind: "pack" };
@@ -76,15 +74,8 @@ export function RealCase({ source, packHref }: { source: CaseSource; packHref: s
     if (!pack || !checkStarted) return;
     let live = true;
     setChecks(pack.hotspots.map(() => ({ state: "checking" })));
-    source.sealsOf(pack.hotspots).then(
-      (seals) =>
-        live &&
-        setChecks(
-          seals.map((sealed, i): Check => {
-            if (sealed === zeroHash) return { state: "pending" };
-            return sealed === source.fingerprint(pack.hotspots[i]) ? { state: "matches" } : { state: "mismatch", sealed };
-          }),
-        ),
+    source.check(pack.hotspots).then(
+      (checked) => live && setChecks(checked),
       () => live && setChecks(pack.hotspots.map(() => ({ state: "error" }))),
     );
     return () => {

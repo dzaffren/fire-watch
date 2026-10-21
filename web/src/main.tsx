@@ -9,7 +9,7 @@ const params = new URLSearchParams(location.search);
 // Each page loads only its own modules: the preview runs without the chain settings the API source needs.
 // The landing at the site's address (D72), and the tool at its own link (D74).
 const LandingPage = lazy(() =>
-  Promise.all([import("./Landing"), import("./api")]).then(([{ Landing }, { caseSource }]) => ({
+  Promise.all([import("./Landing"), import("./caseSource")]).then(([{ Landing }, { caseSource }]) => ({
     default: () => <Landing caseSource={caseSource} />,
   })),
 );
