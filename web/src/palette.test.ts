@@ -17,6 +17,7 @@ function block(selector: string): Record<string, string> {
 const LIGHT = block(':root, [data-theme="light"]');
 const DARK = block('[data-theme="dark"]');
 const SYSTEM_DARK = block(':root:not([data-theme="light"])');
+const PRINT = block(':root, :root:not([data-theme="light"]), [data-theme]');
 
 type Rgba = [number, number, number, number];
 
@@ -64,4 +65,15 @@ it("every text, control and fire pair passes AA in light and dark", () => {
 it("the system's dark and the chosen dark theme hold the same tokens", () => {
   expect(SYSTEM_DARK).toEqual(DARK);
   expect(Object.keys(DARK).sort()).toEqual(Object.keys(LIGHT).sort());
+});
+
+it("print whitens only the grounds, so the pack's switch to light sets the ink", () => {
+  expect(PRINT).toEqual({
+    "--fw-bg": "#ffffff",
+    "--fw-surface": "#ffffff",
+    "--fw-table-head": "#ffffff",
+    "--fw-hover-fill": "#ffffff",
+    "--fw-band-moss": "#ffffff",
+    "--fw-band-peat": "#ffffff",
+  });
 });
