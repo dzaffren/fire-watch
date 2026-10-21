@@ -340,7 +340,7 @@ Single chunk. The web and API changes are small, and the six e2e files move with
 | The example pack's link stops working | A pack cut keeps its key after a join (`test_pack_keeps_its_key_after_a_join_to_an_older_fire`). The e2e checks the address |
 | A busy machine misses 30 fps in the first 2 s and keeps the flat map | The flat map shows the same fires and the same flight. The reader loses only the 3D |
 | FIRMS changes the 14 Oct file, so `globe-day` refuses it | The committed files still stand. The sha256 in the refusal says what changed |
-| three.js grows past the budget on a later version | `^0.186.1` stays within 0.186; the budget's numbers are in the brief to check against |
+| three.js grows past the budget on a later version | `three` is pinned at exactly 0.186.1, so only a deliberate change moves it; the budget's numbers are in the brief to check against |
 | The slice competes with the demo video for the days left (O2) | Single chunk, no new screens beyond pause 2 |
 
 ### Decisions to record
@@ -364,6 +364,7 @@ Recorded as D79, D80, D81.
 | O11 | The globe's frame rate is unmeasured: this machine draws WebGL in software and its browser stops at 20 fps | question | spec p3 | user | Resolved | 2026-10-20: fall back to the flat map when the first 2 s after the globe shows run under 30 fps (D80) |
 | O12 | Whether the landing ships behind a flag | question | spec p3 | user | Resolved | 2026-10-20: no flag; a revert rolls it back (D81) |
 | O13 | The plan said `startGlobe()` "counts frames for 2 s after the first frame and calls `onSlow` when there are fewer than 60". By the clock, a tab sent to the background in those 2 s pauses its frames and reads as slow | flag | build | user | Decided alone | Chose: count over 2 s of frame time, each frame's time capped at 100 ms, as the turning already is (a03f65e). Below 10 fps the check takes longer than 2 s. Other: 2 s by the clock. Undo: in `tick()`, compare `now` with the first frame's time instead of summing `dt`. 2026-10-20 |
+| O14 | The Risks row said "`^0.186.1` stays within 0.186". Review A03: three.js is a new runtime dependency, and a range lets any 0.186 release in | flag | review | user | Decided alone | Chose: pin `three` at exactly 0.186.1 in `web/package.json`. Other: keep `^0.186.1`; the frozen lockfile and CI's `pnpm audit --prod` still hold it. Undo: revert the pin commit. 2026-10-21 |
 _Never delete this section or its rows. See references/ledger.md._
 
 ## Glossary
