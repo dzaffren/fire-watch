@@ -354,13 +354,13 @@ Recorded as D79, D80, D81.
 
 2026-10-21 · 8 raw findings, 7 survived, 7 fixed.
 
-- A09 Security Logging and Alerting Failures · `api/src/firewatch/globe_day.py:157` · redact the FIRMS key from HTTP errors too, not only from a changed file · `826be0a`
-- A03 Software Supply Chain Failures · `web/package.json:17` · pin three.js at exactly 0.186.1 · `46a720a`
-- correctness · `web/src/FireGlobe.tsx:103` · arrive at the example fire when the globe's data fails, so the caption and pack link show · `f933740`
-- correctness · `web/src/FireGlobe.tsx:105` · keep the flat map once the reader arrives on it before the globe shows · `9d9b3f2`
-- coverage · `web/src/globeScene.ts:230` · tests that run the real 30 fps check at 20 fps, 30 fps and across a 10 s gap · `371abcf`
-- quality · `docs/design/system-brief.md:78` · the dot count as the committed files hold it, 41,380 · `16ebda1`
-- quality · `docs/design/system-brief.md:77` · near-0332.bin as 13 kB, and the totals with it · `2bb8e1d`
+- A09 Security Logging and Alerting Failures · `api/src/firewatch/globe_day.py:157` · redact the FIRMS key from HTTP errors too, not only from a changed file · `7d0c63a`
+- A03 Software Supply Chain Failures · `web/package.json:17` · pin three.js at exactly 0.186.1 · `497c2c4`
+- correctness · `web/src/FireGlobe.tsx:103` · arrive at the example fire when the globe's data fails, so the caption and pack link show · `226635c`
+- correctness · `web/src/FireGlobe.tsx:105` · keep the flat map once the reader arrives on it before the globe shows · `836f7fc`
+- coverage · `web/src/globeScene.ts:230` · tests that run the real 30 fps check at 20 fps, 30 fps and across a 10 s gap · `703ddaa`
+- quality · `docs/design/system-brief.md:78` · the dot count as the committed files hold it, 41,380 · `464c491`
+- quality · `docs/design/system-brief.md:77` · near-0332.bin as 13 kB, and the totals with it · `78c4ebf`
 
 ## Open items
 
@@ -381,7 +381,7 @@ Recorded as D79, D80, D81.
 | O13 | The plan said `startGlobe()` "counts frames for 2 s after the first frame and calls `onSlow` when there are fewer than 60". By the clock, a tab sent to the background in those 2 s pauses its frames and reads as slow | flag | build | user | Decided alone | Chose: count over 2 s of frame time, each frame's time capped at 100 ms, as the turning already is (a03f65e). Below 10 fps the check takes longer than 2 s. Other: 2 s by the clock. Undo: in `tick()`, compare `now` with the first frame's time instead of summing `dt`. 2026-10-20 |
 | O14 | The Risks row said "`^0.186.1` stays within 0.186". Review A03: three.js is a new runtime dependency, and a range lets any 0.186 release in | flag | review | user | Decided alone | Chose: pin `three` at exactly 0.186.1 in `web/package.json`. Other: keep `^0.186.1`; the frozen lockfile and CI's `pnpm audit --prod` still hold it. Undo: revert the pin commit. 2026-10-21 |
 | O15 | Review: on desktop, a press of "Go to the example fire" before the globe's first frame arrived on the flat map. The globe then faded in on the world and flew to the fire a second time | flag | review | user | Decided alone | Chose: once the reader arrives on the flat map, it stays for good, as under 30 fps. Other: start the globe already over the fire. Undo: revert the fix commit, and give `startGlobe()` a starting view. 2026-10-21 |
-| O16 | The `fix` commits `7f9a40e`, `81afef4`, `826be0a`, `46a720a`, `f933740` and `9d9b3f2` get no CHANGELOG line | flag | ship | user | Decided alone | Chose: no line; each fixes code that this branch adds and no user has run, and the Added line covers the landing and `globe-day`. Other: a Fixed or Security line for each. Undo: add the lines under `## [Unreleased]`. 2026-10-21 |
+| O16 | The `fix` commits `f0a6c5f`, `7d0c63a`, `497c2c4`, `226635c` and `836f7fc` get no CHANGELOG line | flag | ship | user | Decided alone | Chose: no line; each fixes code that this branch adds and no user has run, and the Added line covers the landing and `globe-day`. Other: a Fixed or Security line for each. Undo: add the lines under `## [Unreleased]`. 2026-10-21 |
 _Never delete this section or its rows. See references/ledger.md._
 
 ## Glossary
