@@ -75,7 +75,7 @@ working screens. How one fire spread over time stays on the tier 2 replay.
 | | |
 | --- | --- |
 | Download | three.js 0.186.1 and the scene 139 kB; Natural Earth 110m land 16 kB; 14 Oct 2026's fires, one dot per 0.01° cell, 71 kB; every detection and the concession's edge near the 0332 fire, 15 kB; the component 2 kB. Gzipped as committed and measured: 244 kB. Ceiling 250 kB |
-| Frame rate | 60 fps target on a laptop from the last five years, never below 30, with all 41,598 dots. Not measured: this machine draws WebGL in software, and its browser tops out at 20 fps with nothing animating |
+| Frame rate | 60 fps target on a laptop from the last five years, never below 30, with all 41,380 dots. Not measured: this machine draws WebGL in software, and its browser tops out at 20 fps with nothing animating |
 | Phones | The flat world map with the same fires, no 3D: 104 kB |
 | No 3D | Where WebGL can't run, the flat map stays in its place |
 | Reduced motion | No turning on its own; flights jump straight to the place |
