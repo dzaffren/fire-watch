@@ -25,6 +25,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - A concession's fires forecast to be seen inside come first, then the largest.
 - Play in a fire's replay holds each satellite pass for 1.5 s, not 0.6 s, so the spread is easier to follow.
+- Every screen takes colour from a deeper Peatland palette: moss land, slate water and an acacia green wash inside each concession on the maps and the globe, a moss page ground, and moss and peat bands on the landing. A printed complaint pack is a white page with its map in colour.
 
 ### Removed
 

@@ -19,7 +19,7 @@ Choices were made on the directions page
 | Direction | A · Clear record | user, directions page |
 | Reference | Stripe: documentation-grade clarity, and detail revealed only when asked for | user, directions page |
 | Type | IBM Plex Sans + IBM Plex Mono | user, directions page |
-| Palette | Peatland: stone greys with a green cast, deep teal accent | user, canvas "Palette options", 2026-10-13 |
+| Palette | Deeper Peatland: moss greens and peat browns, deep teal accent; colour on the maps, the ground and two landing bands | user, palette spec pause 1 (O1, O2, O3, D94), 2026-10-21 |
 | Motion ceiling | Tier 3, for one piece only: the fire globe | user, directions page |
 | Locked brand items | None | user, confirmed 2026-10-13 |
 | Accessibility floor | WCAG AA | user, confirmed 2026-10-13 |
@@ -27,7 +27,8 @@ Choices were made on the directions page
 | Themes | Light and dark, both designed | user, confirmed 2026-10-13 (craft floor requires both) |
 | Oldest target | Current desktop and phone browsers, last two versions | user, confirmed 2026-10-13 |
 | Crowded detections | 3 px dots below zoom 12, fire-power sizes from zoom 12 | user, crowded detections page (https://claude.ai/artifact/DUQSyn4LBJeX9iPCi2fWpe), 2026-10-16 |
-| Which side is inside | A faint ink tint inside the concession, under the dashed edge | user, fire-origin spec pause 2 (O9), 2026-10-16 |
+| Which side is inside | An acacia green wash inside the concession, under the dashed edge | user, palette spec pause 2 (O5, D96), 2026-10-21 |
+| Print | A white page with dark ink; the map and its legend in colour | user, palette spec pause 1 (O4, D95), 2026-10-21 |
 | Replay speed | 1500 ms a pass | user, replay-pace spec (O1), 2026-10-21 |
 | Globe's day | 14 Oct 2026, every NOAA-20 detection, committed | user, landing-page spec pause 1 (O5, D75), 2026-10-20 |
 | Globe's loading | On its own on desktop, the flat map first; phones keep the flat map | user, landing-page spec pause 1 (O6, D76), 2026-10-20 |
@@ -40,9 +41,14 @@ Choices were made on the directions page
 Each token traces to an answer above.
 
 ```
-"precise, sober" + Peatland palette → stone neutrals with a green cast: ink #1f2421 on #f3f3f0
-                                     (dark: #e8e9e4 on #121412); controls outlined #7b827a (dark #6f776d)
+"precise, sober" + deeper Peatland → ink #1f2421 on a pale sphagnum moss ground #eef3e4, panels #fafcf6
+                                     (dark: #e8e9e4 on #121610, panels #1a1f17); controls outlined #777f73
+                                     (dark #71776b), 3:1 on every ground and band
                                    → 1px borders mark objects; no soft shadows on every surface
+deeper Peatland on the landing      → the hero on a moss band --fw-band-moss #e0ecce (dark #1d2514), the real
+                                     case on a peat band --fw-band-peat #e9e0d1 (dark #251e15), full width
+the map reads as a place            → land --fw-map, moss #d9e8c4 (dark #1e2613); water --fw-water, slate
+                                     #bdd6e0 (dark #112028); fire dots keep 3:1 or more on both
 one accent that means "you can act" → deep teal #0b6e6e (dark #5cc0bb): links, buttons, focus only
 fire is the data, not the brand    → ember #c2410c (dark #ff8a4c), used only for fire marks
 "trustworthy" evidence states      → status colours apart from the accent: matches #2e6b2e (dark #6fcf7f),
@@ -52,20 +58,23 @@ desk use, map + panel density      → 15px base; scale 12 / 13 / 15 / 18 / 24 /
                                      (4, 8, 12, 16, 24, 32, 48)
 Stripe-like, never "rounded-2xl"   → radius 6px on controls, 8px on panels
 "never alarmist"                   → no red banners for routine states; fire colour never fills large areas
-"which side is inside"             → --fw-concession: ink at 6% (light, #1f242110) and 7% (dark, #e8e9e412) inside
-                                     the dashed edge; fire dots keep 3.8:1 (light) and 6.3:1 (dark) on it
+"which side is inside"             → --fw-concession: acacia green at 14% (light, #2a744924) and light acacia at
+                                     13% (dark, #8ec89921) inside the dashed edge; fire dots keep 3.38:1 (light)
+                                     and 5.11:1 (dark) on it
 375 m VIIRS pixels, crowded        → below zoom 12 (a pixel under 10 px) every detection is a 3 px dot, no edge;
                                      from zoom 12 dots size by fire power, 6 / 9 / 13 px, 1px surface edge
 detail on request                  → raw record behind a disclosure, not on screen by default
 motion ceiling tier 3              → tier 1: 120–240 ms, cubic-bezier(.2,.8,.2,1)
                                      tier 2: pass-by-pass replay, 1500 ms a step (a 4-pass fire in 4.5 s)
                                      tier 3: the globe only, inside the budget below
-fire globe, no new tokens           → sea --fw-surface and land --fw-map, as on the tool's map; coast 1px
+fire globe, no new tokens           → sea --fw-water and land --fw-map, as on the tool's map; coast 1px
                                      --fw-faint, since dark land and sea are too close to read without it;
                                      fire dots --fw-fire, 2 px and round, one per 0.01° cell, and every
                                      detection in full near the 0332 fire; after the flight the concession
-                                     is the usual dashed --fw-ink edge over --fw-concession (D29)
+                                     is the usual dashed --fw-ink edge over --fw-concession (D96)
 "never salesy"                      → the globe turns at one turn a minute, no glow, no bloom, no stars
+print                               → every theme prints on white grounds, the pack turned light first for its ink;
+                                     the map and the legend's marks keep their colours
 ```
 
 ## Tier 3 budget
