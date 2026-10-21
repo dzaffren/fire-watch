@@ -422,7 +422,7 @@ Recorded as D90, D91, D92.
 
 2026-10-21 · 2 raw findings, 1 survived, 1 fixed.
 
-- correctness · `web/src/styles/app.css:298` · the case's map left of its captions on desktop, so Tab order follows the screen · `583dfb5`
+- correctness · `web/src/styles/app.css:298` · the case's map left of its captions on desktop, so Tab order follows the screen · `2d3a172`
 
 ## Open items
 
@@ -446,8 +446,8 @@ Recorded as D90, D91, D92.
 | O15 | The e2e's anvil has none of the copy's 283 seals | question | spec p3 | user | Resolved | 2026-10-21: global setup seals them as the recorder wallet (D92) |
 | O16 | Static Web Apps compresses the live site's JS with Brotli, checked 2026-10-21. Nobody has checked JSON; without it the copy costs 157 kB, not 31 kB | unproven | spec p3 | user | Accepted risk | 2026-10-21: `/ship` checks the deployed file's content-encoding. At worst the case loads 157 kB after the hero shows |
 | O17 | Pause 2 stood in for the chain, so "283 of 283" on Base Sepolia was unchecked | unproven | spec p3 | — | Resolved | 2026-10-21: one Multicall3 read from `sepolia.base.org` of the copy's 283 record IDs against FireRecords `0x6A55…Eb2a`: 283 match, 0 changed, 0 unsealed |
-| O18 | The Interface said "the captions scroll on the left and one map holds still on the right". Review: the map comes first in the page, so Tab reached its zoom buttons before the captions' controls on their left | flag | review | user | Decided alone | Chose: the map on the left on desktop and on top on phones, so the page order and the screen agree (`583dfb5`). Other: the captions first in the page, which puts the zoom buttons last while a phone shows the map on top. Undo: revert `583dfb5`. 2026-10-21 |
-| O19 | The `fix` commit `583dfb5` gets no CHANGELOG line | flag | ship | user | Decided alone | Chose: no line; it fixes the case's layout, which this branch adds and no user has run, and the Added line covers the case. Other: a Fixed line. Undo: add the line under `## [Unreleased]`. 2026-10-21 |
+| O18 | The Interface said "the captions scroll on the left and one map holds still on the right". Review: the map comes first in the page, so Tab reached its zoom buttons before the captions' controls on their left | flag | review | user | Decided alone | Chose: the map on the left on desktop and on top on phones, so the page order and the screen agree (`2d3a172`). Other: the captions first in the page, which puts the zoom buttons last while a phone shows the map on top. Undo: revert `2d3a172`. 2026-10-21 |
+| O19 | The `fix` commit `2d3a172` gets no CHANGELOG line | flag | ship | user | Decided alone | Chose: no line; it fixes the case's layout, which this branch adds and no user has run, and the Added line covers the case. Other: a Fixed line. Undo: add the line under `## [Unreleased]`. 2026-10-21 |
 _Never delete this section or its rows. See references/ledger.md._
 
 ## Glossary
