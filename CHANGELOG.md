@@ -19,6 +19,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - The forecast panel shows how the forecast rule did on a replay of 2023, next to a downwind guess, and links to every replayed forecast. `backtest-2023` redoes the replay byte for byte from pinned files.
 - Each fire and complaint pack gives an estimate of the ground in the fire's pixels, the CO₂ it released and its cost, split at the concession's edge, from WRI's peat map and IPCC and World Bank factors. Operators load the peat map with `load-peat`.
 - The site opens on a landing page that says what Fire Watch is, for someone new to plantation fires, with a globe of 14 Oct 2026's fires that flies to a real fire and its complaint pack. The tool moves to `/?tool`, and operators redo the globe's data with `globe-day`.
+- The landing says who uses Fire Watch and how, and walks one real fire as you scroll: where the satellite first saw it, each pass in turn, and its 283 records checked against Base Sepolia in your browser.
 
 ### Changed
 
