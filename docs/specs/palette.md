@@ -1,6 +1,6 @@
 # Palette
 
-**Version:** v1 · **Status:** Draft · **Type:** Enhancement · **Project type:** Web UI
+**Version:** v1 · **Status:** Refined · **Type:** Enhancement · **Project type:** Web UI
 
 **Depends on:** newcomer-walkthrough
 
@@ -177,22 +177,128 @@ The drift check passed over the 4 files written. `tsc -b` is clean and the 205 w
 390 px frame the landing is 375 px wide, so nothing scrolls sideways. In Playwright's print mode the
 pack's ground is `rgb(255, 255, 255)` and its heading `rgb(31, 36, 33)`, in light and in dark.
 
-## Open items
+## Technical plan
 
-| ID | What | Type | Raised at | Owner | Status | Answer |
-| -- | ---- | ---- | --------- | ----- | ------ | ------ |
-| O1 | Where the new colour goes: the map, the ground, bands on the landing, or more teal | question | spec p1 | user | Resolved | 2026-10-21: the map, the ground and the landing's bands; not more teal (D94) |
-| O2 | Which colour family: a deeper Peatland, or three new families compared at pause 2 | question | spec p1 | user | Resolved | 2026-10-21: a deeper Peatland, with moss greens, peat browns and the same teal (D94) |
-| O3 | Whether D4's and the brief's colour rules still hold: ember only for fire, teal only for acting, status colours apart, never alarmist, playful or salesy | question | spec p1 | user | Resolved | 2026-10-21: keep them all (D94) |
-| O4 | What print does with the new colour | question | spec p1 | user | Resolved | 2026-10-21: a white page with dark ink; the map and its legend print in colour (D95) |
-| O5 | What colour goes inside a concession: acacia green, peat brown, or D29's ink tint | question | spec p2 | user | Resolved | 2026-10-21: acacia green; fire keeps 3.38:1 on it in light and 5.11:1 in dark (D96) |
-| O6 | The peat band, `#e9e0d1`, is a warm beige near the cream that generated sites often use | flag | spec p2 | user | Resolved | 2026-10-21: keep it; earth under the moss hero |
+### Approach
 
-_Never delete this section or its rows. See references/ledger.md._
+Pause 2 built the palette into the real tokens (`e593dc5`): `tokens/colors.css` holds every value, and
+the page imports it through `styles.css` and `web/src/styles/app.css:1`. The maps and the globe read
+tokens with `themeColour` and `themeFill` (`web/src/maps.ts:27`), which resolve a token on a probe
+element when they draw. The build left to do: trim the print block, add the tests, and bring the design
+docs and decisions up to date.
 
-## Decisions to record
+Print already has a mechanism. On `beforeprint` the pack sets `data-theme="light"`
+(`web/src/ComplaintPack.tsx:111`), and `FireMap` redraws the map from the light tokens
+(`web/src/FireMap.tsx:303`). So the print block only whitens the grounds; the light theme sets the ink.
 
-D94 and D95 drafted at pause 1, D96 at pause 2. `/build` appends them to `DECISIONS.md`.
+Relies on: D2, D3, D81, D94, D95, D96
+
+```mermaid
+flowchart TB
+    C["tokens/colors.css"] -- "@import, styles.css" --> A["web/src/styles/app.css"]
+    A -- "--fw-bg, --fw-band-moss, --fw-band-peat" --> L["Landing: .landing-hero, .case"]
+    C -- "themeColour(--fw-map, --fw-water)" --> M["mapStyles(), maps.ts:47"]
+    C -- "themeFill(--fw-water, --fw-concession)" --> G["globeColours(), globe.ts:91"]
+    M -- "setOptions({ styles })" --> F[FireMap: tool, pack, case]
+    P["ComplaintPack beforeprint"] -- "data-theme=light" --> F
+```
+
+Every colour starts in `colors.css`. CSS carries it to the screens, and the two token readers carry
+it to the map and the globe.
+
+```mermaid
+sequenceDiagram
+    participant I as Investigator
+    participant B as Browser
+    participant CP as ComplaintPack
+    participant FM as FireMap
+    I->>B: opens the pack in dark
+    B->>FM: mapStyles() reads --fw-map, --fw-water (dark)
+    I->>B: Print or save as PDF
+    B->>CP: beforeprint
+    CP->>B: html data-theme=light
+    B->>FM: beforeprint, restyle from light tokens
+    B->>B: @media print: grounds and bands white
+    B-->>I: white page, ink text, light map
+    B->>CP: afterprint, theme back to dark
+```
+
+A print turns the pack light first, redraws its map, then prints on white grounds.
+
+### Changes
+
+| File | What changes | Why |
+| ---- | ------------ | --- |
+| `docs/design/design-system/tokens/colors.css` | built at pause 2. The print block keeps only the white grounds (`--fw-bg`, `--fw-surface`, `--fw-table-head`, `--fw-hover-fill` and both bands); the pack's switch to light sets the ink | Scenarios 1 to 5 |
+| `web/src/styles/app.css:271` | built at pause 2: the hero and case bands, and the case map's ground on phones | Scenario 1 |
+| `web/src/maps.ts:49` | built at pause 2: water from `--fw-water`; roads keep `--fw-surface` | Scenario 2 |
+| `web/src/globe.ts:93` | built at pause 2: the sea from `--fw-water` | Scenario 1 |
+| `web/src/palette.test.ts` (new) | reads `colors.css`; checks every text, control and fire pair in light and dark; checks the two dark blocks match; checks print whitens the grounds | Scenarios 3 and 4 |
+| `web/src/globe.test.ts` | `globeColours()` draws the sea in `--fw-water`, with `./maps` mocked as in `FireMap.test.tsx:8` | Scenario 1 |
+| `web/e2e/palette.spec.ts` (new) | one test: `/` and its two bands, then the tool's 0332 fire and its map's styles, then the pack printed in dark | Scenarios 1, 2, 3 and 5 |
+| `docs/design/system-brief.md` | the Palette and "Which side is inside" rows; the token trace for the ground, the bands, water, the wash and print | the brief matches the tokens |
+| `docs/design/design-system/guidelines/colors.html` | swatches for `--fw-water`, `--fw-concession`, `--fw-band-moss` and `--fw-band-peat` | the guideline matches the tokens |
+| `docs/design/design-system/guidelines/globe.html:25` | the sea is `--fw-water` | the guideline matches `globe.ts` |
+| `docs/design/design-system/guidelines/detections.html:51` | "Concession: dashed edge, acacia wash inside" | the guideline matches the map |
+| `docs/design/design-system/readme.md` | "deeper Peatland palette"; the wash; decisions D94, D95, D96 in place of D4 and D29 | the readme matches the tokens |
+| `docs/design/design-system/.design-sync/conventions.md:34` | adds `--fw-water`, `--fw-band-moss` and `--fw-band-peat`, and the wash | the sync conventions match the tokens |
+| `DECISIONS.md` | append D94, D95 and D96; D4 becomes `superseded by D94`, D29 `superseded by D96` | the palette changed |
+| `CHANGELOG.md` | a line under `### Changed` | every screen looks different |
+
+Reusing: `themeColour` and `themeFill`; the pack's `beforeprint` switch and `FireMap`'s restyle; the
+`readFileSync(resolve(...))` idiom from `globe.test.ts:12`; `fake-google-maps.js` and its
+`window.__fakeMap.styles`; the date and fire steps from `complaint-pack.spec.ts:28`.
+
+### Earn-it
+
+| Added | Triggered by |
+| ----- | ------------ |
+| `--fw-water` | Scenario 2: water needs its own colour; it was `--fw-surface`, which the panels now tint |
+| `--fw-band-moss`, `--fw-band-peat` | Scenario 1: the two bands |
+| The print block in `colors.css` | Scenario 5: with "Background graphics" ticked, the moss ground would print |
+| `web/src/palette.test.ts` | Scenario 4: nothing checks contrast today, and the light wash's 3.38:1 is 0.38 above the floor |
+| `web/e2e/palette.spec.ts` | the slice test: one e2e walks the slice |
+
+### Non-functionals
+
+|                      |                                                                               |
+| -------------------- | ----------------------------------------------------------------------------- |
+| **Load**             | None on the server. The page's CSS grows by under 1 kB before compression |
+| **Breaks first**     | Nothing scales with load. The tightest pair is fire on the light wash, 3.38:1; a darker wash or lighter fire breaks 3:1 first, and `palette.test.ts` fails |
+| **Security surface** | No change: no new input, secret or stored data |
+| **Proof it works**   | On the live site in light, `getComputedStyle(document.body).backgroundColor` returns `rgb(238, 243, 228)`, and the landing's hero is moss |
+| **Rollout**          | No flag, as D81 shipped the landing. It ships with the deploy on main; a `git revert` of the feat commits brings back D4's colours |
+
+### Test plan
+
+| Scenario | Test | Command |
+| -------- | ---- | ------- |
+| 1 The landing opens on colour | `web/e2e/palette.spec.ts` › "a judge meets the palette on the landing, the tool's map and the printed pack"; `web/src/globe.test.ts` › "draws the sea in --fw-water" | `cd web && pnpm e2e palette`; `cd web && pnpm test` |
+| 2 The map reads as land, water and the concession | the e2e reads `window.__fakeMap.styles`: land `#d9e8c4`, water `#bdd6e0`; `palette.test.ts` › fire on land, the wash and water | `cd web && pnpm e2e palette`; `cd web && pnpm test` |
+| 3 The ground carries colour and the rules hold | the e2e reads the tool's ground, `rgb(238, 243, 228)`; the slice adds no use of `--fw-accent` or `--fw-fire`, which `/review` checks in the diff | `cd web && pnpm e2e palette` |
+| 4 Every pair passes WCAG AA | `web/src/palette.test.ts` › "every text, control and fire pair passes AA in light and dark" | `cd web && pnpm test` |
+| 5 The pack prints on a white page | the e2e turns the pack dark, fires `beforeprint`, emulates print, and reads a white body and `rgb(31, 36, 33)` ink | `cd web && pnpm e2e palette` |
+
+**E2E:** `web/e2e/palette.spec.ts` opens `/` and reads both bands. It opens the tool's 0332 fire first
+seen 13 Oct 17:37 UTC and reads the map's styles and the ground. It then makes the pack and prints it in
+dark.
+
+### Chunks
+
+Single chunk.
+
+### Risks
+
+| Risk | Mitigation |
+| ---- | ---------- |
+| Safari's drawing of the bands is unchecked (O7) | Where the border image fails, the band area shows the plain ground; the text keeps its contrast |
+| The dark tokens live in two blocks, the media query and `[data-theme="dark"]`, which can drift apart | `palette.test.ts` checks the two blocks hold the same values |
+| Google's stylers take six-digit hex only | `themeColour` already turns any resolved colour into six-digit hex (`maps.ts:26`) |
+
+### Decisions to record
+
+D94 and D95 drafted at pause 1, D96 at pause 2; pause 3 made no choice that rejected an option.
+`/build` appends them to `DECISIONS.md`.
 
 ```
 ## D94 · 2026-10-21 · Deeper Peatland: colour on the maps, the ground and the landing's bands
@@ -229,6 +335,20 @@ Supersedes: D29
 Source: docs/specs/palette.md
 Status: active
 ```
+
+## Open items
+
+| ID | What | Type | Raised at | Owner | Status | Answer |
+| -- | ---- | ---- | --------- | ----- | ------ | ------ |
+| O1 | Where the new colour goes: the map, the ground, bands on the landing, or more teal | question | spec p1 | user | Resolved | 2026-10-21: the map, the ground and the landing's bands; not more teal (D94) |
+| O2 | Which colour family: a deeper Peatland, or three new families compared at pause 2 | question | spec p1 | user | Resolved | 2026-10-21: a deeper Peatland, with moss greens, peat browns and the same teal (D94) |
+| O3 | Whether D4's and the brief's colour rules still hold: ember only for fire, teal only for acting, status colours apart, never alarmist, playful or salesy | question | spec p1 | user | Resolved | 2026-10-21: keep them all (D94) |
+| O4 | What print does with the new colour | question | spec p1 | user | Resolved | 2026-10-21: a white page with dark ink; the map and its legend print in colour (D95) |
+| O5 | What colour goes inside a concession: acacia green, peat brown, or D29's ink tint | question | spec p2 | user | Resolved | 2026-10-21: acacia green; fire keeps 3.38:1 on it in light and 5.11:1 in dark (D96) |
+| O6 | The peat band, `#e9e0d1`, is a warm beige near the cream that generated sites often use | flag | spec p2 | user | Resolved | 2026-10-21: keep it; earth under the moss hero |
+| O7 | Safari's drawing of the bands' border image is unchecked: WebKit can't launch on this host without `sudo` installs. Chrome and Firefox draw both bands full width | unproven | spec p3 | user | Accepted risk | 2026-10-21: gradient border images have worked in Safari for years, and a miss shows the plain ground with the text's contrast kept |
+
+_Never delete this section or its rows. See references/ledger.md._
 
 ## Glossary
 
