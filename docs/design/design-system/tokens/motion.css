@@ -5,7 +5,7 @@
   --fw-dur-fast: 120ms;    /* hover, press */
   --fw-dur: 180ms;         /* panels and details entering */
   --fw-dur-slow: 240ms;    /* larger enter and exit */
-  --fw-replay-step: 600ms; /* one satellite pass in the tier 2 replay */
+  --fw-replay-step: 1500ms; /* one satellite pass in the tier 2 replay */
 }
 
 @media (prefers-reduced-motion: reduce) {
