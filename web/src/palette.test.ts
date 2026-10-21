@@ -26,9 +26,9 @@ function rgba(hex: string): Rgba {
   return [r, g, b, a / 255];
 }
 
-// A see-through colour laid over an opaque one, as the browser paints it.
+// A see-through colour laid over an opaque one, as the browser paints it: whole channels.
 function over([r, g, b, a]: Rgba, [R, G, B]: Rgba): Rgba {
-  return [r * a + R * (1 - a), g * a + G * (1 - a), b * a + B * (1 - a), 1];
+  return [r * a + R * (1 - a), g * a + G * (1 - a), b * a + B * (1 - a)].map(Math.round).concat(1) as Rgba;
 }
 
 function luminance([r, g, b]: Rgba): number {
