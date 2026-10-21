@@ -1,6 +1,6 @@
 # Landing page
 
-**Version:** v1 · **Status:** Built · **Type:** Feature · **Project type:** Web UI
+**Version:** v1 · **Status:** Shipped · **Type:** Feature · **Project type:** Web UI
 
 **Shape doc:** docs/specs/fire-watch/shape.md
 **Depends on:** complaint-pack
@@ -269,6 +269,7 @@ is a committed static file.
 | ---- | ------------ | --- |
 | `web/src/main.tsx:32` | `Page` is the preview, else the pack for `?pack`, else the tool for `?tool` with `aboutHref="/"`, else the landing, each lazily loaded as now | Scenarios 1, 5; D72, D74 |
 | `web/src/Landing.tsx` (pause 2) | As built at pause 2 | Scenarios 1, 2, 4 |
+| `web/src/globe.ts` (pause 2) | `loadGlobe()` reads the three files through `DecompressionStream`; `drawFlat()` draws the flat map; `canDraw3d()` asks whether WebGL runs | Scenarios 2, 3; D75 |
 | `web/src/globeScene.ts:90` | `startGlobe()` takes `onSlow`. It counts frames over the globe's first 2 s of frame time, each frame's time capped at 100 ms, and calls `onSlow` when there are fewer than 60 (O13) | Scenario 3; D80 |
 | `web/src/FireGlobe.tsx:80` | On `onSlow`, disposes the scene, removes the 3D canvas and keeps the flat map in the square box. It does the same when the reader arrives before the globe's first frame (O15). It asks `canDraw3d()` once for the page's life | Scenario 3; D80. Each ask made a WebGL context. Past the browser's limit the globe's own was dropped, and the box shrank from 537 px to 209 px after the flight |
 | `web/src/FireRecordPage.tsx` (pause 2) | `aboutHref` puts "About Fire Watch" in the header | Scenario 5 |
@@ -278,6 +279,8 @@ is a committed static file.
 | `api/pyproject.toml` | Script `globe-day` | D79 |
 | `api/tests/test_globe_day.py` (new) | On small inputs written by the test: the same bytes twice; a detection in the box comes out in full and one outside as its cell; land is clipped to the box | D79 |
 | `web/src/globe.test.ts` (new) | `loadGlobe()` on the committed files: 41,380 dots, 128 land rings, the box, 0332's two edge rings. A Node types reference, since the page's tsconfig has none | D75 |
+| `web/src/globeScene.test.ts` (new, review) | Runs the real `tick()` with the WebGL renderer stood in for: 20 fps calls `onSlow` once, 30 fps doesn't, a 10 s gap counts 100 ms | Scenario 3; D80, O13 |
+| `web/package.json`, `web/pnpm-lock.yaml` | `three` at exactly 0.186.1, and `@types/three` for development (O14) | Scenario 2; D3 |
 | `web/src/FireGlobe.test.tsx` (new) | The skeleton while loading, the "didn't load" line, the flat map when `flat`, `onArrive` at once on the flat map, the arrow keys | Scenarios 2, 3 |
 | `web/src/Landing.test.tsx` (new) | The headline, the lede, both links and their addresses, the dated facts, the four steps and four words, the caption after arriving | Scenarios 1, 2, 4 |
 | `web/src/FireRecordPage.test.tsx` | "About Fire Watch" with `aboutHref`, none without | Scenario 5 |
@@ -315,7 +318,7 @@ fake Google Maps.
 | -------- | ---- | ------- |
 | 1. A newcomer learns what it is | `Landing.test.tsx` | `cd web && pnpm test Landing` |
 | 2. The globe flies to a real fire | `FireGlobe.test.tsx`, `Landing.test.tsx`, the e2e | `cd web && pnpm test FireGlobe` |
-| 3. Phone, reduced motion, no 3D | `FireGlobe.test.tsx`; the preview at 390 px | the same |
+| 3. Phone, reduced motion, no 3D | `FireGlobe.test.tsx`, `globeScene.test.ts`; the preview at 390 px | `cd web && pnpm test FireGlobe globeScene` |
 | 4. The example pack | `Landing.test.tsx` (its address), the e2e | `cd web && pnpm test Landing` |
 | 5. Each address opens its own page | `FireRecordPage.test.tsx`, the e2e, the six e2e files at `/?tool` | `cd web && pnpm e2e` |
 | The committed data | `globe.test.ts`, `test_globe_day.py` | `cd web && pnpm test globe`; `cd api && uv run pytest tests/test_globe_day.py` |
@@ -378,6 +381,7 @@ Recorded as D79, D80, D81.
 | O13 | The plan said `startGlobe()` "counts frames for 2 s after the first frame and calls `onSlow` when there are fewer than 60". By the clock, a tab sent to the background in those 2 s pauses its frames and reads as slow | flag | build | user | Decided alone | Chose: count over 2 s of frame time, each frame's time capped at 100 ms, as the turning already is (a03f65e). Below 10 fps the check takes longer than 2 s. Other: 2 s by the clock. Undo: in `tick()`, compare `now` with the first frame's time instead of summing `dt`. 2026-10-20 |
 | O14 | The Risks row said "`^0.186.1` stays within 0.186". Review A03: three.js is a new runtime dependency, and a range lets any 0.186 release in | flag | review | user | Decided alone | Chose: pin `three` at exactly 0.186.1 in `web/package.json`. Other: keep `^0.186.1`; the frozen lockfile and CI's `pnpm audit --prod` still hold it. Undo: revert the pin commit. 2026-10-21 |
 | O15 | Review: on desktop, a press of "Go to the example fire" before the globe's first frame arrived on the flat map. The globe then faded in on the world and flew to the fire a second time | flag | review | user | Decided alone | Chose: once the reader arrives on the flat map, it stays for good, as under 30 fps. Other: start the globe already over the fire. Undo: revert the fix commit, and give `startGlobe()` a starting view. 2026-10-21 |
+| O16 | The `fix` commits `7f9a40e`, `81afef4`, `826be0a`, `46a720a`, `f933740` and `9d9b3f2` get no CHANGELOG line | flag | ship | user | Decided alone | Chose: no line; each fixes code that this branch adds and no user has run, and the Added line covers the landing and `globe-day`. Other: a Fixed or Security line for each. Undo: add the lines under `## [Unreleased]`. 2026-10-21 |
 _Never delete this section or its rows. See references/ledger.md._
 
 ## Glossary
