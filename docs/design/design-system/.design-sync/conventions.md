@@ -33,7 +33,9 @@ your own layout. Never hard-code a colour, size or font that has a token.
 
 - Colour: `--fw-bg`, `--fw-surface`, `--fw-ink`, `--fw-muted`, `--fw-faint`, `--fw-line`,
   `--fw-control`, `--fw-accent`, `--fw-accent-hover`, `--fw-accent-fg`, `--fw-accent-tint`,
-  `--fw-fire`, `--fw-ok`, `--fw-bad`, `--fw-map`, `--fw-concession` (inside a concession, with alpha).
+  `--fw-fire`, `--fw-ok`, `--fw-bad`, `--fw-map` (land), `--fw-water` (water, the globe's sea),
+  `--fw-concession` (the acacia wash inside a concession, with alpha), `--fw-band-moss` and
+  `--fw-band-peat` (the landing's hero and real case bands).
 - Space: `--fw-space-1`…`--fw-space-7` (4, 8, 12, 16, 24, 32, 48px). Radius: `--fw-radius-chip`,
   `--fw-radius-control`, `--fw-radius-panel`.
 - Type: `--fw-font-sans`, `--fw-font-mono`, `--fw-text-xs`…`--fw-text-2xl` (12–32px),

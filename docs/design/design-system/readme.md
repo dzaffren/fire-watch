@@ -1,6 +1,6 @@
 # Fire Watch design system
 
-The one look of Fire Watch: direction A "Clear record", Peatland palette, IBM Plex. Screens read
+The one look of Fire Watch: direction A "Clear record", deeper Peatland palette, IBM Plex. Screens read
 as evidence: precise, sober, trustworthy; never alarmist, playful or salesy.
 
 - **Tokens:** `tokens/*.css`. Colours (light and dark), type, spacing, motion, fonts. `styles.css`
@@ -10,8 +10,9 @@ as evidence: precise, sober, trustworthy; never alarmist, playful or salesy.
 - **Rules:** fire colour is for fire marks only. The accent means "you can act". Status labels
   always carry an icon and words. Motion is tier 1 on working screens, tier 2 for the replay,
   tier 3 only for the fire globe; the replay steps one pass every 1500 ms. Fire dots are 3 px below
-  zoom 12 and size by fire power from zoom 12. A concession is a dashed edge over a faint
-  `--fw-concession` tint, so the map shows which side is inside.
+  zoom 12 and size by fire power from zoom 12. A concession is a dashed edge over an acacia green
+  `--fw-concession` wash, so the map shows which side is inside. Land is moss, water slate, and a
+  printed page is white, with the map in colour.
 
-Why each value is what it is: `docs/design/system-brief.md`. Decisions: D2, D3, D4, D22, D29, D30,
-D75, D76, D77 in `DECISIONS.md`.
+Why each value is what it is: `docs/design/system-brief.md`. Decisions: D2, D3, D22, D30,
+D75, D76, D77, D94, D95, D96 in `DECISIONS.md`.
