@@ -101,7 +101,13 @@ export function FireGlobe({ atFire, onArrive, flat = !desktop3d(), still = reduc
   }, [data, flat, still, slow]);
 
   useEffect(() => {
-    if (!atFire || !data) return;
+    if (!atFire) return;
+    // Without the map, the example fire's story and pack still show.
+    if (failed) {
+      arrive.current?.();
+      return;
+    }
+    if (!data) return;
     if (!globe) {
       arrive.current?.();
       return;
@@ -111,7 +117,7 @@ export function FireGlobe({ atFire, onArrive, flat = !desktop3d(), still = reduc
     return () => {
       live = false;
     };
-  }, [atFire, data, globe]);
+  }, [atFire, data, globe, failed]);
 
   if (failed) {
     return (

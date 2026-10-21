@@ -69,6 +69,17 @@ describe("FireGlobe", () => {
     expect(await screen.findByText(FAILED)).toBeInTheDocument();
   });
 
+  it("still arrives when the map didn't load, so the example fire's story and pack show", async () => {
+    vi.mocked(loadGlobe).mockRejectedValue(new Error("fires-2026-10-14.bin: 404"));
+    const onArrive = vi.fn();
+    const { rerender } = render(<FireGlobe atFire={false} onArrive={onArrive} flat={false} still={false} />);
+    await screen.findByText(FAILED);
+
+    rerender(<FireGlobe atFire onArrive={onArrive} flat={false} still={false} />);
+
+    expect(onArrive).toHaveBeenCalledOnce();
+  });
+
   it("keeps the flat map on a phone or without 3D, and never starts the 3D scene", async () => {
     const { container } = render(<FireGlobe atFire={false} flat still={false} />);
 
