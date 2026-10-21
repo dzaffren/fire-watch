@@ -98,8 +98,8 @@ Scenario: Dragging moves at once and stops play
 
 The replay's pace is one design token. `Replay` (`web/src/FireView.tsx:229`) reads
 `--fw-replay-step` from the page before each step, then waits that long. A new value in
-`tokens/motion.css` slows the fire view and the pack together. The code changes only the fallback
-used when the token is missing.
+`tokens/motion.css` slows the fire view and the pack together. `Replay` also reads the token's unit,
+because the build writes `1500ms` as `1.5s` (O4).
 
 Relies on: D3, D93
 
@@ -185,6 +185,10 @@ Single chunk.
 ### Decisions to record
 
 Recorded as D93.
+
+## Review
+
+2026-10-21 · 0 raw findings, 0 survived. Clean.
 
 ## Open items
 
