@@ -114,3 +114,15 @@ def test_refuses_a_changed_firms_file_without_printing_the_key(monkeypatch, tmp_
     assert "has changed: sha256" in err
     assert KEY not in err
     assert list(tmp_path.iterdir()) == []
+
+
+def test_reports_a_firms_error_without_printing_the_key(monkeypatch, tmp_path, capsys):
+    _pinned(monkeypatch)
+    client = httpx.Client(transport=httpx.MockTransport(lambda request: httpx.Response(503)))
+
+    assert globe_day.main(["--out", str(tmp_path)], client) == 1
+
+    err = capsys.readouterr().err
+    assert "503 Service Unavailable" in err
+    assert KEY not in err
+    assert list(tmp_path.iterdir()) == []

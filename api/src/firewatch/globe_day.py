@@ -154,7 +154,7 @@ def main(argv: list[str] | None = None, client: httpx.Client | None = None) -> i
             concessions.download(LAND_10M_URL, LAND_10M_SHA256, client),
             concessions.download(concessions.URL, concessions.SHA256, client),
         ]
-    except ValueError as e:
+    except (ValueError, httpx.HTTPError) as e:
         print(str(e).replace(key, "<FIRMS_MAP_KEY>"), file=sys.stderr)
         return 1
     args.out.mkdir(parents=True, exist_ok=True)
