@@ -67,6 +67,10 @@ def fetch(
 ) -> list[Hotspot]:
     client = client or httpx.Client(timeout=60)
     url = f"{base_url}/api/area/csv/{map_key}/{SOURCE}/{INDONESIA_BOX}/{days}"
-    response = client.get(url)
-    response.raise_for_status()
+    try:
+        response = client.get(url)
+        response.raise_for_status()
+    except httpx.HTTPError as e:
+        # httpx quotes the URL in its errors, and the key is part of it.
+        raise httpx.HTTPError(str(e).replace(map_key, "<FIRMS_MAP_KEY>")) from None
     return parse(response.text)
