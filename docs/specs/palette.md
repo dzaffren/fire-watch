@@ -365,3 +365,7 @@ _Never delete this section or its rows. See references/ledger.md._
 - **Border image** — a CSS way to paint a box's background past its edges without making the page wider.
 - **Concession** — land the Indonesian government licenses to a company; here, to grow trees for paper
   pulp.
+- **e2e** — end-to-end: one test that walks the slice in a real browser, as a user would.
+- **Playwright** — the tool that drives the browser in the e2e, and can pretend to print.
+- **WebKit** — the engine inside Safari.
+- **`beforeprint`** — the event a browser fires just before it prints a page.
