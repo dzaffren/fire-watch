@@ -911,3 +911,13 @@ Rejected: an investigator (the tool's screens serve them), anyone curious about 
 different use that changes what the tool shows).
 Source: docs/specs/newcomer-walkthrough.md
 Status: active
+
+## D89 · 2026-10-21 · Keep the real case at motion tier 1; the reader's scroll is the motion
+
+Why: the map changes at once at each scroll stop, the newest pass in full fire colour and older
+passes faded, so each pass lands where the reader stopped. The brief already sets the landing
+outside the globe at tier 1 (D3).
+Rejected: tier 2, the map gliding between framings and new dots fading in over about 240 ms (more
+to build, and the landing's motion rises from tier 1 to tier 2).
+Source: docs/specs/newcomer-walkthrough.md
+Status: active

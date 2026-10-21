@@ -1,6 +1,6 @@
 # Fire watch · design system brief
 
-**Status:** Approved · **Updated:** 2026-10-20 by /spec landing-page
+**Status:** Approved · **Updated:** 2026-10-21 by /spec newcomer-walkthrough
 
 The look of the one product in `docs/specs/fire-watch/shape.md`. Watchdog investigators use
 it at a desk to build a case: a map of fires next to a record panel. What they produce is
@@ -33,6 +33,7 @@ Choices were made on the directions page
 | Globe's loading | On its own on desktop, the flat map first; phones keep the flat map | user, landing-page spec pause 1 (O6, D76), 2026-10-20 |
 | Globe's controls | Drag to turn, and one flight to the 0332 fire | user, landing-page spec pause 1 (O7, D77), 2026-10-20 |
 | Landing motion | Tier 3 for the globe, tier 1 for the rest of the page | user, landing-page spec pause 2, 2026-10-20 |
+| Landing's real case | A scroll story over one still map, one stop a pass, at tier 1 | user, newcomer-walkthrough spec pauses 1 and 2 (D82, D89), 2026-10-21 |
 
 ## Token trace
 
