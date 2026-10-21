@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import type { HotspotRecord } from "./api";
-import { RecordPanel } from "./RecordPanel";
+import { checkOf, RecordPanel } from "./RecordPanel";
 
 const MAP = "Trase pulpwood concessions 2023–2024, v2026-02-20";
 const A_FP = "0x86a47945c682c15fb86471df99c10a3fe1d8fc4ba7f39f87e70b46703b85f051";
@@ -133,5 +133,13 @@ describe("RecordPanel", () => {
     const raw = screen.getByText("Show the raw record").closest("details") as HTMLElement;
     expect(within(raw).getByText(/"lon_e5": 10571567/)).toBeInTheDocument();
     expect(within(raw).getByText(A_FP.slice(2))).toBeInTheDocument();
+  });
+});
+
+describe("checkOf", () => {
+  it("reads a zero seal as not on chain yet, the same fingerprint as a match, and another as a change", () => {
+    expect(checkOf(`0x${"00".repeat(32)}`, A_FP)).toEqual({ state: "pending" });
+    expect(checkOf(A_FP, A_FP)).toEqual({ state: "matches" });
+    expect(checkOf(B_FP, B_EDITED_FP)).toEqual({ state: "mismatch", sealed: B_FP });
   });
 });
