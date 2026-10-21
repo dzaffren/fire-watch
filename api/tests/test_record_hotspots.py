@@ -121,6 +121,7 @@ def passes(*acquired):
 def firms():
     server = ThreadingHTTPServer(("127.0.0.1", 0), _FirmsHandler)
     server.csv = ABC
+    server.status = 200
     server.paths = []
     threading.Thread(target=server.serve_forever, daemon=True).start()
     yield server
@@ -132,7 +133,7 @@ class _FirmsHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         self.server.paths.append(self.path)
         body = self.server.csv.encode()
-        self.send_response(200)
+        self.send_response(self.server.status)
         self.send_header("Content-Type", "text/csv")
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
@@ -459,6 +460,20 @@ def test_forecast_error_still_seals_detections(funded, firms, monkeypatch, capsy
         assert_sealed(contract, row)
     assert forecasts(env["DATABASE_URL"]) == []
     assert runs(env["DATABASE_URL"])[-1]["error"] == "RuntimeError: no forecast"
+
+
+def test_records_a_firms_error_without_the_key(funded, firms, monkeypatch, capsys):
+    _, env = funded
+    for name, value in env.items():
+        monkeypatch.setenv(name, value)
+    firms.status = 503
+
+    assert record_hotspots.main() == 1
+
+    error = runs(env["DATABASE_URL"])[-1]["error"]
+    assert "503 Service Unavailable" in error
+    assert "TESTKEY" not in error
+    assert "TESTKEY" not in capsys.readouterr().err
 
 
 def test_rolled_back_forecasts_are_not_logged(funded, firms, monkeypatch, capsys):

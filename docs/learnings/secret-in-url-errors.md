@@ -8,4 +8,5 @@ traceback printed the key.
 
 Where a key is in the URL, catch `httpx.HTTPError` with the other errors and remove the key from the
 message before it prints. Test it with a `MockTransport` that answers 503. The recorder's
-`firms.fetch` has the same shape and doesn't do this yet.
+`firms.fetch` had the same gap: a 503 put the key in `recorder_runs.error` and the job's stderr
+until `fix/firms-key-in-errors`.

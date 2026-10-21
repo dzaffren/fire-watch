@@ -31,3 +31,4 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Security
 
 - The API and the hourly recorder no longer use certifi 2026.7.22, which has advisory PYSEC-2026-4320; they take 2026.10.19.
+- When FIRMS answers with an error, the hourly recorder no longer stores or prints the FIRMS map key in its run record and log.
