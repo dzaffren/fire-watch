@@ -29,6 +29,10 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - The latest-hotspot page and `record-latest`; the fire record page and the hourly recorder replace them.
 
+### Fixed
+
+- Play in a fire's replay no longer jumps almost straight to the last pass; the built page read its 600 ms step as 0.6 ms.
+
 ### Security
 
 - The API and the hourly recorder no longer use certifi 2026.7.22, which has advisory PYSEC-2026-4320; they take 2026.10.19.

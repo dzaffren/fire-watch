@@ -307,6 +307,17 @@ describe("Replay", () => {
     expect(screen.getByRole("button", { name: "Play the spread, pass by pass" })).toBeInTheDocument();
   });
 
+  it("reads the step in seconds, as the build's minifier writes 600ms", () => {
+    document.documentElement.style.setProperty("--fw-replay-step", ".6s");
+    render(<ReplayOn times={times} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Play the spread, pass by pass" }));
+    act(() => vi.advanceTimersByTime(599));
+    expect(value()).toMatch(/^Pass 1 of 4/);
+    act(() => vi.advanceTimersByTime(1));
+    expect(value()).toMatch(/^Pass 2 of 4/);
+  });
+
   it("pauses when asked", () => {
     render(<ReplayOn times={times} />);
     fireEvent.click(screen.getByRole("button", { name: "Play the spread, pass by pass" }));
