@@ -328,7 +328,7 @@ video; at 600 ms it takes about 2 s, and a 28-pass fire about 17 s.
 Rejected: 240 ms (too fast to see each pass land), no play button (motion tier 1; loses the moving
 spread in the demo).
 Source: docs/design/system-brief.md
-Status: active
+Status: superseded by D93
 
 ## D31 · 2026-10-16 · Group fires in the API on each request, in Python
 
@@ -947,4 +947,15 @@ Why: the e2e then reads real seals through Multicall3, as production does, and s
 Rejected: a canned RPC answer from Playwright (the e2e no longer runs the real read), checking only
 that "Checking" shows (the count goes untested end to end).
 Source: docs/specs/newcomer-walkthrough.md
+Status: active
+
+## D93 · 2026-10-21 · Replay one satellite pass every 1500 ms
+
+Why: at 600 ms the 8-pass 0332 fire played in 4.2 s, too fast to see each pass land and read its
+date; at 1500 ms it takes 10.5 s, and the longest live fire, 18 passes, 25.5 s.
+Rejected: 600 ms (too fast to follow, found on 2026-10-21), 1000 ms (0332 in 7 s, still brisk),
+2000 ms (34 s for an 18-pass fire), the whole replay in 12 s (an 18-pass fire drops to 0.7 s a
+pass), Back and Next pass buttons (new interface; drag and the arrow keys already step one pass).
+Supersedes: D30
+Source: docs/specs/replay-pace.md
 Status: active
