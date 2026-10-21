@@ -27,3 +27,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Removed
 
 - The latest-hotspot page and `record-latest`; the fire record page and the hourly recorder replace them.
+
+### Security
+
+- The API and the hourly recorder no longer use certifi 2026.7.22, which has advisory PYSEC-2026-4320; they take 2026.10.19.
