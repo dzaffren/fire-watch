@@ -24,6 +24,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Changed
 
 - A concession's fires forecast to be seen inside come first, then the largest.
+- Play in a fire's replay holds each satellite pass for 1.5 s, not 0.6 s, so the spread is easier to follow.
 
 ### Removed
 

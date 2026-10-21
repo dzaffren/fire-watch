@@ -236,9 +236,9 @@ export function Replay({ times, at, onChange }: ReplayProps) {
       setPlaying(false);
       return;
     }
-    // The build's minifier writes 600ms as .6s.
+    // The build's minifier writes 1500ms as 1.5s.
     const css = getComputedStyle(document.documentElement).getPropertyValue("--fw-replay-step");
-    const step = parseFloat(css) * (/ms\s*$/.test(css) ? 1 : 1000) || 600;
+    const step = parseFloat(css) * (/ms\s*$/.test(css) ? 1 : 1000) || 1500;
     const timer = setTimeout(() => onChange(at + 1), step);
     return () => clearTimeout(timer);
   }, [playing, at, last, onChange]);

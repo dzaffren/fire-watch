@@ -259,7 +259,7 @@ describe("Replay", () => {
 
   beforeEach(() => {
     vi.useFakeTimers();
-    document.documentElement.style.setProperty("--fw-replay-step", "600ms");
+    document.documentElement.style.setProperty("--fw-replay-step", "1500ms");
   });
 
   afterEach(() => {
@@ -295,24 +295,24 @@ describe("Replay", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Play the spread, pass by pass" }));
     expect(value()).toMatch(/^Pass 1 of 4/);
-    act(() => vi.advanceTimersByTime(599));
+    act(() => vi.advanceTimersByTime(1499));
     expect(value()).toMatch(/^Pass 1 of 4/);
     act(() => vi.advanceTimersByTime(1));
     expect(value()).toMatch(/^Pass 2 of 4/);
-    act(() => vi.advanceTimersByTime(600));
-    act(() => vi.advanceTimersByTime(600));
+    act(() => vi.advanceTimersByTime(1500));
+    act(() => vi.advanceTimersByTime(1500));
     expect(value()).toBe("Pass 4 of 4, 2026-10-15 18:43 UTC");
 
-    act(() => vi.advanceTimersByTime(600));
+    act(() => vi.advanceTimersByTime(1500));
     expect(screen.getByRole("button", { name: "Play the spread, pass by pass" })).toBeInTheDocument();
   });
 
-  it("reads the step in seconds, as the build's minifier writes 600ms", () => {
-    document.documentElement.style.setProperty("--fw-replay-step", ".6s");
+  it("reads the step in seconds, as the build's minifier writes 1500ms", () => {
+    document.documentElement.style.setProperty("--fw-replay-step", "1.5s");
     render(<ReplayOn times={times} />);
 
     fireEvent.click(screen.getByRole("button", { name: "Play the spread, pass by pass" }));
-    act(() => vi.advanceTimersByTime(599));
+    act(() => vi.advanceTimersByTime(1499));
     expect(value()).toMatch(/^Pass 1 of 4/);
     act(() => vi.advanceTimersByTime(1));
     expect(value()).toMatch(/^Pass 2 of 4/);
@@ -323,7 +323,7 @@ describe("Replay", () => {
     fireEvent.click(screen.getByRole("button", { name: "Play the spread, pass by pass" }));
 
     fireEvent.click(screen.getByRole("button", { name: "Pause the spread" }));
-    act(() => vi.advanceTimersByTime(1800));
+    act(() => vi.advanceTimersByTime(4500));
     expect(value()).toMatch(/^Pass 1 of 4/);
   });
 
@@ -335,7 +335,7 @@ describe("Replay", () => {
     fireEvent.change(slider(), { target: { value: "3" } });
     expect(value()).toBe("Pass 3 of 4, 2026-10-14 17:20 UTC");
     expect(screen.getByRole("button", { name: "Play the spread, pass by pass" })).toBeInTheDocument();
-    act(() => vi.advanceTimersByTime(1800));
+    act(() => vi.advanceTimersByTime(4500));
     expect(value()).toMatch(/^Pass 3 of 4/);
   });
 

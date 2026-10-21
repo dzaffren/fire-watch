@@ -30,6 +30,8 @@ test("opens the 0332 fire first seen outside and its first detection matches the
   );
   expect(first.tx_hash).toMatch(/^0x[0-9a-f]{64}$/);
 
+  // Time runs as usual until the replay plays, then moves only by runFor.
+  await page.clock.install();
   await page.goto("/?tool");
   await page.getByLabel("From").fill("2026-10-12");
   await page.getByLabel("To").fill("2026-10-15");
@@ -48,6 +50,24 @@ test("opens the 0332 fire first seen outside and its first detection matches the
 
   const replay = page.getByRole("slider", { name: "Satellite pass" });
   await expect(replay).toHaveAttribute("aria-valuetext", "Pass 4 of 4, 2026-10-15 18:43 UTC");
+
+  // Play holds each pass for --fw-replay-step, 1500 ms (D93).
+  await page.clock.pauseAt((await page.evaluate(() => Date.now())) + 1000);
+  await page.getByRole("button", { name: "Play the spread, pass by pass" }).click();
+  await expect(replay).toHaveAttribute("aria-valuetext", "Pass 1 of 4, 2026-10-13 17:37 UTC");
+  await page.clock.runFor(1499);
+  await expect(replay).toHaveAttribute("aria-valuetext", "Pass 1 of 4, 2026-10-13 17:37 UTC");
+  await page.clock.runFor(1);
+  await expect(replay).toHaveAttribute("aria-valuetext", "Pass 2 of 4, 2026-10-14 06:18 UTC");
+  await expect(page.getByText("Pass 2 of 4 · 14 Oct 06:18 UTC")).toBeVisible();
+  await page.clock.runFor(1500);
+  await expect(replay).toHaveAttribute("aria-valuetext", "Pass 3 of 4, 2026-10-14 17:20 UTC");
+  await page.clock.runFor(1500);
+  await expect(replay).toHaveAttribute("aria-valuetext", "Pass 4 of 4, 2026-10-15 18:43 UTC");
+  await page.clock.runFor(1500);
+  await expect(page.getByRole("button", { name: "Play the spread, pass by pass" })).toBeVisible();
+  await page.clock.resume();
+
   await replay.press("Home");
   await expect(replay).toHaveAttribute("aria-valuetext", "Pass 1 of 4, 2026-10-13 17:37 UTC");
   await expect(page.getByText("Pass 1 of 4")).toBeVisible();
