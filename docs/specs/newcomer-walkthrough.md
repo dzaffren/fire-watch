@@ -1,6 +1,6 @@
 # Newcomer walkthrough
 
-**Version:** v1 · **Status:** Draft · **Type:** Enhancement · **Project type:** Web UI
+**Version:** v1 · **Status:** Refined · **Type:** Enhancement · **Project type:** Web UI
 
 **Shape doc:** docs/specs/fire-watch/shape.md
 **Depends on:** landing-page
@@ -266,6 +266,183 @@ its changes.
 17 Oct 2026 09:00 UTC, 156,600 bytes, fetched once with curl at pause 2. Pause 3 plans how it is made and
 committed. The landing reads it and Base Sepolia, and nothing from the API.
 
+## Technical plan
+
+### Approach
+
+The landing fetches the committed copy `case/pack-0332.json` when it mounts. It is served beside the
+page by Static Web Apps, and `RealCase` draws it on the tool's `FireMap`. When the reader first reaches
+the seal step, the page loads the chain code. It then reads the 283 seals from Base Sepolia in one
+Multicall3 call (D38), in the reader's browser (D7). Nothing touches the API, the recorder or the
+database.
+
+Relies on: D2, D3, D4, D5, D7, D22, D29, D33, D37, D38, D72, D73, D75, D78, D81, D82, D83, D84, D85, D86,
+D87, D88, D89, D90, D91, D92
+
+```mermaid
+flowchart TB
+    subgraph browser["reader's browser"]
+        M["main.tsx: neither ?pack nor ?tool"] -- "lazy, with caseSource.ts" --> L[Landing]
+        L -- "caseSource" --> R[RealCase]
+        R -- "boundary, dots, area" --> F["FireMap: Google Maps"]
+        R -- "at the seal step: import()" --> C["chain.ts + fingerprint.ts: viem"]
+    end
+    subgraph swa["Static Web Apps"]
+        J[("case/pack-0332.json, 156,600 bytes")]
+    end
+    R -- "GET on mount" --> J
+    C -- "one eth_call through Multicall3" --> B[("Base Sepolia: FireRecords")]
+```
+
+The landing reads one static file, and the chain only at the seal step. The API is not in the
+picture.
+
+```mermaid
+sequenceDiagram
+    participant U as Reader
+    participant R as RealCase
+    participant W as Static Web Apps
+    participant B as Base Sepolia
+    U->>R: opens /, the case mounts
+    R->>W: GET case/pack-0332.json
+    W-->>R: 283 detections, 8 passes
+    U->>R: scrolls; each step crosses the reading line
+    R->>R: map shows that step's dots and frame
+    U->>R: reaches the seal step
+    R->>W: chain code chunk, 79 kB gzipped
+    R->>B: sealOf x 283 in one Multicall3 call
+    B-->>R: 283 fingerprints
+    R->>U: "283 of 283 detections match the chain"
+```
+
+The text and the map follow the scroll at once. The check is the only network wait the reader sees,
+and it happens once.
+
+```mermaid
+flowchart LR
+    A["API: the pack, cut 17 Oct 09:00 UTC"] -- "curl, once, sha256 d1a43d1e…" --> G[("git: web/public/case/pack-0332.json")]
+    G -- "pnpm build, deploy" --> S[Static Web Apps]
+    S -- "GET" --> P((reader's browser))
+    K[("Base Sepolia")] -- "283 seals" --> P
+```
+
+Data crosses from the live database to git once, through an operator. The reader's browser then
+checks it against the chain, so a changed file shows as a changed record.
+
+### Changes
+
+| File | What changes | Why |
+| ---- | ------------ | --- |
+| `web/src/RealCase.tsx:10` (pause 2) | `CaseSource` becomes `pack()` and `check(records)`, which answers each record's `Check`. The effect at `:79` calls `source.check()` once the seal step is reached | Scenario 4; D91 |
+| `web/src/caseSource.ts` (new) | `caseSource`: `pack()` fetches `case/pack-0332.json`; `check()` imports `./chain` and `./fingerprint` when called, reads the seals with `sealsOf()` and maps them through `checkOf()` | Scenarios 2, 4; D85, D91 |
+| `web/src/api.ts:206` (pause 2) | Remove `caseSource`; it moves to `caseSource.ts`, so the landing doesn't load the API module | D91 |
+| `web/src/main.tsx:11` (pause 2) | The landing's lazy import takes `./caseSource` instead of `./api` | D91 |
+| `web/src/RecordPanel.tsx:42` | Add `checkOf(sealed, fingerprint)`: zero is pending, equal is matches, else mismatch. `checkTitle()` and `overall()` moved here at pause 2 | Scenario 4; one rule for the pack and the case |
+| `web/src/ComplaintPack.tsx:102` | Use `checkOf()` | The same rule |
+| `web/src/Landing.tsx` (pause 2) | As built at pause 2 | Scenarios 1, 5 |
+| `web/src/styles/app.css` (pause 2) | As built at pause 2 | Scenarios 2, 3, 5 |
+| `web/public/case/pack-0332.json` (pause 2) | As fetched: 156,600 bytes, sha256 `d1a43d1e71fb51bd…` | D85, D90 |
+| `web/src/preview/NewcomerWalkthroughPreview.tsx` (pause 2) | `check()` in place of `sealsOf` and `fingerprint` | The preview's seal states |
+| `web/src/case.test.ts` (new) | The committed copy: 283 detections; the 8 passes' counts and inside counts as in the table above; first seen outside, 3,100 m; inside from 13 Oct 06:37 UTC; cut 1792227600 and the key in `EXAMPLE_PACK_HREF`; passes 1 to 6 sealed on 16 Oct and passes 7 and 8 within 3 hours, as the seal step says; no company name | D84, D85, D90 |
+| `web/src/RealCase.test.tsx` (new) | With `FireMap` and `IntersectionObserver` stood in for: the steps in order with their words; pass 2 gives 35 dots and pass 5 gives 182; the check runs once, only from the seal step; all match, one changed with its time and place, and unreachable with "Check again" | Scenarios 2, 3, 4 |
+| `web/src/Landing.test.tsx` (pause 2) | As updated at pause 2 | Scenarios 1, 5 |
+| `web/src/RecordPanel.test.tsx` | `checkOf()` for zero, equal and different | Scenario 4 |
+| `web/e2e/global-setup.ts:150` | After the recorder runs, seal the copy's 283 records on anvil as the recorder wallet, with viem's wallet client, awaited one after another: no `spawnSync` while the FIRMS server must answer | Scenario 4; D92 |
+| `web/e2e/landing-page.spec.ts:26`, `:34`, `:42`, `:54` | The new headline; "Walk through a real case" to `#case` in place of "See a real example"; the globe's "See its complaint pack" found inside the globe's figure, since the case has one too | Scenarios 1, 5 |
+| `web/e2e/landing-page.spec.ts` | The walk below | All scenarios |
+| `README.md` | "Redo the real case's data": the curl line and the sha256 | D90 |
+| `docs/ARCHITECTURE.md:51` | The landing reads `case/pack-0332.json` and Base Sepolia, still nothing from the API | Operators |
+| `CHANGELOG.md` | One Added line | Ship |
+
+Reusing: `FireMap`, `fireDots()`, `fireArea()` and `passTimes()` from `FireView.tsx`, `sealsOf()` from
+`chain.ts`, `fingerprint()`, `checkTitle()`, `overall()` and `Chip`, the format helpers, the e2e's fake
+Google Maps and its Multicall3 on anvil.
+
+### Earn-it
+
+| Added | Triggered by |
+| ----- | ------------ |
+| `case/pack-0332.json` | D85: the case shows while the API sleeps |
+| `caseSource.ts` and the lazy chain import | D91: the landing's first load stays without 79 kB of chain code |
+| `checkOf()` | Scenario 4: the pack and the case judge a seal by one rule, not two copies |
+| The e2e's 283 seals | D92: scenario 4's count, read as production reads it |
+| `RealCase.tsx` | Scenarios 2 to 4: it composes the system's map and labels; no new primitive |
+
+### Non-functionals
+
+|                      |                                                                               |
+| -------------------- | ----------------------------------------------------------------------------- |
+| **Load**             | Static. Each landing visit fetches the copy (31 kB gzipped, 157 kB if the host doesn't compress JSON, O16) and Google Maps, one map load of D5's 10,000 free a month. A reader who reaches the seals adds 79 kB of chain code and one `eth_call` |
+| **Breaks first**     | The public RPC `sepolia.base.org` limits by rate. At 10 times the visits the case still makes one call per reader. A refused call shows "Couldn't reach Base Sepolia" and "Check again" |
+| **Security surface** | No input and no new endpoint. The copy holds public FIRMS detections, their seals, a concession ID and the damage parts; no company name (shape O10, checked by `case.test.ts`). The chain read is a view call with no key. No secret is involved |
+| **Proof it works**   | After the deploy, `curl -s -D - <site>/case/pack-0332.json` answers 200 with `content-type: application/json`, and its body has sha256 `d1a43d1e71fb51bd…`. In a browser, the site's `/` reads "283 of 283 detections match the chain" at the seal step |
+| **Rollout**          | No flag, as for the landing (D81). The merge deploys it. Rollback: revert the merge, and Deploy ships the shipped landing |
+
+### Test plan
+
+| Scenario | Test | Command |
+| -------- | ---- | ------- |
+| 1. First screen | `Landing.test.tsx`, the e2e | `cd web && pnpm test Landing` |
+| 2. The case | `RealCase.test.tsx`, `case.test.ts`, the e2e | `cd web && pnpm test RealCase case` |
+| 3. One pass per stop | `RealCase.test.tsx`, the e2e | `cd web && pnpm test RealCase` |
+| 4. The seals | `RealCase.test.tsx`, `RecordPanel.test.tsx`, the e2e against anvil | `cd web && pnpm test RealCase RecordPanel` |
+| 5. How you use it, phone | `Landing.test.tsx`, the e2e's phone test | `cd web && pnpm e2e` |
+| The real chain | Read once on 2026-10-21 (O17): 283 of 283 match | none; `/ship` checks it in a browser after the deploy |
+
+**E2E:** `web/e2e/landing-page.spec.ts`. It opens `/` and reads the new headline and the region line.
+It presses "Walk through a real case" and scrolls step by step. At "Pass 2 of 8" it reads "35
+detections, 6 inside the concession" and the map's "Pass 2 of 8 · 13 Oct 06:37 UTC". At the seal step
+it reads "283 of 283 detections match the chain", from the seals that setup wrote on anvil. It
+checks that "See its complaint pack" in the case points at the example pack. It checks that the
+landing asked nothing of the API, then opens the tool and comes back. The phone test keeps its
+44 px check over every link and button on the landing. `cd web && pnpm e2e`.
+
+### Chunks
+
+Single chunk. Pause 2 built the screens, and what remains touches the same few files.
+
+### Risks
+
+| Risk | Mitigation |
+| ---- | ---------- |
+| `sepolia.base.org` is down or limits the check during judging | The error state and "Check again"; the pack link still opens the pack, which checks the same way |
+| Static Web Apps doesn't compress JSON (O16) | 157 kB, fetched after the hero shows. `/ship` checks the header |
+| Google Maps fails to load on the landing | The map frame stays empty and the captions still tell the case, as on the tool's map |
+| The copy goes stale against the API | It can't: a pack is cut at its time and holds its fire as it stood (D33, D37). A changed file fails its own seals on the page |
+| On a short laptop screen, a step's 50% height leaves long gaps | The heights are in `vh`, so they scale with the screen; pass stops are 30% |
+| The slice competes with the demo video for the days left (O11) | Single chunk. The screens were built at pause 2 |
+
+### Decisions to record
+
+```
+## D90 · 2026-10-21 · Commit the example pack as the API's own JSON, redone by one curl line
+
+Why: the API answers the same 156,600 bytes for the same cut (two fetches two hours apart matched,
+sha256 d1a43d1e…), so one curl line redoes it exactly, and a test pins its 283 records and 8 passes.
+It stays readable in git.
+Rejected: a case-pack command in api/, as globe-day (D79) (more to build for a file that is one API
+answer), a gzipped .bin like the globe's files (not readable in git).
+Source: docs/specs/newcomer-walkthrough.md
+Status: active
+
+## D91 · 2026-10-21 · Load the seal-check code at the real case's seal step
+
+Why: viem is 79 kB gzipped. The landing's first load stays without chain code, and the code
+downloads while the step reads "Checking".
+Rejected: loading it with the landing (79 kB more on every visit, mostly for readers who never
+reach the seals).
+Source: docs/specs/newcomer-walkthrough.md
+Status: active
+
+## D92 · 2026-10-21 · Seal the example pack's 283 records on the e2e's anvil in global setup
+
+Why: the e2e then reads real seals through Multicall3, as production does, and sees "283 of 283".
+Rejected: a canned RPC answer from Playwright (the e2e no longer runs the real read), checking only
+that "Checking" shows (the count goes untested end to end).
+Source: docs/specs/newcomer-walkthrough.md
+Status: active
+```
+
 ## Open items
 
 | ID | What | Type | Raised at | Owner | Status | Answer |
@@ -283,6 +460,11 @@ committed. The landing reads it and Base Sepolia, and nothing from the API.
 | O11 | This slice is about a day of build, replay-pace about an hour and palette about half a day, with the demo video due by 2026-10-24 | flag | spec p1 | user | Resolved | 2026-10-21: this slice, then replay-pace, then palette |
 
 | O12 | How much motion the case gets as the reader scrolls: tier 1, where the map changes at once, or tier 2, where the map glides between framings and new dots fade in | question | spec p2 | user | Resolved | 2026-10-21: tier 1; the reader's scroll is the only motion, as the brief sets for the landing outside the globe |
+| O13 | How the committed copy is made and kept: the API's JSON with a curl line, a command like globe-day, or a gzipped .bin | question | spec p3 | user | Resolved | 2026-10-21: the API's own JSON, redone by one curl line, pinned by a test (D90) |
+| O14 | When the seal-check code, viem at 79 kB gzipped, loads on the landing | question | spec p3 | user | Resolved | 2026-10-21: at the seal step (D91) |
+| O15 | The e2e's anvil has none of the copy's 283 seals | question | spec p3 | user | Resolved | 2026-10-21: global setup seals them as the recorder wallet (D92) |
+| O16 | Static Web Apps compresses the live site's JS with Brotli, checked 2026-10-21. Nobody has checked JSON; without it the copy costs 157 kB, not 31 kB | unproven | spec p3 | user | Accepted risk | 2026-10-21: `/ship` checks the deployed file's content-encoding. At worst the case loads 157 kB after the hero shows |
+| O17 | Pause 2 stood in for the chain, so "283 of 283" on Base Sepolia was unchecked | unproven | spec p3 | — | Resolved | 2026-10-21: one Multicall3 read from `sepolia.base.org` of the copy's 283 record IDs against FireRecords `0x6A55…Eb2a`: 283 match, 0 changed, 0 unsealed |
 _Never delete this section or its rows. See references/ledger.md._
 
 ## Glossary
@@ -299,4 +481,7 @@ _Never delete this section or its rows. See references/ledger.md._
   against the seals.
 - **Reading line** — the line across the screen, 60% down; the step crossing it is the one the map shows.
 - **FIRMS** — NASA's service that publishes satellite fire detections within hours.
+- **Multicall3** — a contract that bundles many chain reads into one call.
+- **viem** — the JavaScript library the page uses to read the blockchain.
+- **anvil** — a local test blockchain the e2e runs.
 - **e2e** — end-to-end: one test that walks the whole slice as a user would.
