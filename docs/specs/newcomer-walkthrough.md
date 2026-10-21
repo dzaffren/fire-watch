@@ -137,14 +137,15 @@ Scenario: Each scroll stop in the spread adds one satellite pass
 
 Scenario: The judge's browser checks the seals
   Given the judge at the seal step
-  Then their browser reads the 283 seals from Base Sepolia and shows "283 of 283 records match
-    their seal"
+  Then their browser reads the 283 seals from Base Sepolia and shows "283 of 283 detections match
+    the chain", as a pack does
   And it says when they were sealed: passes 1 to 6 on 16 Oct, when recording began, 23 hours to 4
     days after the satellite; passes 7 and 8 about 3 hours after it
   Given someone changed one record in the committed copy
-  Then the step shows 282 of 283 match, and names the record that doesn't
+  Then the step shows "282 of 283 detections match the chain. 1 does not.", and names the
+    detection that doesn't by its time and place
   Given Base Sepolia doesn't answer
-  Then the step says it couldn't reach Base Sepolia and offers "Try again"
+  Then the step says it couldn't reach Base Sepolia and offers "Check again", as a pack does
   And the rest of the page still works
 
 Scenario: The landing says how to use the tool
@@ -156,7 +157,7 @@ Scenario: The landing says how to use the tool
   And "Words used here" gives concession, hotspot, seal and peat, one line each
   And "Two accounts of the same fire" is gone, because the case tells it
   Given a phone 390 px wide
-  Then the case's map sits above its captions and stays in view as they scroll
+  Then the case's map sits above its captions and stays in view as they scroll, without its legend
   And no page scrolls sideways, and every link and button is at least 44 px to tap
 ```
 
@@ -173,7 +174,8 @@ Scenario: The landing says how to use the tool
 - A committed copy of the example fire's pack, cut at 17 Oct 2026 09:00 UTC (D85).
 - "How you use it" in place of "How it works", "Words used here" kept, "Two accounts of the same
   fire" removed (D87).
-- The globe, its flight and its caption, as shipped (D75 to D77).
+- The globe, its flight and its caption, as shipped (D75 to D77). The hero's "See a real example" goes:
+  the case ends on the same pack link.
 - Light and dark themes, phone and desktop widths, from the existing design system (D2, D4).
 
 **Out:**
@@ -185,6 +187,84 @@ Scenario: The landing says how to use the tool
 - A next-step guide inside the tool: not planned.
 - A before-and-after demo of a tampered record: not planned.
 - Company names: never (shape O10).
+
+## Interface
+
+The landing keeps its hero and globe, with new words. Below them, "A real case" is a scroll story: the
+captions scroll on the left and one map holds still on the right. Each caption changes one thing on
+the map. "How you use it" and "Words used here" follow.
+
+```mermaid
+flowchart LR
+    H["hero: headline, lede, region line"] -- "Walk through a real case (#case)" --> C1[the fire, the claim]
+    C1 -- "scroll" --> C2["pass 1 to 8, one stop each"]
+    C2 -- "scroll" --> S["the seals: browser reads Base Sepolia"]
+    S -- "scroll" --> K[what the buyer gets]
+    K -- "See its complaint pack" --> P["/?pack="]
+    K -- "scroll" --> U[How you use it]
+    U -- "Open the tool" --> T["/?tool"]
+    H -- "Open the tool" --> T
+```
+
+The hero leads to the case by a link or by scrolling. The case ends on the pack, and the page ends on
+the tool.
+
+Reference: Stripe's documentation-grade clarity, with the raw record one link away (D2). For the case,
+the newspaper graphics desk's sticky-map scroll story: one map that holds still, short captions that
+each change one thing on it, and the reader's scroll as the clock.
+
+| Part | What shows |
+| ---- | ---------- |
+| Headline | "Show where a plantation fire started, on records anyone can check." |
+| Lede | "Watchdog groups use Fire Watch to report a fire on plantation land to the companies that buy from it. It shows where satellites first saw the fire and how it spread, and the buyer checks every record in their own browser." |
+| Actions | "Walk through a real case" (primary, to `#case`) and "Open the tool" (secondary) |
+| Region line, help text | "Today it watches Indonesia's pulpwood concessions, the first map loaded. The same method works wherever a public map shows who holds the land." |
+| Globe and its caption | As shipped |
+| "A real case": the fire | "A fire near a pulpwood plantation". 283 detections from 12 Oct to 17 Oct 2026 near ID-WOOD-CONCESSION-0332, in Central Kalimantan; the dashed line is the concession's edge, and the company that holds the land answers for fires inside it. The map frames the whole concession, every detection shown |
+| The claim | "Two accounts of one fire". A watchdog reports the fire to the companies that buy the concession's wood; the company can answer that it started outside and spread in; without a record the buyer picks one account |
+| First seen, pass 1 | "Where it was first seen". 12 Oct 05:16 UTC, outside the concession and 3,100 m from its edge. "On this point the record agrees with the company." The map frames the fire, with the one first-seen diamond |
+| Passes 2 to 8 | "Pass 2 of 8", then the time in mono and "35 detections, 6 inside the concession. The fire has crossed the edge." Pass 6 reads "6 detections, all outside." Pass 8 adds "In all, 164 of the 283 detections were inside." The map shows passes up to this one, newest in full fire colour, older faded (detections guideline), with "Pass 2 of 8 · 13 Oct 06:37 UTC" over its top left |
+| The seals | "Every record is sealed". The status label and the pack's count line, such as "283 of 283 detections match the chain". Then: "Your browser reads each detection's seal from Base Sepolia, a public test blockchain, and compares it with the record. A record changed after its seal no longer matches." Then, as help text, when each pass was sealed (D84) |
+| What the buyer gets | A complaint pack: the site, the dates, where it was first seen, how it spread, an estimate of the ground it burned, and all 283 sealed records at one link. The button "See its complaint pack" |
+| "How you use it", numbered | 1 "Pick dates." 2 "Pick a concession." 3 "Open a fire." 4 "Make a pack and send its link.", each with one or two plain sentences, then "Open the tool" |
+| "Words used here" | As shipped. Seal now reads "A record's fingerprint, written on a public blockchain, so any later change to the record shows." The old line said "when the record comes in" (D84) |
+
+| State | What shows |
+| ----- | ---------- |
+| Case loading | A skeleton block, 60% of the screen high, in the case's place |
+| Case didn't load | "The example fire didn't load. Its complaint pack has the same records." with the pack link; the rest of the page works |
+| Before the seal step | The status label reads Checking, muted with the rest of the step |
+| Checking | Starts when the seal step first reaches the reading line; scrolling back doesn't restart it. "Checking 283 detections against the chain" |
+| All match | "Matches the chain" label and "283 of 283 detections match the chain" |
+| One changed | "Does not match the chain" label, "282 of 283 detections match the chain. 1 does not.", and the changed detection's time and place in mono, in the bad colour |
+| Base Sepolia doesn't answer | "Couldn't reach Base Sepolia to check the 283 detections." and "Check again" |
+| Phone, 720 px and under | The map on top, 45% of the screen high, sticky, without its legend; the captions scroll under it |
+| Step on the reading line | In ink; the other steps in muted. The line sits 60% down the screen |
+
+**Motion tier:** 1 (O12). The map changes at once at each stop, and the step on the reading line turns
+from muted to ink with no transition. The reader's scroll is the only motion. The globe stays tier 3
+within its budget (D3).
+
+**Components used:** `app-top`, `fw-btn`, `fw-btn--secondary`, `fw-link`, `fw-help`, `fw-mono`,
+`fw-panel`, `fw-kv`, the status label (`Chip`) and the count line (`checkTitle`, moved from the pack
+to `RecordPanel.tsx` so both use it), the map markers on `FireMap` (3 px dots, fire-power sizes,
+first-seen diamond, older to newer, dashed edge over the tint), and the fire globe. No new token and
+no new primitive. `app.css` adds the `.case` composition. `RealCase.tsx` composes them.
+
+**Design system:** Fire Watch, `docs/design/design-system/` (D2, D4). The palette slice recolours this
+page with the rest, through the tokens.
+
+**Preview:** `cd web && pnpm dev`, then `http://localhost:5173/?preview=newcomer-walkthrough`. Its states
+are every seal matches, checking, one record changed, Base Sepolia doesn't answer, the case loading, and
+the case not loading, in light, dark or the system theme. The case is the real 0332 fire. The chain is
+stood in for: each seal is the record's own fingerprint. The drift check passed over the 9 files
+written, and all 17 tokens the case uses exist. `tsc -b` is clean and the 194 web unit tests pass. In a
+390 px frame the page is 375 px wide, so nothing scrolls sideways. The e2e was not run; pause 3 plans
+its changes.
+
+**The page expects:** `web/public/case/pack-0332.json`, the API's pack answer for the example fire cut at
+17 Oct 2026 09:00 UTC, 156,600 bytes, fetched once with curl at pause 2. Pause 3 plans how it is made and
+committed. The landing reads it and Base Sepolia, and nothing from the API.
 
 ## Open items
 
@@ -202,6 +282,7 @@ Scenario: The landing says how to use the tool
 | O10 | Which sections stay on the landing | question | spec p1 | user | Resolved | 2026-10-21: hero, the case, "How you use it", "Words used here"; "Two accounts of the same fire" goes (D87) |
 | O11 | This slice is about a day of build, replay-pace about an hour and palette about half a day, with the demo video due by 2026-10-24 | flag | spec p1 | user | Resolved | 2026-10-21: this slice, then replay-pace, then palette |
 
+| O12 | How much motion the case gets as the reader scrolls: tier 1, where the map changes at once, or tier 2, where the map glides between framings and new dots fade in | question | spec p2 | user | Resolved | 2026-10-21: tier 1; the reader's scroll is the only motion, as the brief sets for the landing outside the globe |
 _Never delete this section or its rows. See references/ledger.md._
 
 ## Glossary
@@ -216,5 +297,6 @@ _Never delete this section or its rows. See references/ledger.md._
   past it.
 - **Complaint pack** — one fire's records at their own link, which the buyer's browser checks
   against the seals.
+- **Reading line** — the line across the screen, 60% down; the step crossing it is the one the map shows.
 - **FIRMS** — NASA's service that publishes satellite fire detections within hours.
 - **e2e** — end-to-end: one test that walks the whole slice as a user would.
