@@ -182,18 +182,7 @@ Single chunk.
 
 ### Decisions to record
 
-```
-## D93 · 2026-10-21 · Replay one satellite pass every 1500 ms
-
-Why: at 600 ms the 8-pass 0332 fire played in 4.2 s, too fast to see each pass land and read its
-date; at 1500 ms it takes 10.5 s, and the longest live fire, 18 passes, 25.5 s.
-Rejected: 600 ms (too fast to follow, found on 2026-10-21), 1000 ms (0332 in 7 s, still brisk),
-2000 ms (34 s for an 18-pass fire), the whole replay in 12 s (an 18-pass fire drops to 0.7 s a
-pass), Back and Next pass buttons (new interface; drag and the arrow keys already step one pass).
-Supersedes: D30
-Source: docs/specs/replay-pace.md
-Status: active
-```
+Recorded as D93.
 
 ## Open items
 
@@ -201,6 +190,7 @@ Status: active
 | -- | ---- | ---- | --------- | ----- | ------ | ------ |
 | O1 | How long play holds each pass. D30 set 600 ms: the 8-pass 0332 fire plays in 4.2 s, the longest live fire (18 passes) in 10.2 s | question | spec p1 | user | Resolved | 2026-10-21: 1500 ms a pass, so 0332 plays in 10.5 s and an 18-pass fire in 25.5 s (D93) |
 | O2 | Whether stepping one pass at a time gets its own control: Back and Next buttons, or a marker for the newest pass | question | spec p1 | user | Resolved | 2026-10-21: slower play only; drag and the arrow keys already step one pass (D93) |
+| O3 | The build branch goes off the default branch, `main`. `main` lacks newcomer-walkthrough, so it has no D82 to D92 and D93 would collide | flag | build | user | Decided alone | Chose: `feat/replay-pace` off `docs/spec-replay-pace`, which sits on `feat/newcomer-walkthrough`; merge newcomer-walkthrough first. Other: branch off `main` and renumber D93 to D82. Undo: rebase `feat/replay-pace` onto `main` after newcomer-walkthrough merges. 2026-10-21 |
 
 _Never delete this section or its rows. See references/ledger.md._
 
