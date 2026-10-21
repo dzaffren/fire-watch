@@ -343,6 +343,8 @@ checks it against the chain, so a changed file shows as a changed record.
 | `web/src/styles/app.css` (pause 2) | As built at pause 2 | Scenarios 2, 3, 5 |
 | `web/public/case/pack-0332.json` (pause 2) | As fetched: 156,600 bytes, sha256 `d1a43d1e71fb51bd…` | D85, D90 |
 | `web/src/preview/NewcomerWalkthroughPreview.tsx` (pause 2) | `check()` in place of `sealsOf` and `fingerprint` | The preview's seal states |
+| `web/src/preview/LandingPagePreview.tsx` (pause 2) | Passes the case's preview source to `Landing`, which now needs one | The landing-page preview keeps working |
+| `docs/design/system-brief.md` (pause 2) | A row for the landing's real case: a scroll story over one still map, at tier 1 | D82, D89 |
 | `web/src/case.test.ts` (new) | The committed copy: 283 detections; the 8 passes' counts and inside counts as in the table above; first seen outside, 3,100 m; inside from 13 Oct 06:37 UTC; cut 1792227600 and the key in `EXAMPLE_PACK_HREF`; passes 1 to 6 sealed on 16 Oct and passes 7 and 8 within 3 hours, as the seal step says; no company name | D84, D85, D90 |
 | `web/src/RealCase.test.tsx` (new) | With `FireMap` and `IntersectionObserver` stood in for: the steps in order with their words; pass 2 gives 35 dots and pass 5 gives 182; the check runs once, only from the seal step; all match, one changed with its time and place, and unreachable with "Check again" | Scenarios 2, 3, 4 |
 | `web/src/Landing.test.tsx` (pause 2) | As updated at pause 2 | Scenarios 1, 5 |
