@@ -30,3 +30,4 @@
 - Commit before an A/B check that restores files with `git checkout` — [commit-before-ab-checkout](commit-before-ab-checkout.md)
 - Ask once whether the browser can draw WebGL; check the globe through the DOM — [webgl-probe-once](webgl-probe-once.md)
 - Catch every HTTP error where a key rides in the URL; its message holds the URL — [secret-in-url-errors](secret-in-url-errors.md)
+- Check a phone width in a 390 px iframe; `resize_window` here keeps the screen size — [phone-width-in-an-iframe](phone-width-in-an-iframe.md)
