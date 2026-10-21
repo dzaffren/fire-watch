@@ -347,6 +347,18 @@ Single chunk. The web and API changes are small, and the six e2e files move with
 
 Recorded as D79, D80, D81.
 
+## Review
+
+2026-10-21 · 8 raw findings, 7 survived, 7 fixed.
+
+- A09 Security Logging and Alerting Failures · `api/src/firewatch/globe_day.py:157` · redact the FIRMS key from HTTP errors too, not only from a changed file · `826be0a`
+- A03 Software Supply Chain Failures · `web/package.json:17` · pin three.js at exactly 0.186.1 · `46a720a`
+- correctness · `web/src/FireGlobe.tsx:103` · arrive at the example fire when the globe's data fails, so the caption and pack link show · `f933740`
+- correctness · `web/src/FireGlobe.tsx:105` · keep the flat map once the reader arrives on it before the globe shows · `9d9b3f2`
+- coverage · `web/src/globeScene.ts:230` · tests that run the real 30 fps check at 20 fps, 30 fps and across a 10 s gap · `371abcf`
+- quality · `docs/design/system-brief.md:78` · the dot count as the committed files hold it, 41,380 · `16ebda1`
+- quality · `docs/design/system-brief.md:77` · near-0332.bin as 13 kB, and the totals with it · `2bb8e1d`
+
 ## Open items
 
 | ID | What | Type | Raised at | Owner | Status | Answer |
