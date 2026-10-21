@@ -29,3 +29,4 @@
 - Gzip committed files with `GzipFile(mtime=0)`; `gzip.compress` writes another header byte — [gzip-header-os-byte](gzip-header-os-byte.md)
 - Commit before an A/B check that restores files with `git checkout` — [commit-before-ab-checkout](commit-before-ab-checkout.md)
 - Ask once whether the browser can draw WebGL; check the globe through the DOM — [webgl-probe-once](webgl-probe-once.md)
+- Catch every HTTP error where a key rides in the URL; its message holds the URL — [secret-in-url-errors](secret-in-url-errors.md)

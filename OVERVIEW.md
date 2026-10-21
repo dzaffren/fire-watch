@@ -1,6 +1,6 @@
 # ClimateChain hackathon entry
 
-**Status:** Active · **Updated:** 2026-10-20 by /build landing-page
+**Status:** Active · **Updated:** 2026-10-21 by /ship landing-page
 
 Fire Watch, an entry for the IEEE ClimateChain Global Hackathon (deadline 2026-10-25). It shows
 satellite fire hotspots with on-chain proof that each record hasn't changed since it was written,
@@ -36,7 +36,7 @@ for watchdog investigators who file grievances over fires on plantation land.
 | spread-forecast  | Shipped | After each pass, forecast whether a fire near a concession is seen inside within 48 hours, seal it, and list every forecast with its outcome. | docs/specs/spread-forecast.md     |
 | season-backtest  | Shipped | See how the forecast rule did on a replay of 2023, next to a downwind guess, in the forecast panel; `backtest-2023` redoes it byte for byte. | docs/specs/season-backtest.md     |
 | damage-estimate  | Shipped | Each fire gets an estimate of the ground it burned, the CO₂ it released and what that cost, split at the concession's edge, in the fire view and the pack. | docs/specs/damage-estimate.md     |
-| landing-page     | Built   | A page at the site's address says what Fire Watch is for a newcomer, with a globe of 14 Oct 2026's fires that flies to a real fire; the tool moves to `/?tool`. | docs/specs/landing-page.md        |
+| landing-page     | Shipped | A page at the site's address says what Fire Watch is for a newcomer, with a globe of 14 Oct 2026's fires that flies to a real fire; the tool moves to `/?tool`. | docs/specs/landing-page.md        |
 
 ## More
 
