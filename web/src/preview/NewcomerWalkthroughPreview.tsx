@@ -3,6 +3,7 @@ import type { PackDetail } from "../api";
 import { fingerprint } from "../fingerprint";
 import { Landing } from "../Landing";
 import type { CaseSource } from "../RealCase";
+import { checkOf } from "../RecordPanel";
 import { never, param, syncPreview, THEMES, wait, WAIT_MS, type Theme } from "./fixture";
 import "./preview.css";
 
@@ -36,14 +37,13 @@ export function makeSource(state: State): CaseSource {
       const hotspots = pack.hotspots.map((h, i) => (i === 1 ? { ...h, frp_e2: h.frp_e2 + 100 } : h));
       return { ...pack, hotspots };
     },
-    sealsOf: async (records) => {
+    check: async (records) => {
       await wait(WAIT_MS * 3);
       if (state === "checking") return never();
       if (state === "unreachable") throw new Error("preview");
       const original = state === "mismatch" ? (await committed()).hotspots : records;
-      return original.map(fingerprint);
+      return original.map((sealedAs, i) => checkOf(fingerprint(sealedAs), fingerprint(records[i])));
     },
-    fingerprint,
   };
 }
 

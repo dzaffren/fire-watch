@@ -4,7 +4,6 @@ import { sealOf, sealsOf, sealsWithTime } from "./chain";
 import { fingerprint, forecastFingerprint, type ForecastFields, type MatchedDetection } from "./fingerprint";
 import type { PackSource } from "./ComplaintPack";
 import type { FireRecordSource } from "./FireRecordPage";
-import type { CaseSource } from "./RealCase";
 
 export type { ConcessionMatch, Point } from "./fingerprint";
 
@@ -199,16 +198,5 @@ export const packSource: PackSource = {
   pack,
   contract: import.meta.env.VITE_CONTRACT_ADDRESS,
   sealsOf: (records) => sealsOf(records.map((r) => r.record_id)),
-  fingerprint,
-};
-
-/** The landing's real case: the example fire's pack as committed (D85), checked against the chain (D83). */
-export const caseSource: CaseSource = {
-  pack: async () => {
-    const res = await fetch(`${import.meta.env.BASE_URL}case/pack-0332.json`);
-    if (!res.ok) throw new Error(`case: ${res.status}`);
-    return res.json();
-  },
-  sealsOf: packSource.sealsOf,
   fingerprint,
 };
