@@ -32,3 +32,4 @@
 - Catch every HTTP error where a key rides in the URL; its message holds the URL — [secret-in-url-errors](secret-in-url-errors.md)
 - Check a phone width in a 390 px iframe; `resize_window` here keeps the screen size — [phone-width-in-an-iframe](phone-width-in-an-iframe.md)
 - Read a CSS time token with its unit; the build writes `600ms` as `.6s` — [css-time-tokens-in-seconds](css-time-tokens-in-seconds.md)
+- Move a branch stacked on another slice with `git rebase --onto` once that slice merges — [stacked-branch-after-rebase-merge](stacked-branch-after-rebase-merge.md)
