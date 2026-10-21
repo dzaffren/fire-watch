@@ -5,6 +5,10 @@ import { homedir } from "node:os";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import pg from "pg";
+import { createWalletClient, http, parseAbi, type Hex } from "viem";
+import { privateKeyToAccount } from "viem/accounts";
+import { foundry } from "viem/chains";
+import { fingerprint, type MatchedDetection } from "../src/fingerprint";
 import {
   ADMIN_DATABASE_URL,
   API_PORT,
@@ -40,6 +44,8 @@ const PEAT = resolve(ROOT, "fixtures/peat/peat-cut.geojson.gz");
 // Multicall3 as deployed on Base Sepolia; a pack reads its seals through it (D38), and anvil has none.
 const MULTICALL3 = resolve(ROOT, "fixtures/chain/multicall3.hex");
 const MULTICALL3_ADDRESS = "0xcA11bde05977b3631167028862bE2a173976CA11";
+// The landing's real case: the committed copy of the example fire's pack, whose records the e2e seals on anvil (D92).
+const CASE_COPY = resolve(WEB, "public/case/pack-0332.json");
 const VITE = resolve(WEB, "node_modules/.bin/vite");
 const PATH = `${homedir()}/.foundry/bin:${process.env.PATH}`;
 
@@ -91,6 +97,16 @@ function acquired(row: string): number {
   const [, , , , , date, time] = row.split(",");
   const hhmm = time.padStart(4, "0");
   return Date.parse(`${date}T${hhmm.slice(0, 2)}:${hhmm.slice(2)}:00Z`);
+}
+
+// Seals the copy's records as the recorder sealed them on Base Sepolia, one transaction each (D19), awaited in turn.
+async function sealCase() {
+  const { hotspots } = JSON.parse(readFileSync(CASE_COPY, "utf8")) as { hotspots: (MatchedDetection & { record_id: Hex })[] };
+  const wallet = createWalletClient({ account: privateKeyToAccount(RECORDER_PRIVATE_KEY), chain: foundry, transport: http(RPC_URL) });
+  const abi = parseAbi(["function seal(bytes32 recordId, bytes32 fingerprint)"]);
+  for (const h of hotspots) {
+    await wallet.writeContract({ address: CONTRACT_ADDRESS, abi, functionName: "seal", args: [h.record_id, fingerprint(h)] });
+  }
 }
 
 async function resetDatabase() {
@@ -153,6 +169,7 @@ export default async function globalSetup() {
         RECORDER_PRIVATE_KEY,
       });
     }
+    await sealCase();
 
     const api = start(
       "uv",

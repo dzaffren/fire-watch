@@ -9,21 +9,37 @@ const LIST_NOTE = "4 concessions, ranked by hotspots inside.";
 const EXAMPLE_PACK =
   "/?pack=ID-WOOD-CONCESSION-0332&fire=0x13b417c6f54dd95c7c418b5df3f34963cf00f46555d5cae74693cdffbb1d1cf7&as_of=1792227600";
 
+const HEADLINE = "Show where a plantation fire started, on records anyone can check.";
+
+// Puts a step of the real case across the reading line, 60% down the screen.
+async function toStep(page: Page, step: number) {
+  await page.evaluate((n) => {
+    const el = document.querySelector(`[data-step="${n}"]`)!;
+    scrollTo(0, scrollY + el.getBoundingClientRect().top - innerHeight * 0.45);
+  }, step);
+  await expect(page.locator(`[data-step="${step}"]`)).toHaveAttribute("aria-current", "step");
+}
+
 async function fakeMaps(page: Page) {
   await page.route("https://maps.googleapis.com/**", (route) =>
     route.fulfill({ path: FAKE_GOOGLE_MAPS, contentType: "text/javascript" }),
   );
 }
 
-test("a newcomer reads the landing, goes to the example fire, then opens the tool and comes back", async ({ page }) => {
+test("a newcomer reads the landing, walks the real case to its seals, then opens the tool and comes back", async ({
+  page,
+}) => {
   await fakeMaps(page);
   const asked: string[] = [];
+  const chainCode: string[] = [];
   page.on("request", (request) => {
     if (request.url().startsWith(API_URL)) asked.push(request.url());
+    if (request.resourceType() === "script" && /\/chain-/.test(request.url())) chainCode.push(request.url());
   });
 
   await page.goto("/");
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Where did the fire start?");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(HEADLINE);
+  await expect(page.getByText(/^Today it watches Indonesia's pulpwood concessions, the first map loaded\./)).toBeVisible();
   await expect(page.getByText(/62,489 worldwide, 9,923 of them in and around Indonesia/)).toBeVisible();
   await expect(page.getByRole("region", { name: "Words used here" }).getByRole("term")).toHaveText([
     "Concession",
@@ -31,7 +47,6 @@ test("a newcomer reads the landing, goes to the example fire, then opens the too
     "Seal",
     "Peat",
   ]);
-  await expect(page.getByRole("link", { name: "See a real example" })).toHaveAttribute("href", EXAMPLE_PACK);
 
   // Nothing on the page shifts, whether the globe stays or goes back to the flat map.
   const globe = page.locator(".globe");
@@ -39,7 +54,27 @@ test("a newcomer reads the landing, goes to the example fire, then opens the too
   await page.getByRole("button", { name: "Go to the example fire" }).click();
   await expect(page.getByText(/The satellite first saw it on 12 Oct, outside the concession/)).toBeVisible();
   expect((await globe.boundingBox())!.height).toBe(height);
-  await expect(page.getByRole("link", { name: "See its complaint pack" })).toHaveAttribute("href", EXAMPLE_PACK);
+  await expect(page.locator(".landing-globe").getByRole("link", { name: "See its complaint pack" })).toHaveAttribute(
+    "href",
+    EXAMPLE_PACK,
+  );
+
+  // The real case, one scroll stop at a time, read from the committed copy; its seals are on anvil (D92).
+  await page.getByRole("link", { name: "Walk through a real case" }).click();
+  await expect(page).toHaveURL(`${WEB_URL}/#case`);
+  const steps = page.getByRole("region", { name: "A real case" }).getByRole("listitem");
+  await toStep(page, 2);
+  await expect(steps.nth(2)).toContainText("outside the concession and 3,100 m from its edge");
+  await toStep(page, 3);
+  await expect(steps.nth(3)).toContainText("35 detections, 6 inside the concession. The fire has crossed the edge.");
+  await expect(page.getByText("Pass 2 of 8 · 13 Oct 06:37 UTC")).toBeVisible();
+  // The chain code waits for the seal step (D91).
+  expect(chainCode).toEqual([]);
+  await toStep(page, 10);
+  await expect(steps.nth(10)).toContainText("283 of 283 detections match the chain");
+  expect(chainCode).toHaveLength(1);
+  await toStep(page, 11);
+  await expect(steps.nth(11).getByRole("link", { name: "See its complaint pack" })).toHaveAttribute("href", EXAMPLE_PACK);
   // The landing needs nothing from the API, so it shows while the API wakes from zero.
   expect(asked).toEqual([]);
 
@@ -51,7 +86,7 @@ test("a newcomer reads the landing, goes to the example fire, then opens the too
 
   await page.getByRole("link", { name: "About Fire Watch" }).click();
   await expect(page).toHaveURL(`${WEB_URL}/`);
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Where did the fire start?");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(HEADLINE);
 });
 
 test("on a phone the flat map shows without the 3D code, and every control is at least 44 px to tap", async ({
@@ -59,6 +94,7 @@ test("on a phone the flat map shows without the 3D code, and every control is at
 }) => {
   const phone = await browser.newContext({ viewport: { width: 375, height: 800 }, hasTouch: true, isMobile: true });
   const page = await phone.newPage();
+  await fakeMaps(page);
   const scripts: string[] = [];
   page.on("request", (request) => {
     if (request.resourceType() === "script") scripts.push(request.url());
@@ -85,7 +121,7 @@ test("on a phone the flat map shows without the 3D code, and every control is at
   expect(await tooSmall()).toEqual([]);
 
   await page.getByRole("button", { name: "Go to the example fire" }).click();
-  await expect(page.getByRole("link", { name: "See its complaint pack" })).toBeVisible();
+  await expect(page.locator(".landing-globe").getByRole("link", { name: "See its complaint pack" })).toBeVisible();
   expect(await tooSmall()).toEqual([]);
   expect(scripts.filter((url) => /globeScene/.test(url))).toEqual([]);
   await phone.close();
