@@ -461,6 +461,47 @@ def test_a_stored_root_already_on_chain_is_filled_in_not_sent_again(funded):
     assert contract.w3.eth.block_number == block
 
 
+def test_after_the_owner_replaces_the_recorder_only_the_new_key_seals(funded, firms):
+    contract, env = funded
+    url = env["DATABASE_URL"]
+    w3 = contract.w3
+    assert run_recorder(env).returncode == 0
+    first = {r["record_id"] for r in records(url) + forecasts(url)}
+    (old_root,) = stored_roots(url)
+    new_key = Account.create()
+    w3.provider.make_request("anvil_setBalance", [new_key.address, hex(10**18)])
+    owner = Account.from_key(OWNER_KEY)
+    tx = contract.functions.replaceRecorder(new_key.address).build_transaction(
+        {"from": owner.address, "nonce": w3.eth.get_transaction_count(owner.address)}
+    )
+    tx_hash = w3.eth.send_raw_transaction(owner.sign_transaction(tx).raw_transaction)
+    assert w3.eth.wait_for_transaction_receipt(tx_hash).status == 1
+    firms.csv = FIRE_RECORD
+    block = w3.eth.block_number
+
+    result = run_recorder(env)
+
+    assert result.returncode == 1
+    assert "NotRecorder" in result.stderr
+    assert "NotRecorder" in runs(url)[-1]["error"]
+    assert sent(contract, block) == []
+    assert stored_roots(url) == [old_root]
+    waiting = [r for r in records(url) + forecasts(url) if r["record_id"] not in first]
+    assert waiting
+    assert {(r["root_id"], r["proof"], r["tx_hash"]) for r in waiting} == {(None, None, None)}
+
+    result = run_recorder({**env, "RECORDER_PRIVATE_KEY": new_key.key.to_0x_hex()})
+
+    assert result.returncode == 0, result.stderr
+    assert roots_logged(result.stdout) == ("1", "2")
+    old, new = stored_roots(url)
+    assert old == old_root and new["run"] == 2
+    assert w3.eth.get_transaction(new["tx_hash"])["from"] == new_key.address
+    for row in records(url) + forecasts(url):
+        assert row["run"] == (1 if row["record_id"] in first else 2)
+        assert_sealed(contract, row)
+
+
 def test_run_makes_its_forecast_and_seals_it_with_the_detections(clocked, firms):
     contract, env = clocked
     firms.csv = passes("2026-10-13,1737", "2026-10-14,618", "2026-10-14,1720")

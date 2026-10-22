@@ -4,8 +4,9 @@ import time
 from datetime import datetime, timezone
 
 from eth_account import Account
+from eth_utils import keccak
 from web3 import Web3
-from web3.exceptions import BlockNotFound, Web3RPCError
+from web3.exceptions import BlockNotFound, ContractLogicError, Web3RPCError
 
 RECEIPT_TIMEOUT = 120
 # A public RPC is several nodes behind one URL; the one asked may not have a new block yet.
@@ -49,6 +50,13 @@ ABI = [
         "inputs": [{"name": "root", "type": "bytes32"}, {"name": "run", "type": "uint256"}],
     },
 ]
+# Each custom error's name by its selector, so a refusal says which one it was.
+ERRORS = {
+    "0x" + keccak(text=f"{e['name']}({','.join(i['type'] for i in e['inputs'])})")[:4].hex():
+        e["name"]
+    for e in ABI
+    if e["type"] == "error"
+}
 
 
 class ChainError(Exception):
@@ -93,6 +101,10 @@ class Chain:
                     f"insufficient funds in the recorder wallet {self.account.address}"
                 ) from e
             raise Refused(f"the node refused sealRoot: {e}") from e
+        except ContractLogicError as e:
+            # The gas estimate reverted, as for a key that is no longer the recorder.
+            reason = ERRORS.get(str(e.data)[:10], e)
+            raise Refused(f"the node refused sealRoot: {reason}") from e
         receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash, timeout=RECEIPT_TIMEOUT)
         if receipt.status != 1:
             raise ChainError(f"sealRoot transaction 0x{bytes(tx_hash).hex()} reverted")
