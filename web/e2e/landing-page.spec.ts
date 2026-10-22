@@ -5,7 +5,7 @@ import { API_URL, WEB_URL } from "./env";
 const FAKE_GOOGLE_MAPS = fileURLToPath(new URL("./fake-google-maps.js", import.meta.url));
 const LIST_NOTE = "4 concessions, ranked by hotspots inside.";
 // The e2e's API has no example fire, so the pack link is checked by its address: 0332's fire first seen outside,
-// cut at 17 Oct 2026 09:00 UTC (D78).
+// cut at 17 Oct 2026 09:00 UTC (D111).
 const EXAMPLE_PACK =
   "/?pack=ID-WOOD-CONCESSION-0332&fire=0x13b417c6f54dd95c7c418b5df3f34963cf00f46555d5cae74693cdffbb1d1cf7&as_of=1792227600";
 
@@ -52,7 +52,7 @@ test("a newcomer reads the landing, walks the real case to its seals, then opens
   const globe = page.locator(".globe");
   const height = (await globe.boundingBox())!.height;
   await page.getByRole("button", { name: "Go to the example fire" }).click();
-  await expect(page.getByText(/The satellite first saw it on 12 Oct, outside the concession/)).toBeVisible();
+  await expect(page.getByText(/The satellite first saw it on 12 Oct as one detection, 3,100 m outside the concession/)).toBeVisible();
   expect((await globe.boundingBox())!.height).toBe(height);
   await expect(page.locator(".landing-globe").getByRole("link", { name: "See its complaint pack" })).toHaveAttribute(
     "href",
@@ -70,7 +70,9 @@ test("a newcomer reads the landing, walks the real case to its seals, then opens
   await toStep(page, 2);
   await expect(steps.nth(2)).toContainText("outside the concession and 3,100 m from its edge");
   await toStep(page, 3);
-  await expect(steps.nth(3)).toContainText("35 detections, 6 inside the concession. The fire has crossed the edge.");
+  await expect(steps.nth(3)).toContainText(
+    "35 detections, 6 inside the concession. These include another fire, first seen on this pass more than 1 km from the first",
+  );
   await expect(page.getByText("Pass 2 of 8 · 13 Oct 06:37 UTC")).toBeVisible();
   // The chain code waits for the seal step (D91).
   expect(chainCode).toEqual([]);
