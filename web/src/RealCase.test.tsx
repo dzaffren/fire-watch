@@ -1,7 +1,7 @@
 /// <reference types="node" />
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { PackDetail } from "./api";
 import { FireMap } from "./FireMap";
@@ -40,6 +40,11 @@ function reach(step: number) {
   act(() => o.callback([{ isIntersecting: true, target } as unknown as IntersectionObserverEntry], o as never));
 }
 
+// The steps commit before the effect that watches them runs, so wait for the watcher, not only the list.
+async function watching() {
+  await waitFor(() => expect(observers[observers.length - 1]?.elements.length).toBeGreaterThan(0));
+}
+
 const lastMap = () => vi.mocked(FireMap).mock.lastCall![0];
 
 function show(check: CaseSource["check"] = async () => matches()) {
@@ -54,6 +59,8 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  // Unmount before the fake goes: unmounting runs an effect still pending, and that effect makes its observer.
+  cleanup();
   vi.unstubAllGlobals();
   vi.mocked(FireMap).mockClear();
 });
@@ -85,7 +92,7 @@ describe("RealCase", () => {
 
   it("shows the whole concession first, then the passes up to each scroll stop, newest in full", async () => {
     show();
-    await screen.findAllByRole("listitem");
+    await watching();
 
     expect(lastMap().dots).toHaveLength(283);
     expect(lastMap().area).toBeUndefined();
@@ -106,7 +113,7 @@ describe("RealCase", () => {
 
   it("checks the seals once, from the seal step on", async () => {
     const source = show();
-    await screen.findAllByRole("listitem");
+    await watching();
     reach(9);
     expect(source.check).not.toHaveBeenCalled();
 
@@ -120,7 +127,7 @@ describe("RealCase", () => {
 
   it("names a detection that changed after its seal", async () => {
     show(async () => matches().map((c, i) => (i === 1 ? { state: "mismatch", sealed: `0x${"11".repeat(32)}` } : c)));
-    await screen.findAllByRole("listitem");
+    await watching();
 
     reach(SEALS);
 
@@ -131,7 +138,7 @@ describe("RealCase", () => {
 
   it("offers Check again when Base Sepolia doesn't answer", async () => {
     const source = show(vi.fn().mockRejectedValueOnce(new Error("down")).mockResolvedValue(matches()));
-    await screen.findAllByRole("listitem");
+    await watching();
 
     reach(SEALS);
     expect(await screen.findByText("Couldn't reach Base Sepolia to check the 283 detections.")).toBeInTheDocument();
