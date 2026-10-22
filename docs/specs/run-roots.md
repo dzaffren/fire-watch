@@ -1,6 +1,6 @@
 # Run roots
 
-**Version:** v1 · **Status:** Refined · **Type:** Enhancement · **Project type:** Web UI
+**Version:** v1 · **Status:** Built · **Type:** Enhancement · **Project type:** Web UI
 
 **Shape doc:** docs/specs/judge-review/shape.md
 **Depends on:** None
@@ -185,7 +185,7 @@ FireRecords. The record panel, the forecast detail and the pack's check block sh
 
 "Sealed in" sits after "Fingerprint" and before "Transaction". "Transaction" links to the run's one
 transaction for a record in a root, and to the record's own for an old one. The forecast detail
-gets the same "Sealed in" row, after its fingerprint rows.
+gets the same "Sealed in" row, after its fingerprint rows, and the same three rows on a mismatch (O7).
 
 On a mismatch, an old record keeps "Sealed fingerprint" and "Fingerprint now". A record in a root
 shows three rows in their place:
@@ -205,6 +205,7 @@ shows three rows in their place:
 | `ComplaintPack.tsx:217`, check note | Your browser worked out each detection's fingerprint and read its seal from FireRecords on Base Sepolia, a test network. Fire Watch's server chose which records to send. NASA FIRMS's public archive shows whether one is missing. | Your browser worked out each detection's fingerprint and checked it on Base Sepolia, a test network. An older detection has a seal of its own on FireRecords. A newer one is under its recorder run's root on FireRuns. Fire Watch's server chose which records to send. NASA FIRMS's public archive shows whether one is missing. |
 | `ComplaintPack.tsx:240`, the "Contract" row | Contract: `<FireRecords address>` | FireRecords: `<address>`, when the pack has a record without a run. FireRuns: `<address>`, when it has a record with one. Each links to its contract on Basescan |
 | `ForecastPanel.tsx:277` | Each forecast is sealed in the run that makes it, or a later run if that one runs out of time. Every one stays listed here, right or wrong. | Each forecast is sealed in the run that makes it, or a later run if that one fails to seal. Every one stays listed here, right or wrong. |
+| `ForecastPanel.tsx`, mismatch note, forecast in a root (O7) | This forecast has changed since it was sealed. The chain still holds the original fingerprint. | This forecast has changed since its run was sealed. The chain still holds the run's original root. |
 
 The proof hashes show in the raw record because the API sends them with the record.
 
@@ -297,7 +298,7 @@ chain yet", never "Matches" (D106).
 | `web/src/api.ts:10`, `:68`, `:187`, `:204` | `HotspotRecord` and `Forecast` gain `run` and `proof`. Both sources call `checkReads` | 1, 2 |
 | `web/src/vite-env.d.ts:6` | Adds `VITE_FIRE_RUNS_ADDRESS` | 1 |
 | `web/src/preview/*` | The fixture sources return `Seal`s. The complaint-pack and spread-forecast previews add records in a two-leaf root, one changed | 1, 3 |
-| `web/e2e/env.ts`, `web/e2e/global-setup.ts` | Deploys FireRuns as anvil account 0's second contract, `0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512`, with account 1 as owner. Runs 1 and 2 seal from account 0. Then the owner replaces the recorder with account 2, and runs 3 and 4 seal from it. Last, it moves the first pass of 0332's fire back to FireRecords, as the recorder sealed records before the switch | 2, 5 |
+| `web/e2e/env.ts`, `web/e2e/global-setup.ts` | Deploys FireRuns as anvil account 0's second contract, `0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512`, with account 1 as owner. Runs 1 and 2 seal from account 0. Then the owner replaces the recorder with account 2, and runs 3 and 4 seal from it. Right after run 1, it moves the first pass of 0332's fire back to FireRecords, as the recorder sealed records before the switch (O8) | 2, 5 |
 | `web/e2e/run-roots.spec.ts` | New. The slice's e2e, below | all |
 | `.github/workflows/deploy.yml:94` | Passes `VITE_FIRE_RUNS_ADDRESS` from the GitHub variable `FIRE_RUNS_ADDRESS` | 1 |
 | `infra/setup.sh:16`, `:60`, `:115` | The job gets `FIRE_RUNS_ADDRESS` in place of `CONTRACT_ADDRESS`, and the printout names the new GitHub variable | 1 |
@@ -368,7 +369,7 @@ No new dependency: the API has `eth_abi` and `eth_utils`, and the page has `viem
 | **Breaks first**     | At 10×, a 4,880-detection fire's route carries about 1.5 MB gzipped of proofs. Then move proofs to a route of their own, asked for only by the pack. The root transaction stays one per run |
 | **Security surface** | `sealRoot`: the recorder key only. `replaceRecorder`: the owner key only, from an encrypted Foundry keystore on the operator's machine. The page trusts the chain and hashes what the API sends. A wrong record, run or proof can't read "Matches" (D106). New data: roots and proofs, all public. No new secret in Azure or GitHub |
 | **Proof it works**   | The job's log line: `recorded fetched=… sealed=1297 unsealed=0 roots=1 run=412 …`. Basescan shows one `sealRoot` an hour on FireRuns. `/api/health` keeps `last_sealed` and `unsealed=0` |
-| **Rollout**          | No flag, as D81. In order: `migrate up` on Neon; merge, so Deploy ships the API and the page, which read both contracts; deploy and verify FireRuns from the owner keystore; set the `FIRE_RUNS_ADDRESS` variable; point the job at the merged image with `FIRE_RUNS_ADDRESS` set (D21). Rollback: the job's previous image |
+| **Rollout**          | No flag, as D81. In order: `migrate up` on Neon; merge, so Deploy ships the API and the page, which read both contracts; deploy and verify FireRuns from the owner keystore; set the `FIRE_RUNS_ADDRESS` variable and rerun Deploy (O10); point the job at the merged image with `FIRE_RUNS_ADDRESS` set (D21). Rollback: the job's previous image |
 
 The operator's steps, with the real recorder address:
 
@@ -443,6 +444,13 @@ Recorded as D103, D104, D105, D106, D107, D108, D109, D110.
 | O3 | Do new forecasts go into the run's root, or keep their own seals on FireRecords? | question | spec p1 | user | Resolved | 2026-10-22: into the root with the run's detections, so FireRecords' fixed key seals nothing new (D105) |
 | O4 | The chain alone can't say a record is in a run's root; the page needs the API's proof. A record the API sends without its proof reads "Not on chain yet", never "Matches" | flag | spec p1 | user | Accepted risk | 2026-10-22: until complete-packs, whose per-run lists show a missing record. A pack already says the server chose its records (D98). D106 |
 | O5 | Which motion tier the new rows use | question | spec p2 | user | Resolved | 2026-10-22: tier 0. Nothing new moves; the rows appear when the chain answers, and the chip keeps its existing `enter` |
+| O6 | D110 says "A send that the node refuses, such as from an empty wallet, drops its root at once". For a stored root being sent again, that is D110's rejected option: an earlier send of it may still land | flag | build | user | Decided alone | Chose: drop only the run's new root, when its first send is refused before any transaction exists: an empty wallet, or a gas estimate that reverts, such as `NotRecorder` from a replaced key. A stored root sent again is never dropped, nor one whose receipt timed out or reverted; the run stops with its error. Other: drop any refused root. Undo: in `_seal_root`, catch `Refused` around the stored root's resend and drop it as the new root is. 2026-10-22 |
+| O7 | The Copy table had no forecast-detail note or rows for a forecast in a root that no longer matches | flag | build | user | Decided alone | Chose: the forecast detail gets the record panel's three rows (Fingerprint now, Run root on chain, Run root now) and the note "This forecast has changed since its run was sealed. The chain still holds the run's original root." Other: keep "Sealed fingerprint" and "the original fingerprint", which name a fingerprint the chain doesn't hold. Undo: edit `ForecastPanel.tsx`'s note and drop `SealRows` there (commit 247b481). 2026-10-22 |
+| O8 | The e2e row said "Last, it moves the first pass of 0332's fire back to FireRecords" | flag | build | user | Decided alone | Chose: move it right after run 1, so its three FireRecords seals sit at 13 Oct 20:00, minutes after the run, as real seals did. Other: after run 4, two days after detection. Undo: move `moveFirstPassToFireRecords()` after the runs loop in `web/e2e/global-setup.ts`. 2026-10-22 |
+| O9 | Two files the plan didn't name: `web/e2e/fire-record.spec.ts`, whose seal-time helper read hotspot A from FireRecords, and `web/src/styles/app.css`, where the pack's two contract links overlapped as tap targets on a phone | flag | build | user | Decided alone | Chose: change both. The helper reads A's run root on FireRuns; on a coarse pointer each contract link is one 44 px box, as `.pack-foot .fw-link` is (commit 89bca10). Other: none that keeps the e2e and the tap check green. Undo: `git revert 89bca10`, and point the helper back at `sealOf`. 2026-10-22 |
+| O10 | The Rollout order set the `FIRE_RUNS_ADDRESS` variable but didn't rebuild the page, which takes the address at build time | flag | build | user | Decided alone | Chose: the README reruns Deploy after the variable is set, before the job switch. The job keeps `CONTRACT_ADDRESS` beside `FIRE_RUNS_ADDRESS`, so rollback is the previous image alone. Other: the plan's order, where new run roots would read "Couldn't reach Base Sepolia" until the next deploy. Undo: drop the rerun from README step 5. 2026-10-22 |
+| O11 | The Interface table gives a mismatch's "Sealed" as the seal's time alone, with no gap after detection | flag | build | user | Decided alone | Chose: keep "then the gap after detection" on a mismatch, as the panel does today for every seal. Other: drop the gap on a mismatch. Undo: in `RecordPanel.tsx`, show the gap only when the check matches. 2026-10-22 |
+| O12 | `web/src/ComplaintPack.test.tsx` "reads the site, dates and basis of the 0332 fire" times out at vitest's 5 s in the full `pnpm test`. It passes alone in 3.1 s | flag | build | user | Decided alone | Chose: leave it. It fails the same way at 95c4af1, which holds `main`'s page code (5.9 s and 7.0 s in two runs). Other: raise its timeout here. Undo: none needed; raise the timeout in its own fix. 2026-10-22 |
 
 _Never delete this section or its rows. See references/ledger.md._
 
