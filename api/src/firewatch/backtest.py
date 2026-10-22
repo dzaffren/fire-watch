@@ -430,7 +430,7 @@ def forecasts_csv(made: list[Replayed], guesses: dict[str, list[datetime | None]
 def main(argv: list[str] | None = None, client: httpx.Client | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="backtest-2023",
-        description="Replay 2023 with forecast rule version 1 and the downwind guess.",
+        description="Replay 2023 with forecast rule version 1 and three guesses.",
     )
     parser.add_argument("--firms", type=Path, help="a FIRMS CSV, read as is")
     parser.add_argument("--map", type=Path, help="a Trase GeoJSON map, read as is")
@@ -484,6 +484,8 @@ def main(argv: list[str] | None = None, client: httpx.Client | None = None) -> i
         f"replayed year=2023 detections={len({d.record_id for ds in found.values() for d in ds})}"
         f" forecasts={len(made)} arrivals={rule['warned'] + rule['missed']}"
         f" rule_warned={rule['warned']} downwind_warned={result['downwind']['warned']}"
+        f" near_edge_warned={result['near_edge']['warned']}"
+        f" next_pass_warned={result['next_pass']['warned']}"
         f" seconds={round(time.perf_counter() - began)}"
     )
     return 0
