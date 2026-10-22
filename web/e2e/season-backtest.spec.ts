@@ -23,12 +23,11 @@ interface Totals {
   median_hours_off: number | null;
 }
 // The page bundles the committed totals, not the cut's (D59).
-const committed: { forecasts: number; rule: Totals; downwind: Totals } = JSON.parse(
+const committed: { forecasts: number; rule: Totals; downwind: Totals; near_edge: Totals; next_pass: Totals } = JSON.parse(
   readFileSync(resolve(BACKTEST, "2023.json"), "utf8"),
 );
 
 const count = (n: number) => n.toLocaleString("en-GB");
-const hoursOff = (h: number | null) => (h === null ? "None warned of" : `${h.toFixed(1)} h`);
 
 async function resetDatabase() {
   const admin = new pg.Client(ADMIN_DATABASE_URL);
@@ -103,21 +102,25 @@ test("replays a cut of 2023 and shows the committed result on the 0332 fire", as
   await page.getByRole("row").filter({ hasText: "13 Oct 17:37" }).getByRole("button").click();
 
   const panel = page.getByRole("region", { name: "Forecast to be seen inside by about 15 Oct 05:20 UTC" });
-  const { rule, downwind } = committed;
-  const arrivals = count(rule.warned + rule.missed);
-  await expect(panel.getByRole("table", { name: "How this rule did on 2023, replayed" }).locator("tbody tr")).toHaveText([
-    `Arrivals warned of${count(rule.warned)} of ${arrivals}${count(downwind.warned)} of ${arrivals}`,
-    `Warnings that didn't come in${count(rule.did_not_come_in)} of ${count(rule.warned + rule.did_not_come_in)}` +
-      `${count(downwind.did_not_come_in)} of ${count(downwind.warned + downwind.did_not_come_in)}`,
-    `Median hours off${hoursOff(rule.median_hours_off)}${hoursOff(downwind.median_hours_off)}`,
-  ]);
+  const { rule, near_edge, downwind, next_pass } = committed;
+  const methods: [string, Totals][] = [
+    ["Rule version 1", rule],
+    ["Near-edge step", near_edge],
+    ["Downwind guess", downwind],
+    ["Next-pass guess", next_pass],
+  ];
+  await expect(panel.getByRole("table", { name: "How this rule did on 2023, replayed" }).locator("tbody tr")).toHaveText(
+    methods.map(([name, t]) => `${name}${count(t.warned)}${count(t.did_not_come_in)} of ${count(t.warned + t.did_not_come_in)}`),
+  );
+  await expect(panel).toContainText(
+    `Rule version 1's advance step warned of ${count(rule.warned - near_edge.warned)} arrivals the near-edge step missed, ` +
+      `and added ${count(rule.did_not_come_in - near_edge.did_not_come_in)} warnings that didn't come in.`,
+  );
   await expect(panel).toContainText("A replay of 2023, run in 2026. Nothing in it was sealed in 2023.");
 
   await panel.getByText("How this is worked out").click();
-  const counts = panel.getByRole("table", { name: "Every count of the 2023 replay" });
-  await expect(counts.getByRole("row", { name: /^Forecasts made/ })).toHaveText(
-    `Forecasts made${count(committed.forecasts)}, the same for both`,
-  );
+  const same = panel.getByRole("table", { name: "The same for all four" });
+  await expect(same.getByRole("row", { name: /^Forecasts made/ })).toHaveText(`Forecasts made${count(committed.forecasts)}`);
   await expect(panel.getByRole("link", { name: "Every 2023 forecast, as CSV" })).toHaveAttribute(
     "href",
     "https://github.com/dzaffren/fire-watch/blob/main/fixtures/backtest/2023-forecasts.csv",

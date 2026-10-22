@@ -10,64 +10,100 @@ const BACKTEST_REDO_URL = "https://github.com/dzaffren/fire-watch/blob/main/READ
 
 const hoursOff = (t: BacktestTotals) => (t.median_hours_off === null ? "None warned of" : `${t.median_hours_off.toFixed(1)} h`);
 
-/** How the forecast's rule did on the 2023 replay, next to the downwind guess (D53, D54). */
+/** The rule and the three guesses it is measured against, in the order both tables list them (D99). */
+const methods = (b: Backtest): [string, BacktestTotals][] => [
+  [`Rule version ${b.rule_version}`, b.rule],
+  ["Near-edge step", b.near_edge],
+  ["Downwind guess", b.downwind],
+  ["Next-pass guess", b.next_pass],
+];
+
+/** What the rule's advance step adds over its near-edge step alone, from the totals (D100). The
+ *  near-edge step is part of the rule, so neither difference is below 0. */
+function addsLine(b: Backtest): string {
+  const warned = b.rule.warned - b.near_edge.warned;
+  const extra = b.rule.did_not_come_in - b.near_edge.did_not_come_in;
+  return (
+    `Rule version ${b.rule_version}'s advance step warned of ${plural(warned, "arrival", "arrivals")} the near-edge ` +
+    `step missed, and added ${plural(extra, "warning", "warnings")} that didn't come in.`
+  );
+}
+
+/** How the forecast's rule did on the 2023 replay, next to three guesses (D53, D54, D99). The
+ *  arrivals are the same for all four, so the column head carries them and a phone fits it. */
 function BacktestSummary({ b }: { b: Backtest }) {
   const arrivals = b.rule.warned + b.rule.missed;
-  const rows: [string, (t: BacktestTotals) => string][] = [
-    ["Arrivals warned of", (t) => `${count(t.warned)} of ${count(arrivals)}`],
-    ["Warnings that didn't come in", (t) => `${count(t.did_not_come_in)} of ${count(t.warned + t.did_not_come_in)}`],
-    ["Median hours off", hoursOff],
-  ];
   return (
     <div className="forecast-backtest">
       <h3 id="h-backtest">How this rule did on 2023, replayed</h3>
       <div className="table-box">
         <table className="fw-table" aria-labelledby="h-backtest">
           <thead>
-            <tr><th scope="col">In 2023</th><th scope="col">Rule version {b.rule_version}</th><th scope="col">Downwind guess</th></tr>
+            <tr>
+              <th scope="col">In 2023</th>
+              <th scope="col" className="num">Arrivals warned of, out of {count(arrivals)}</th>
+              <th scope="col" className="num">Warnings that didn't come in</th>
+            </tr>
           </thead>
           <tbody>
-            {rows.map(([label, cell]) => (
-              <tr key={label}><th scope="row">{label}</th><td>{cell(b.rule)}</td><td>{cell(b.downwind)}</td></tr>
+            {methods(b).map(([name, t]) => (
+              <tr key={name}>
+                <th scope="row" className="method">{name}</th>
+                <td className="num">{count(t.warned)}</td>
+                <td className="num">{count(t.did_not_come_in)} of {count(t.warned + t.did_not_come_in)}</td>
+              </tr>
             ))}
           </tbody>
         </table>
       </div>
+      <p className="fw-help">{addsLine(b)}</p>
       <p className="fw-help">A replay of 2023, run in 2026. Nothing in it was sealed in 2023.</p>
     </div>
   );
 }
 
-/** Every count of the 2023 replay, for "How this is worked out" (D53, D55). */
+/** The rest of the 2023 replay's counts, for "How this is worked out" (D53, D55). */
 function BacktestCounts({ b }: { b: Backtest }) {
-  const each: [string, keyof BacktestTotals][] = [
-    ["Warnings that came in", "warned"],
-    ["Warnings that didn't come in", "did_not_come_in"],
-    ["Arrivals missed", "missed"],
-    ["Said no, and stayed out", "stayed_out"],
-  ];
-  const both: [string, number][] = [
+  const all: [string, number][] = [
     ["Not checked: joined another fire first", b.joined],
     ["Not checked: seen inside before it was made", b.seen_before_made],
     ["Not counted: its 48 hours end after 2023", b.ends_after_2023],
     ["Forecasts made", b.forecasts],
   ];
   return (
-    <div className="table-box">
-      <table className="fw-table" aria-label="Every count of the 2023 replay">
-        <thead>
-          <tr><th scope="col">Forecasts</th><th scope="col">Rule version {b.rule_version}</th><th scope="col">Downwind guess</th></tr>
-        </thead>
-        <tbody>
-          {each.map(([label, key]) => (
-            <tr key={key}><th scope="row">{label}</th><td>{count(b.rule[key] ?? 0)}</td><td>{count(b.downwind[key] ?? 0)}</td></tr>
-          ))}
-          {both.map(([label, n]) => (
-            <tr key={label}><th scope="row">{label}</th><td colSpan={2}>{count(n)}, the same for both</td></tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <>
+      <div className="table-box">
+        <table className="fw-table" aria-label="The rest of the 2023 replay">
+          <thead>
+            <tr>
+              <th scope="col">Forecasts</th>
+              <th scope="col" className="num">Arrivals missed</th>
+              <th scope="col" className="num">Said no, stayed out</th>
+              <th scope="col" className="num">Median hours off</th>
+            </tr>
+          </thead>
+          <tbody>
+            {methods(b).map(([name, t]) => (
+              <tr key={name}>
+                <th scope="row" className="method">{name}</th>
+                <td className="num">{count(t.missed)}</td>
+                <td className="num">{count(t.stayed_out)}</td>
+                <td className="num">{hoursOff(t)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="table-box">
+        <table className="fw-table" aria-label="The same for all four">
+          <tbody>
+            {all.map(([label, n]) => (
+              <tr key={label}><th scope="row">{label}</th><td className="num">{count(n)}</td></tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
   );
 }
 
@@ -245,13 +281,21 @@ export function ForecastPanel({ fire, checks, fingerprints, picked, now, backtes
           {replayed && (
             <>
               <p className="fw-help">
-                The 2023 replay runs this rule, and a downwind guess, at every moment the recorder would have forecast
-                in 2023. It reads FIRMS's 2023 VIIRS NOAA-20 archive for Indonesia and the same concession map. The
-                downwind guess moves the fire with ERA5's hourly wind, from Open-Meteo, at the rate it advanced since
-                the pass before. A fire seen on one pass has no rate, so the guess says no.
+                The 2023 replay runs this rule, and three guesses, at every moment the recorder would have forecast in
+                2023. It reads FIRMS's 2023 VIIRS NOAA-20 archive for Indonesia and the same concession map.
               </p>
               <p className="fw-help">
-                Both forecast at the same moments, and only passes after a forecast was made count. A warning is a
+                The near-edge step is this rule's step 5 alone: a fire at most 375 m from the edge is forecast to be
+                seen inside 12 hours after its newest pass. The next-pass guess says that of every fire. The downwind
+                guess moves the fire with ERA5's hourly wind, from Open-Meteo, at the rate it advanced since the pass
+                before. A fire seen on one pass has no rate, so the downwind guess says no.
+              </p>
+              <p className="fw-help">
+                The near-edge step is part of this rule, and in 2023 the downwind guess said yes only where this rule
+                did. So neither warned of an arrival this rule missed.
+              </p>
+              <p className="fw-help">
+                All four forecast at the same moments, and only passes after a forecast was made count. A warning is a
                 forecast that the fire is seen inside.
               </p>
               <BacktestCounts b={replayed} />
