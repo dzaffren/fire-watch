@@ -1,7 +1,8 @@
 import { fileURLToPath } from "node:url";
 import { expect, test, type Page } from "@playwright/test";
 import pg from "pg";
-import { E2E_DATABASE_URL, WEB_URL } from "./env";
+import { createPublicClient, http, parseAbi, type Hex } from "viem";
+import { CONTRACT_ADDRESS, E2E_DATABASE_URL, RPC_URL, WEB_URL } from "./env";
 
 declare global {
   interface Window {
@@ -21,6 +22,15 @@ async function sql<Row>(text: string): Promise<Row[]> {
   } finally {
     await db.end();
   }
+}
+
+/** A record's seal time by anvil's clock, as the record panel writes it: "2026-10-13 20:00 UTC". */
+async function chainSealedAt(recordId: Hex): Promise<string> {
+  const client = createPublicClient({ transport: http(RPC_URL) });
+  const abi = parseAbi(["function sealOf(bytes32 recordId) view returns (bytes32 fingerprint, uint64 sealedAt)"]);
+  const [, sealedAt] = await client.readContract({ address: CONTRACT_ADDRESS, abi, functionName: "sealOf", args: [recordId] });
+  expect(sealedAt).toBeGreaterThan(0n);
+  return `${new Date(Number(sealedAt) * 1000).toISOString().slice(0, 16).replace("T", " ")} UTC`;
 }
 
 async function fakeMaps(page: Page) {
@@ -156,6 +166,31 @@ test("every control is at least 44 px to tap on a touch screen", async ({ browse
   await expect(page.getByText("Matches the chain")).toBeVisible();
   expect(await tooSmall()).toEqual([]);
   await phone.close();
+});
+
+test("A still matches the chain when the API sends it with no tx_hash", async ({ page }) => {
+  const A = "lat_e5 = -358175 AND lon_e5 = 10571567";
+  const [stored] = await sql<{ record_id: Hex; tx_hash: string; sealed_at: Date }>(
+    `SELECT '0x' || encode(record_id, 'hex') AS record_id, encode(tx_hash, 'hex') AS tx_hash, sealed_at FROM hotspots WHERE ${A}`,
+  );
+  const sealedAt = await chainSealedAt(stored.record_id);
+
+  await sql(`UPDATE hotspots SET tx_hash = NULL, sealed_at = NULL WHERE ${A}`);
+  try {
+    await openFixtureDates(page);
+    await page.getByRole("button", { name: /^ID-WOOD-CONCESSION-0540/ }).click();
+    await fireOfA(page).getByRole("button").click();
+    await hotspotRow(page, "5.2 MW").getByRole("button").click();
+
+    const panel = page.getByRole("article", { name: "Hotspot record" });
+    await expect(panel.getByText("Matches the chain")).toBeVisible();
+    await expect(panel.locator("dt:text-is('Sealed') + dd")).toContainText(sealedAt);
+    await expect(panel).not.toContainText("Not on chain yet");
+  } finally {
+    await sql(
+      `UPDATE hotspots SET tx_hash = decode('${stored.tx_hash}', 'hex'), sealed_at = '${stored.sealed_at.toISOString()}' WHERE ${A}`,
+    );
+  }
 });
 
 // Last, since it edits the stored record the other tests read.

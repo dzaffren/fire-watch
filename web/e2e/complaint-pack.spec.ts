@@ -1,12 +1,15 @@
 import { fileURLToPath } from "node:url";
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 import pg from "pg";
-import { E2E_DATABASE_URL, RPC_URL } from "./env";
+import { createPublicClient, http, parseAbi, type Hex } from "viem";
+import { CONTRACT_ADDRESS, E2E_DATABASE_URL, RPC_URL } from "./env";
 
 const FAKE_GOOGLE_MAPS = fileURLToPath(new URL("./fake-google-maps.js", import.meta.url));
 const READING = "First seen outside, 950 m from the edge";
 // Scenario 3's detection: 14 Oct 06:18 UTC at 2.85500°S, 112.72607°E, 14.48 MW.
 const CHANGED = "acquired_at = '2026-10-14T06:18Z' AND lat_e5 = -285500 AND lon_e5 = 11272607";
+// The fire's first detection: 13 Oct 17:37 UTC at 2.85170°S, 112.72527°E, outside 0332 and 950 m from its edge.
+const FIRST = "acquired_at = '2026-10-13T17:37Z' AND lat_e5 = -285170 AND lon_e5 = 11272527";
 
 async function sql<Row>(text: string): Promise<Row[]> {
   const db = new pg.Client(E2E_DATABASE_URL);
@@ -16,6 +19,15 @@ async function sql<Row>(text: string): Promise<Row[]> {
   } finally {
     await db.end();
   }
+}
+
+/** A record's seal time by anvil's clock, as the record panel writes it: "2026-10-13 20:00 UTC". */
+async function chainSealedAt(recordId: Hex): Promise<string> {
+  const client = createPublicClient({ transport: http(RPC_URL) });
+  const abi = parseAbi(["function sealOf(bytes32 recordId) view returns (bytes32 fingerprint, uint64 sealedAt)"]);
+  const [, sealedAt] = await client.readContract({ address: CONTRACT_ADDRESS, abi, functionName: "sealOf", args: [recordId] });
+  expect(sealedAt).toBeGreaterThan(0n);
+  return `${new Date(Number(sealedAt) * 1000).toISOString().slice(0, 16).replace("T", " ")} UTC`;
 }
 
 async function fakeMaps(context: BrowserContext) {
@@ -126,6 +138,34 @@ test("every control on a pack is at least 44 px to tap on a touch screen", async
     expect(tooSmall).toEqual([]);
   } finally {
     await phone.close();
+  }
+});
+
+test("a buyer reads a detection's seal time from the chain, and who chose the records", async ({ page, browser }) => {
+  const url = await makePack(page);
+  const [{ record_id, sealed_at }] = await sql<{ record_id: Hex; sealed_at: Date }>(
+    `SELECT '0x' || encode(record_id, 'hex') AS record_id, sealed_at FROM hotspots WHERE ${FIRST}`,
+  );
+  const sealedAt = await chainSealedAt(record_id);
+
+  await sql(`UPDATE hotspots SET sealed_at = '2026-10-17T00:00Z' WHERE ${FIRST}`);
+  const buyer = await browser.newContext();
+  try {
+    const { page: pack } = await openAsBuyer(buyer, url);
+    await expect(pack.getByRole("heading", { name: "19 of 19 detections match the chain" })).toBeVisible();
+    await expect(pack.getByRole("region", { name: "19 of 19 detections match the chain" })).toContainText(
+      "Fire Watch's server chose which records to send. NASA FIRMS's public archive shows whether one is missing.",
+    );
+    await expect(pack.locator("body")).not.toContainText("never changes");
+
+    await pack.getByRole("row").filter({ hasText: "Outside, 950 m" }).getByRole("button").click();
+    const sealed = pack.getByRole("article", { name: "Hotspot record" }).locator("dt:text-is('Sealed') + dd");
+    await expect(sealed).toContainText(sealedAt);
+    await expect(sealed).toContainText("after detection");
+    await expect(sealed).not.toContainText("2026-10-17");
+  } finally {
+    await sql(`UPDATE hotspots SET sealed_at = '${sealed_at.toISOString()}' WHERE ${FIRST}`);
+    await buyer.close();
   }
 });
 
