@@ -5,6 +5,11 @@ import { checkReads, type Seal } from "./chain";
 
 vi.mock("./chain", () => ({ checkReads: vi.fn() }));
 
+vi.hoisted(() => {
+  vi.stubEnv("VITE_CONTRACT_ADDRESS", "0x6a55489a05a9c79d2cd35212878d113557dceb2a");
+  vi.stubEnv("VITE_FIRE_RUNS_ADDRESS", "0xe7f1725e7734ce288f8367e1bb143e90bb3f0512");
+});
+
 const MAP = "Trase pulpwood concessions 2023–2024, v2026-02-20";
 const A_FP = "0x86a47945c682c15fb86471df99c10a3fe1d8fc4ba7f39f87e70b46703b85f051";
 const RUN_ROOT = "0x5e11c4070cf64b7a13a2533fbf4ab6c17cfa8065e0446c079070a2cbd0a5a71d" as const;
@@ -175,6 +180,13 @@ describe("pack", () => {
 });
 
 describe("packSource", () => {
+  it("names FireRecords and FireRuns as the build sets them", () => {
+    expect(packSource.contracts).toEqual({
+      records: "0x6a55489a05a9c79d2cd35212878d113557dceb2a",
+      runs: "0xe7f1725e7734ce288f8367e1bb143e90bb3f0512",
+    });
+  });
+
   it("reads every record's seal and its time in one chain read", async () => {
     const hotspotB = { ...hotspotA, record_id: `0x${"cd".repeat(32)}` as const, run: 412, proof: [RUN_ROOT] };
     const seals: Seal[] = [

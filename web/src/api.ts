@@ -207,7 +207,7 @@ export const apiSource: FireRecordSource = {
 
 export const packSource: PackSource = {
   pack,
-  contract: import.meta.env.VITE_CONTRACT_ADDRESS,
+  contracts: { records: import.meta.env.VITE_CONTRACT_ADDRESS, runs: import.meta.env.VITE_FIRE_RUNS_ADDRESS },
   sealsOf: checkReads,
   fingerprint,
 };

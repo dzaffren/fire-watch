@@ -5,13 +5,17 @@ import type { HotspotRecord, PackDetail, PackRef } from "./api";
 import type { Seal } from "./chain";
 import { ComplaintPack, type PackSource } from "./ComplaintPack";
 import { fingerprint } from "./fingerprint";
-import { enrich, FIRES, fireHotspots, fixture } from "./preview/fixture";
+import { enrich, FIRES, fireHotspots, fixture, inRun } from "./preview/fixture";
 
 vi.mock("./FireMap", () => ({ FireMap: vi.fn(() => null) }));
 
 // Packs of the fire-origin fixture's real fires, as of the recorder's 2026-10-17 09:00 UTC run.
 const AS_OF = Date.parse("2026-10-17T09:00:00Z") / 1000;
 const CONTRACT: Hex = "0x6a55489a05a9c79d2cd35212878d113557dceb2a";
+const FIRE_RUNS: Hex = "0xe7f1725e7734ce288f8367e1bb143e90bb3f0512";
+// Run 1, sealed 15 Oct 08:02 UTC, and run 2, sealed 15 Oct 21:03 UTC, by the chain's clock.
+const RUN_1_AT = Date.parse("2026-10-15T08:02:00Z") / 1000;
+const RUN_2_AT = Date.parse("2026-10-15T21:03:00Z") / 1000;
 const RULE_URL = "https://github.com/dzaffren/fire-watch/blob/main/api/src/firewatch/fires.py";
 const CANT_TELL = "The satellite record can't say which side this fire started on.";
 const NEVER_SPREAD =
@@ -38,8 +42,9 @@ function packOf({ id, key }: Fire, waiting: (h: HotspotRecord) => boolean = () =
   };
 }
 
-/** FireRecords as Multicall3 reads it: each record's fingerprint and time as sealed, zeros while it waits. */
-const chainOf = (pack: PackDetail) =>
+/** The chain as Multicall3 reads it: each record's fingerprint and time as sealed on FireRecords, zeros
+ *  while it waits, and for a record with a run, that run's root and time on FireRuns. */
+const chainOf = (pack: PackDetail, runs = new Map<number, { root: Hex; sealedAt: number }>()) =>
   vi.fn(async (records: HotspotRecord[]) => {
     const sealed = new Map(
       pack.hotspots.map((h): [Hex, Seal] => [
@@ -51,11 +56,30 @@ const chainOf = (pack: PackDetail) =>
         },
       ]),
     );
-    return records.map((r) => sealed.get(r.record_id)!);
+    return records.map((r): Seal => {
+      if (r.run == null) return sealed.get(r.record_id)!;
+      const { root, sealedAt } = runs.get(r.run) ?? { root: zeroHash, sealedAt: 0 };
+      return { contract: "FireRuns", run: r.run, root, sealedAt };
+    });
   });
 
 function sourceOf(pack: PackDetail | null, sealsOf = chainOf(pack!)): PackSource {
-  return { pack: vi.fn(async () => pack), contract: CONTRACT, sealsOf, fingerprint };
+  return { pack: vi.fn(async () => pack), contracts: { records: CONTRACT, runs: FIRE_RUNS }, sealsOf, fingerprint };
+}
+
+/** The 0332 fire's pack after the switch: pass 1 sealed one by one on FireRecords, passes 2 and 3 in
+ *  run 1's root, and pass 4 in run 2's. `edit` changes a stored record after its run. */
+function mixedPack(edit: (h: HotspotRecord) => HotspotRecord = (h) => h) {
+  const pack = packOf(FIRES.outside);
+  const run1 = inRun(pack.hotspots.filter((h) => h.pass === 2 || h.pass === 3), 1, RUN_1_AT, fingerprint);
+  const run2 = inRun(pack.hotspots.filter((h) => h.pass === 4), 2, RUN_2_AT, fingerprint);
+  const inRoot = new Map([...run1.records, ...run2.records].map((h) => [h.record_id, h]));
+  const served = { ...pack, hotspots: pack.hotspots.map((h) => edit(inRoot.get(h.record_id) ?? h)) };
+  const runs = new Map([
+    [1, { root: run1.root, sealedAt: RUN_1_AT }],
+    [2, { root: run2.root, sealedAt: RUN_2_AT }],
+  ]);
+  return { pack: served, chain: chainOf(pack, runs) };
 }
 
 /** The value beside a label in the pack's key and value lists. */
@@ -113,7 +137,7 @@ describe("ComplaintPack", () => {
 
     expect(
       screen.getByText(
-        "Your browser worked out each detection's fingerprint and read its seal from FireRecords on Base Sepolia, a test network. Fire Watch's server chose which records to send. NASA FIRMS's public archive shows whether one is missing.",
+        "Your browser worked out each detection's fingerprint and checked it on Base Sepolia, a test network. An older detection has a seal of its own on FireRecords. A newer one is under its recorder run's root on FireRuns. Fire Watch's server chose which records to send. NASA FIRMS's public archive shows whether one is missing.",
       ),
     ).toBeInTheDocument();
     expect(
@@ -122,6 +146,10 @@ describe("ComplaintPack", () => {
       ),
     ).toBeInTheDocument();
     expect(document.body.textContent).not.toMatch(/never changes|only sent the records/);
+    const records = screen.getByRole("link", { name: /^View FireRecords/ });
+    expect(records).toHaveAttribute("href", `https://sepolia.basescan.org/address/${CONTRACT}#code`);
+    expect(kv("FireRecords")).toBe("0x6a55489a…dceb2a");
+    expect(screen.queryByText("FireRuns", { selector: "dt" })).toBeNull();
     expect(screen.getByText(/Company names are left out on purpose\./)).toBeInTheDocument();
     expect(document.body.textContent).not.toMatch(/\bPT\b|\bTbk\b/);
   });
@@ -190,6 +218,71 @@ describe("ComplaintPack", () => {
     expect(await screen.findByRole("heading", { name: "19 of 19 detections match the chain" })).toBeInTheDocument();
     fireEvent.click(within(detectionRows()[0]).getByRole("button"));
     expect(kv("Sealed")).toBe("2026-10-16 02:37 UTC2 d 9 h after detection");
+  });
+
+  it("checks old seals on FireRecords and run roots on FireRuns in one read", async () => {
+    const { pack, chain } = mixedPack();
+    render(<ComplaintPack source={sourceOf(pack, chain)} packRef={refOf(FIRES.outside)} />);
+
+    expect(await screen.findByRole("heading", { name: "19 of 19 detections match the chain" })).toBeInTheDocument();
+    expect(detectionRows().filter((r) => within(r).queryByText("Matches the chain"))).toHaveLength(19);
+    expect(chain).toHaveBeenCalledOnce();
+    expect(chain.mock.calls[0][0]).toHaveLength(19);
+
+    // A contract row for each contract the pack's records use, each linking to Basescan.
+    expect(kv("FireRecords")).toBe("0x6a55489a…dceb2a");
+    expect(kv("FireRuns")).toBe("0xe7f1725e…3f0512");
+    expect(screen.getByRole("link", { name: /^View FireRecords/ })).toHaveAttribute(
+      "href",
+      `https://sepolia.basescan.org/address/${CONTRACT}#code`,
+    );
+    expect(screen.getByRole("link", { name: /^View FireRuns/ })).toHaveAttribute(
+      "href",
+      `https://sepolia.basescan.org/address/${FIRE_RUNS}#code`,
+    );
+
+    // An old detection keeps its own seal time on FireRecords.
+    fireEvent.click(within(detectionRows()[0]).getByRole("button"));
+    expect(kv("Sealed in")).toBe("FireRecords, in a seal of its own");
+    expect(kv("Sealed")).toBe("2026-10-13 20:24 UTC2 h 47 min after detection");
+
+    // A detection of the last pass is under run 2's root, sealed at run 2's time.
+    fireEvent.click(within(detectionRows()[18]).getByRole("button"));
+    expect(kv("Sealed in")).toBe("FireRuns, run 2's root");
+    expect(kv("Sealed")).toBe("2026-10-15 21:03 UTC2 h 20 min after detection");
+    const record = screen.getByRole("article", { name: "Hotspot record" });
+    expect(within(record).getByRole("link", { name: /^View transaction/ })).toHaveAttribute(
+      "href",
+      `https://sepolia.basescan.org/tx/${pack.hotspots[18].tx_hash}`,
+    );
+  });
+
+  it("names only FireRuns when every record is in a run's root", async () => {
+    const pack = packOf(FIRES.outside);
+    const all = inRun(pack.hotspots, 3, RUN_2_AT, fingerprint);
+    const served = { ...pack, hotspots: all.records };
+    render(
+      <ComplaintPack
+        source={sourceOf(served, chainOf(served, new Map([[3, { root: all.root, sealedAt: RUN_2_AT }]])))}
+        packRef={refOf(FIRES.outside)}
+      />,
+    );
+
+    expect(await screen.findByRole("heading", { name: "19 of 19 detections match the chain" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /^View FireRuns/ })).toBeInTheDocument();
+    expect(screen.queryByText("FireRecords", { selector: "dt" })).toBeNull();
+  });
+
+  it("reads a run not sealed yet as not on the chain yet", async () => {
+    const pack = packOf(FIRES.outside);
+    const waiting = inRun(pack.hotspots.filter((h) => h.pass === 4), 5, RUN_2_AT, fingerprint);
+    const byId = new Map(waiting.records.map((h) => [h.record_id, h]));
+    const served = { ...pack, hotspots: pack.hotspots.map((h) => byId.get(h.record_id) ?? h) };
+    render(<ComplaintPack source={sourceOf(served, chainOf(served))} packRef={refOf(FIRES.outside)} />);
+
+    expect(
+      await screen.findByRole("heading", { name: "13 of 19 detections match the chain. 6 are not on the chain yet." }),
+    ).toBeInTheDocument();
   });
 
   it("too close to tell", async () => {

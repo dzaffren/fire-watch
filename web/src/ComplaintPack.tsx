@@ -12,8 +12,9 @@ import { checkSeal, checkTitle, Chip, overall, RecordPanel, type Check, type Sea
 /** Where the pack gets its data; the preview passes fixtures, the app passes the API and the chain. */
 export interface PackSource {
   pack(ref: PackRef): Promise<PackDetail | null>;
-  /** FireRecords on Base Sepolia, which the reader's browser reads each seal from. */
-  contract: Hex;
+  /** The contracts on Base Sepolia the reader's browser reads seals from: FireRecords for a record
+   *  with no run, FireRuns for its run's root. */
+  contracts: { records: Hex; runs: Hex };
   /** Each record's seal on FireRecords or its run's root on FireRuns, in order, in one read; zeros for one not sealed yet. */
   sealsOf(records: HotspotRecord[]): Promise<Seal[]>;
   fingerprint(record: HotspotRecord): Hex;
@@ -152,6 +153,11 @@ export function ComplaintPack({ source, packRef, initialOpen = null }: Props) {
     setTimeout(() => setCopied("no"), COPIED_MS);
   }
 
+  // A row for each contract the pack's records are sealed on.
+  const contracts: [string, Hex][] = [];
+  if (pack?.hotspots.some((h) => h.run == null)) contracts.push(["FireRecords", source.contracts.records]);
+  if (pack?.hotspots.some((h) => h.run != null)) contracts.push(["FireRuns", source.contracts.runs]);
+
   let mapLabel = "Map of the fire";
   if (pack) {
     mapLabel = `Map of the fire first seen ${detectedShort(pack.first_seen_unix)} UTC near ${pack.concession_id}, pass ${at} of ${times.length} shown`;
@@ -209,9 +215,10 @@ export function ComplaintPack({ source, packRef, initialOpen = null }: Props) {
                   {overall(checks).state !== "error" && <Chip check={overall(checks)} />}
                 </div>
                 <p className="fw-help rec-note">
-                  Your browser worked out each detection's fingerprint and read its seal from FireRecords on Base
-                  Sepolia, a test network. Fire Watch's server chose which records to send. NASA FIRMS's public
-                  archive shows whether one is missing.
+                  Your browser worked out each detection's fingerprint and checked it on Base Sepolia, a test network.
+                  An older detection has a seal of its own on FireRecords. A newer one is under its recorder run's root
+                  on FireRuns. Fire Watch's server chose which records to send. NASA FIRMS's public archive shows
+                  whether one is missing.
                 </p>
                 {checks.some((c) => c.state === "mismatch") && (
                   <p className="fw-help rec-note">
@@ -232,19 +239,23 @@ export function ComplaintPack({ source, packRef, initialOpen = null }: Props) {
                   </div>
                 )}
                 <dl className="fw-kv">
-                  <dt>Contract</dt>
-                  <dd>
-                    <a
-                      className="fw-link fw-mono"
-                      href={`https://sepolia.basescan.org/address/${source.contract}#code`}
-                      target="_blank"
-                      rel="noopener"
-                      aria-label={`View FireRecords ${shortHash(source.contract, 6, 4)} on Basescan`}
-                    >
-                      {shortHash(source.contract, 10, 6)}
-                      <ExternalIcon />
-                    </a>
-                  </dd>
+                  {contracts.map(([name, address]) => (
+                    <Fragment key={name}>
+                      <dt>{name}</dt>
+                      <dd>
+                        <a
+                          className="fw-link fw-mono"
+                          href={`https://sepolia.basescan.org/address/${address}#code`}
+                          target="_blank"
+                          rel="noopener"
+                          aria-label={`View ${name} ${shortHash(address, 6, 4)} on Basescan`}
+                        >
+                          {shortHash(address, 10, 6)}
+                          <ExternalIcon />
+                        </a>
+                      </dd>
+                    </Fragment>
+                  ))}
                 </dl>
               </section>
 
