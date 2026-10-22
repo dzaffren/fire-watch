@@ -68,16 +68,16 @@ export function OriginNotes({ fire, listed }: { fire: FireDetail; listed: string
       )}
       {joined.length === 1 && (
         <p className="fw-help">
-          Fire Watch joined two fires here on {detectedShort(joined[0].at_unix)} UTC, when they came within 1 km. First
-          seen above is the older fire's. The other was first seen on {detectedShort(joined[0].first_seen_unix)} UTC,{" "}
-          {seenWhere(joined[0].first_seen)}.
+          Fire Watch joined another fire to this one on {detectedShort(joined[0].at_unix)} UTC, when they came within 1
+          km. First seen above is the older of the two. The other was first seen on{" "}
+          {detectedShort(joined[0].first_seen_unix)} UTC, {seenWhere(joined[0].first_seen)}.
         </p>
       )}
       {joined.length > 1 && (
         <p className="fw-help">
-          Fire Watch joined {count(joined.length + 1)} fires here, the first time on {detectedShort(joined[0].at_unix)}{" "}
-          UTC, as they came within 1 km. First seen above is the oldest fire's. The {count(joined.length)} others are
-          listed {listed}.
+          Fire Watch joined {count(joined.length)} other fires to this one, the first time on{" "}
+          {detectedShort(joined[0].at_unix)} UTC, as they came within 1 km. First seen above is the oldest of them. They
+          are listed {listed}.
         </p>
       )}
     </>
