@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type { ReactElement } from "react";
-import { keccak256, toHex, type Hex } from "viem";
+import { keccak256, toHex, zeroHash, type Hex } from "viem";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ConcessionListing, ConcessionSummary, FireSummary, Forecast, HotspotRecord, Ring } from "./api";
 import { fingerprint, forecastFingerprint } from "./fingerprint";
@@ -382,6 +382,31 @@ describe("FireRecordPage", () => {
     expect(within(panel).queryByText("Sealed", { selector: "dt" })).toBeNull();
     expect(await within(panel).findByText("Matches the chain")).toBeInTheDocument();
     expect(kv("Sealed")).toHaveTextContent("2026-10-16 02:37 UTC2 d 9 h after detection");
+  });
+
+  it("asks the chain even when the API sends a detection with no tx_hash", async () => {
+    const source = fixtureSource((r) => (isAt(r, FIRST) ? { ...r, tx_hash: null, sealed_at: null } : r));
+    await openFire(source);
+
+    fireEvent.click(within(firstRow()).getByRole("button"));
+
+    const panel = screen.getByRole("article", { name: "Hotspot record" });
+    expect(await within(panel).findByText("Matches the chain")).toBeInTheDocument();
+    expect(kv("Sealed")).toHaveTextContent("2026-10-13 20:24 UTC2 h 47 min after detection");
+    expect(source.sealOf).toHaveBeenCalledWith(expect.objectContaining({ tx_hash: null }));
+  });
+
+  it("says Not on chain yet only when the chain holds no seal for the record ID", async () => {
+    const source = fixtureSource((r) => (isAt(r, FIRST) ? { ...r, tx_hash: null, sealed_at: null } : r));
+    vi.mocked(source.sealOf).mockResolvedValue({ fingerprint: zeroHash, sealedAt: 0 });
+    await openFire(source);
+
+    fireEvent.click(within(firstRow()).getByRole("button"));
+
+    const panel = screen.getByRole("article", { name: "Hotspot record" });
+    expect(await within(panel).findByText("Not on chain yet")).toBeInTheDocument();
+    expect(within(panel).queryByText("Sealed", { selector: "dt" })).toBeNull();
+    expect(source.sealOf).toHaveBeenCalledOnce();
   });
 
   it("offers Check again with no Sealed row when the chain can't be reached, and checks again", async () => {
