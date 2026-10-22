@@ -38,3 +38,6 @@
 - Check colours in tests without hex literals; the drift check reads them as UI — [no-hex-in-tests](no-hex-in-tests.md)
 - Import only self-contained `src` files into an e2e spec; `format.ts` fails `tsc -b` — [e2e-no-app-imports](e2e-no-app-imports.md)
 - Clear a module mock before counting its calls; vitest here keeps calls across tests — [vitest-keeps-mock-calls](vitest-keeps-mock-calls.md)
+- Give stacked `fw-kv` links a tall box on a phone; their tap overlays cover each other — [stacked-kv-links-tall-box](stacked-kv-links-tall-box.md)
+- A Playwright click on a locator that matches nothing waits out the whole test — [e2e-click-on-no-match-hangs](e2e-click-on-no-match-hangs.md)
+- Resume a chunk agent at its turn limit with SendMessage — [resume-chunk-at-turn-limit](resume-chunk-at-turn-limit.md)
