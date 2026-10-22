@@ -993,3 +993,25 @@ inside or outside reading).
 Supersedes: D29
 Source: docs/specs/palette.md
 Status: active
+
+## D97 · 2026-10-22 · Take a detection's check and seal time from the chain alone
+
+Why: the API's `sealed_at` and `tx_hash` are the server's word. The review found that a row edited
+and sealed again under a new record ID would still show its old time. It also found that a null
+`tx_hash` skipped the chain read. `sealOf` already returns the block time.
+Rejected: the API's `sealed_at` (the server's word, which the check exists to test), the server's
+time labelled as the server's while the chain can't be reached (a second clock to explain, for a
+case that Check again fixes), skipping the read when the API sends no `tx_hash` (it lets the API
+switch the check off).
+Source: docs/specs/honest-claims.md
+Status: active
+
+## D98 · 2026-10-22 · Say on a pack that Fire Watch's server chose its records
+
+Why: the API picks a pack's rows again on each open (D37), and nothing on the chain proves the list
+is whole. FIRMS's public archive shows a missing record (D24). "It never changes" claimed more than
+that.
+Rejected: only dropping "never changes" (the reader must then guess what the check covers),
+waiting for complete-packs (an unsupported claim stays live until then).
+Source: docs/specs/honest-claims.md
+Status: active
