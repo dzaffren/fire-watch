@@ -317,6 +317,7 @@ Recorded as D94, D95, D96.
 | O6 | The peat band, `#e9e0d1`, is a warm beige near the cream that generated sites often use | flag | spec p2 | user | Resolved | 2026-10-21: keep it; earth under the moss hero |
 | O7 | Safari's drawing of the bands' border image is unchecked: WebKit can't launch on this host without `sudo` installs. Chrome and Firefox draw both bands full width | unproven | spec p3 | user | Accepted risk | 2026-10-21: gradient border images have worked in Safari for years, and a miss shows the plain ground with the text's contrast kept |
 | O8 | The design drift check flags the three hex map colours that `web/e2e/palette.spec.ts` expects | flag | build | user | Decided alone | Chose: keep the spec's hex values in the e2e; they are expected values in a test, not UI. Other: read the expected values from `colors.css`, which would only echo the tokens back. Undo: replace the three literals with values read from `colors.css`. 2026-10-22 |
+| O9 | `web/src/RealCase.test.tsx` failed in the pull_request CI run of `995cf1f` ("IntersectionObserver is not defined") and passed in its push run. This slice doesn't touch RealCase | flag | ship | user | Decided alone | Chose: leave it; `main` has the same flake, recorded as replay-pace's O5. Other: fix RealCase's test before palette ships. Undo: `/debug` RealCase's test on a `fix/` branch; nothing in this slice changes. 2026-10-22 |
 
 _Never delete this section or its rows. See references/ledger.md._
 
