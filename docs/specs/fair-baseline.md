@@ -109,10 +109,12 @@ Scenario: The totals give all four methods on all of 2023
 Scenario: The forecast panel says what rule version 1 adds
   Given the committed 2023 result
   When anyone opens the ID-WOOD-CONCESSION-0332 fire of spread-forecast's scenario 1
-  Then the 2023 block gives the three numbers for rule version 1 and for each of the three guesses
+  Then the 2023 block gives, for rule version 1 and each of the three guesses, the arrivals warned
+    of out of 135 and the warnings that didn't come in
   And one sentence says "Rule version 1's advance step warned of 6 arrivals the near-edge step
     missed, and added 558 warnings that didn't come in."
-  And "How this is worked out" gives each guess in full and every count
+  And "How this is worked out" gives each guess in full, each method's arrivals missed, right "no"
+    forecasts and median hours off, and the counts the same for all four
   And it says that the downwind guess and the near-edge step say yes only where rule version 1 does
 
 Scenario: Anyone redoes the replay and gets the same result
@@ -138,7 +140,8 @@ that the totals file doesn't hold.
 - Both at the same moments as rule version 1, counted with the same three numbers (D53).
 - The downwind guess stays as it is (D60).
 - `2023.json` gains both guesses' totals. `2023-forecasts.csv` gains a column for each guess's time.
-- The forecast panel's 2023 block shows all four methods.
+- The forecast panel's 2023 block shows all four methods: the arrivals warned of and the warnings
+  that didn't come in. The median hours off move to "How this is worked out" (O5).
 - One sentence, worked out from the totals, says what rule version 1's advance step adds over the
   near-edge step.
 - "How this is worked out" gives each guess in full and every count. It says that the downwind guess
@@ -206,7 +209,8 @@ of none reads "None warned of" for hours off.
 **The page expects:** `near_edge` and `next_pass` on `Backtest` in `web/src/api.ts`, each a
 `BacktestTotals`, in `fixtures/backtest/2023.json`.
 
-**Motion tier:** pending (O6).
+**Motion tier:** 1 (O6). The block enters with the panel, and the disclosure opens as it does today
+(`--fw-dur`). The block has no motion of its own.
 
 **Components used:** `fw-panel`, the section `h3`, `table-box` with `fw-table` and its `num` columns,
 `fw-help`, `fw-link` with the external icon, and the disclosure from the record panel. There is no
@@ -275,8 +279,8 @@ Status: active
 | O2 | What the shape's "fixed-lead guess" is: every fire by the next pass, rule version 1's yes at a fixed 12 hours, every fire within 1 km, or none | question | spec p1 | user | Resolved | 2026-10-22: every forecast moment says seen inside 12 hours after the newest pass, rule version 1 step 5's lead (D99) |
 | O3 | Whether the panel says in words what the comparison shows, or gives only the numbers | question | spec p1 | user | Resolved | 2026-10-22: one sentence worked out from the totals, and "How this is worked out" says which guesses say yes only where rule version 1 does (D100) |
 | O4 | Who sets what "beat" means for a rule version 2: this slice, as "no worse on both counts" or as CSI, or forecast-v2 | question | spec p1 | user | Resolved | 2026-10-22: forecast-v2 sets it. This slice shows the counts (D101) |
-| O5 | Scenario 4 said the block gives three numbers for each method. On a 390 px phone the three need 368 px of a 303 px table | question | spec p2 | user | Open | — |
-| O6 | Which motion tier the block uses | question | spec p2 | user | Open | — |
+| O5 | Scenario 4 said the block gives three numbers for each method. On a 390 px phone the three need 368 px of a 303 px table | question | spec p2 | user | Resolved | 2026-10-22: the median hours off move to the counts table under "How this is worked out". The block keeps the arrivals warned of and the warnings that didn't come in. Scenario 4 now says so |
+| O6 | Which motion tier the block uses | question | spec p2 | user | Resolved | 2026-10-22: tier 1, as season-backtest. The block enters with the panel and has no motion of its own |
 
 _Never delete this section or its rows. See references/ledger.md._
 
