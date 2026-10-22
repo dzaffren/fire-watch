@@ -5,7 +5,7 @@ import json
 import os
 import subprocess
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import httpx
@@ -219,6 +219,22 @@ def test_near_edge_says_12_hours_within_375_m(cut, replayed):
 
     r = row(rows_of(out), C0332, "2023-10-14T05:46Z", rule_inside_by="2023-10-15T05:46Z")
     assert r["near_edge_inside_by"] == "2023-10-14T17:46Z"
+
+
+def test_next_pass_warns_of_0332_35_hours_off(cut):
+    out, _ = cut
+    r = row(rows_of(out), C0332, "2023-10-14T05:46Z", outcome="seen_inside")
+    assert (r["rule_inside_by"], r["near_edge_inside_by"], r["next_pass_inside_by"]) == (
+        "", "", "2023-10-14T17:46Z",
+    )
+    seen, said = (utc(r[k].rstrip("Z")) for k in ("seen_inside_at", "next_pass_inside_by"))
+    assert round((seen - said) / timedelta(hours=1), 1) == 35.4
+
+
+def test_next_pass_warning_on_0264_did_not_come_in(cut):
+    out, _ = cut
+    r = row(rows_of(out), C0264, "2023-09-28T18:28Z")
+    assert (r["next_pass_inside_by"], r["outcome"]) == ("2023-09-29T06:28Z", "not_seen_inside")
 
 
 def test_two_runs_write_the_same_bytes(cut, database_url, tmp_path):
