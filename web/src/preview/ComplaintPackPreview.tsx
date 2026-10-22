@@ -23,6 +23,7 @@ const STATES = {
   pending: "2. Made while 6 waited for their seal",
   runs: "2. Old seals and run roots together",
   mismatch: "3. A detection changed after its seal",
+  runMismatch: "3. A detection changed after its run was sealed",
   edge: "5. Too close to tell (0540)",
   still: "5. Never spread (0540)",
   largest: "The 188-detection fire (0332)",
@@ -45,7 +46,7 @@ function fireFor(state: State): { id: string; key: Hex } {
 }
 
 /** The fire's last pass sealed after the switch, in two recorder runs: FIRMS published the pass in two
- *  pieces, so run 412's root holds 4 of its detections and run 413's the other 2. */
+ *  pieces, so run 412's root holds 4 of its detections and run 413's two-leaf root the other 2. */
 function lastPassInRuns(records: HotspotRecord[]) {
   const last = Math.max(...records.map((h) => h.pass ?? 1));
   const pass = records.filter((h) => h.pass === last);
@@ -85,11 +86,12 @@ function makeSource(state: State): PackSource {
         }),
         key,
       );
-      if (state === "runs") {
+      if (state === "runs" || state === "runMismatch") {
         const sealed = lastPassInRuns(hotspots);
         roots = sealed.roots;
-        hotspots = sealed.records;
-        hotspots.forEach((h) => originals.set(h.record_id, h));
+        // Scenario 3 after the switch: one of run 413's two detections, its fire power edited after the run.
+        const edited = state === "runMismatch" ? sealed.records.find((h) => h.run === 413) : undefined;
+        hotspots = sealed.records.map((h) => (h === edited ? { ...h, frp_e2: Math.round(h.frp_e2 / 3) } : h));
       }
       return {
         ...summary,

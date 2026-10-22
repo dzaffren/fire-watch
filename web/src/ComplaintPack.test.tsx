@@ -5,6 +5,8 @@ import type { HotspotRecord, PackDetail, PackRef } from "./api";
 import type { Seal } from "./chain";
 import { ComplaintPack, type PackSource } from "./ComplaintPack";
 import { fingerprint } from "./fingerprint";
+import { shortHash } from "./format";
+import { leaf, rootFrom } from "./merkle";
 import { enrich, FIRES, fireHotspots, fixture, inRun } from "./preview/fixture";
 
 vi.mock("./FireMap", () => ({ FireMap: vi.fn(() => null) }));
@@ -79,7 +81,7 @@ function mixedPack(edit: (h: HotspotRecord) => HotspotRecord = (h) => h) {
     [1, { root: run1.root, sealedAt: RUN_1_AT }],
     [2, { root: run2.root, sealedAt: RUN_2_AT }],
   ]);
-  return { pack: served, chain: chainOf(pack, runs) };
+  return { pack: served, chain: chainOf(pack, runs), runs };
 }
 
 /** The value beside a label in the pack's key and value lists. */
@@ -255,6 +257,33 @@ describe("ComplaintPack", () => {
       "href",
       `https://sepolia.basescan.org/tx/${pack.hotspots[18].tx_hash}`,
     );
+  });
+
+  it("lists a changed detection in run 2's root first; the rest of run 2 still matches", async () => {
+    // The last pass's detection at 2.83405°S, 112.7192°E, sealed in run 2 at 4.67 MW, now stored at 1.23 MW.
+    const changed = (h: HotspotRecord) => h.lat_e5 === -283405 && h.lon_e5 === 11271920;
+    const { pack, chain, runs } = mixedPack((h) => (changed(h) ? { ...h, frp_e2: 123 } : h));
+    render(<ComplaintPack source={sourceOf(pack, chain)} packRef={refOf(FIRES.outside)} />);
+
+    expect(await screen.findByRole("heading", { name: "18 of 19 detections match the chain. 1 does not." })).toBeInTheDocument();
+    const runTwo = pack.hotspots.filter((h) => h.run === 2);
+    expect(runTwo).toHaveLength(6);
+    const first = detectionRows()[0];
+    expect(within(first).getByText("Does not match the chain")).toBeInTheDocument();
+    expect(detectionRows().filter((r) => within(r).queryByText("Does not match the chain"))).toHaveLength(1);
+    expect(detectionRows().filter((r) => within(r).queryByText("Pass 4") && within(r).queryByText("Matches the chain"))).toHaveLength(5);
+
+    fireEvent.click(within(first).getByRole("button"));
+    const h = pack.hotspots.find(changed)!;
+    const rootNow = rootFrom(leaf(h.record_id, fingerprint(h)), h.proof!);
+    const short = (x: Hex) => shortHash(x.slice(2), 10, 6);
+    expect(kv("Fire power")).toBe("1.23 MW");
+    expect(kv("Fingerprint now")).toBe(short(fingerprint(h)));
+    expect(kv("Run root on chain")).toBe(short(runs.get(2)!.root));
+    expect(kv("Run root now")).toBe(short(rootNow));
+    expect(kv("Sealed in")).toBe("FireRuns, run 2's root");
+    const raw = screen.getByRole("article", { name: "Hotspot record" }).querySelector("details p");
+    expect(raw).toHaveTextContent(new RegExp(`Run 2's root, worked out from it and the ${h.proof!.length} proof hash(es)? above: ${rootNow.slice(2)}$`));
   });
 
   it("names only FireRuns when every record is in a run's root", async () => {

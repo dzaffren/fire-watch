@@ -40,6 +40,8 @@ const STATUS: Record<Exclude<Check["state"], "error">, { chip: string; icon: Rea
   },
 };
 
+const RUN_MISMATCH_NOTE = "The stored record has changed since its run was sealed. The chain still holds the run's original root.";
+
 /** One record's check from its seal: zero is not on the chain yet, its own fingerprint matches, anything else changed. */
 export const checkOf = (sealed: Hex, fingerprint: Hex): Check =>
   sealed === zeroHash ? { state: "pending" } : sealed === fingerprint ? { state: "matches" } : { state: "mismatch", sealed };
@@ -116,11 +118,28 @@ const shortFingerprint = (fp: Hex) => shortHash(fp.slice(2), 10, 6);
 
 const sealedInLine = (s: SealedIn) => (s.contract === "FireRecords" ? "FireRecords, in a seal of its own" : `FireRuns, run ${s.run}'s root`);
 
-/** A record's fingerprint rows, both on a mismatch, then where it is sealed once the chain answers. */
-export function SealRows({ fingerprint, check, sealedIn }: { fingerprint?: Hex; check: Check; sealedIn: SealedIn | null }) {
+interface SealRowsProps {
+  record: Sealable;
+  fingerprint?: Hex;
+  check: Check;
+  sealedIn: SealedIn | null;
+}
+
+/** A record's fingerprint rows, then where it is sealed once the chain answers. On a mismatch, a
+ *  record in a run's root shows its run's root on the chain and the root its proof leads to now. */
+export function SealRows({ record, fingerprint, check, sealedIn }: SealRowsProps) {
   return (
     <>
-      {check.state === "mismatch" ? (
+      {check.state === "mismatch" && sealedIn?.contract === "FireRuns" ? (
+        <>
+          <dt>Fingerprint now</dt>
+          <dd className="fw-mono">{fingerprint && shortFingerprint(fingerprint)}</dd>
+          <dt>Run root on chain</dt>
+          <dd className="fw-mono">{shortFingerprint(check.sealed)}</dd>
+          <dt>Run root now</dt>
+          <dd className="fw-mono">{fingerprint && shortFingerprint(runRootOf(record, fingerprint))}</dd>
+        </>
+      ) : check.state === "mismatch" ? (
         <>
           <dt>Sealed fingerprint</dt>
           <dd className="fw-mono">{shortFingerprint(check.sealed)}</dd>
@@ -155,6 +174,7 @@ interface Props {
 
 export function RecordPanel({ record, fingerprint, check, sealedAt, sealedIn, onCheckAgain }: Props) {
   const status = check.state === "error" ? null : STATUS[check.state];
+  const note = check.state === "mismatch" && sealedIn?.contract === "FireRuns" ? RUN_MISMATCH_NOTE : status?.note;
   const tx = record.tx_hash;
 
   return (
@@ -169,7 +189,7 @@ export function RecordPanel({ record, fingerprint, check, sealedAt, sealedIn, on
         )}
       </div>
       {status ? (
-        <p key={check.state} className="fw-help rec-note enter">{status.note}</p>
+        <p key={check.state} className="fw-help rec-note enter">{note}</p>
       ) : (
         <div className="rec-act enter">
           <p className="fw-help rec-note">Couldn't reach Base Sepolia to check this record.</p>
@@ -209,7 +229,7 @@ export function RecordPanel({ record, fingerprint, check, sealedAt, sealedIn, on
         </dd>
         <dt>Boundaries</dt>
         <dd>{record.map_version}</dd>
-        <SealRows fingerprint={fingerprint} check={check} sealedIn={sealedIn} />
+        <SealRows record={record} fingerprint={fingerprint} check={check} sealedIn={sealedIn} />
         <dt>Transaction</dt>
         <dd>
           {tx ? (

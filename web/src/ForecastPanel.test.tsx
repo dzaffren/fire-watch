@@ -5,6 +5,7 @@ import vectors from "../../fixtures/fingerprint-vectors.json";
 import type { Backtest, FireDetail, FireSummary, Forecast, HotspotRecord } from "./api";
 import { ForecastPanel, type ForecastCheck } from "./ForecastPanel";
 import { shortHash } from "./format";
+import { leaf, rootFrom } from "./merkle";
 import raw from "./preview/fire-origin.fixture.json";
 
 // Real VIIRS NOAA-20 detections from 2026-10-12 to 15, grouped into fires; see the preview.
@@ -166,6 +167,27 @@ describe("ForecastPanel", () => {
     const labels = [...panel().querySelectorAll("dt")].map((dt) => dt.textContent);
     expect(labels.slice(labels.indexOf("Fingerprint"))).toEqual(["Fingerprint", "Sealed in", "Transaction"]);
     expect(within(kv("Transaction")).getByRole("link")).toHaveAttribute("href", `https://sepolia.basescan.org/tx/${RUN_TX}`);
+  });
+
+  it("shows the fingerprint now and both roots when a forecast in run 412 changed", () => {
+    // Run 412's root on the chain, and the root the changed forecast and its proof lead to.
+    const RUN_ROOT = `0x${"e5".repeat(32)}` as const;
+    const SIBLING = `0x${"d4".repeat(32)}` as const;
+    show({
+      forecasts: [{ ...scenario1, inside_by_unix: at("2026-10-15T18:40:00"), run: 412, proof: [SIBLING] }],
+      checks: [{ check: { state: "mismatch", sealed: RUN_ROOT }, sealedAt: SEALED, sealedIn: { contract: "FireRuns", run: 412 } }],
+      fingerprints: [CHANGED_FP],
+    });
+
+    expect(within(panel()).getByText("Does not match the chain")).toBeInTheDocument();
+    expect(
+      screen.getByText("This forecast has changed since its run was sealed. The chain still holds the run's original root."),
+    ).toBeInTheDocument();
+    expect(kv("Fingerprint now")).toHaveTextContent(fp(CHANGED_FP));
+    expect(kv("Run root on chain")).toHaveTextContent(fp(RUN_ROOT));
+    expect(kv("Run root now")).toHaveTextContent(fp(rootFrom(leaf(scenario1.record_id, CHANGED_FP), [SIBLING])));
+    expect(within(panel()).queryByText("Sealed fingerprint", { selector: "dt" })).toBeNull();
+    expect(kv("Sealed in")).toHaveTextContent("FireRuns, run 412's root");
   });
 
   it("leaves out Sealed in until the chain answers with a seal", () => {
