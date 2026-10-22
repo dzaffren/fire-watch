@@ -375,6 +375,10 @@ tests on the cut, then the full run and its commit, then the e2e's CSV checks an
 
 Recorded as D99, D100, D101, D102.
 
+## Review
+
+2026-10-22 · 0 raw findings, 0 survived. Clean.
+
 ## Open items
 
 | ID | What | Type | Raised at | Owner | Status | Answer |
