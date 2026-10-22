@@ -92,6 +92,7 @@ jobs:
           VITE_API_URL: ${{ vars.API_URL }}
           VITE_RPC_URL: ${{ vars.RPC_URL }}
           VITE_CONTRACT_ADDRESS: ${{ vars.CONTRACT_ADDRESS }}
+          VITE_FIRE_RUNS_ADDRESS: ${{ vars.FIRE_RUNS_ADDRESS }}
           VITE_GOOGLE_MAPS_KEY: ${{ vars.GOOGLE_MAPS_KEY }}
       - uses: Azure/static-web-apps-deploy@v1
         with:

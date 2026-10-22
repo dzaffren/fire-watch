@@ -9,11 +9,12 @@
 #   IMAGE                ghcr.io/<owner>/firewatch-api@sha256:<digest>, pushed and public. By digest:
 #                        Deploy can re-push a tag, which would change the recorder job's code (D21)
 #   OWNER_DATABASE_URL   Neon owner URL, for the recorder job
-#   RECORDER_PRIVATE_KEY, FIRMS_MAP_KEY, RPC_URL, CONTRACT_ADDRESS   the recorder's, as in .env
+#   RECORDER_PRIVATE_KEY, FIRMS_MAP_KEY, RPC_URL   the recorder's, as in .env
+#   FIRE_RUNS_ADDRESS    the FireRuns contract the recorder seals its run roots on (D103)
 set -euo pipefail
 
 : "${GITHUB_REPO:?}" "${ALERT_EMAIL:?}" "${READER_DATABASE_URL:?}" "${IMAGE:?}" "${OWNER_DATABASE_URL:?}"
-: "${RECORDER_PRIVATE_KEY:?}" "${FIRMS_MAP_KEY:?}" "${RPC_URL:?}" "${CONTRACT_ADDRESS:?}"
+: "${RECORDER_PRIVATE_KEY:?}" "${FIRMS_MAP_KEY:?}" "${RPC_URL:?}" "${FIRE_RUNS_ADDRESS:?}"
 [[ "$IMAGE" == *@sha256:* ]] || { echo "IMAGE must be pinned by digest: ghcr.io/<owner>/firewatch-api@sha256:<digest>" >&2; exit 1; }
 
 RG=firewatch
@@ -57,7 +58,7 @@ if ! az containerapp job show -g "$RG" -n firewatch-recorder -o none 2>/dev/null
     --secrets "database-url=$OWNER_DATABASE_URL" "recorder-private-key=$RECORDER_PRIVATE_KEY" \
       "firms-map-key=$FIRMS_MAP_KEY" \
     --env-vars DATABASE_URL=secretref:database-url RECORDER_PRIVATE_KEY=secretref:recorder-private-key \
-      FIRMS_MAP_KEY=secretref:firms-map-key "RPC_URL=$RPC_URL" "CONTRACT_ADDRESS=$CONTRACT_ADDRESS" -o none
+      FIRMS_MAP_KEY=secretref:firms-map-key "RPC_URL=$RPC_URL" "FIRE_RUNS_ADDRESS=$FIRE_RUNS_ADDRESS" -o none
 fi
 
 az rest --method put \
@@ -113,6 +114,7 @@ Set these on the GitHub repo, then rerun the Deploy workflow:
   gh variable set API_URL -R $GITHUB_REPO -b $API
   gh variable set RPC_URL -R $GITHUB_REPO -b https://sepolia.base.org
   gh variable set CONTRACT_ADDRESS -R $GITHUB_REPO -b <FireRecords address on Base Sepolia>
+  gh variable set FIRE_RUNS_ADDRESS -R $GITHUB_REPO -b $FIRE_RUNS_ADDRESS
   gh variable set GOOGLE_MAPS_KEY -R $GITHUB_REPO -b <production Maps key, locked to $SITE/*>
   $TOKEN_NOTE
 DONE
