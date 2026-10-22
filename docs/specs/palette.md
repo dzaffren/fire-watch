@@ -121,7 +121,7 @@ flowchart LR
     T["tokens/colors.css"] -- "--fw-bg, --fw-surface" --> S[every screen's ground and panels]
     T -- "--fw-band-moss, --fw-band-peat" --> L["Landing: .landing-hero, .case"]
     T -- "--fw-map, --fw-water, --fw-concession" --> M["mapStyles(), FireMap, globeColours()"]
-    T -- "@media print: white, light ink" --> P[the printed pack]
+    T -- "@media print: white grounds" --> P["the printed pack, turned light"]
 ```
 
 The tokens reach each screen through the page's CSS. The map and the globe read them with
@@ -141,7 +141,7 @@ The tokens reach each screen through the page's CSS. The map and the globe read 
 | `--fw-line`, `--fw-faint`, fills, skeletons, ticks | moss-tinted | moss-tinted | re-tinted to sit on the new ground |
 
 Unchanged: ink, the teal accent, ember, the status colours and the accent tint. In print, every
-theme takes a white ground and the light theme's ink.
+theme takes white grounds. The pack turns light before it prints, so it takes the light theme's ink.
 
 **Contrast, as built** (WCAG ratios, computed from the token values):
 
