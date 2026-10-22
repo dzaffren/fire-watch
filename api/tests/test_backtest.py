@@ -160,15 +160,18 @@ def test_totals_count_every_forecast_in_the_csv(cut):
         ("ends_after_2023", "ends_after_2023"),
     ]:
         assert totals[total] == sum(r["outcome"] == outcome for r in rows)
-    for method, said in [("rule", "rule_inside_by"), ("downwind", "downwind_inside_by")]:
-        assert {k: v for k, v in totals[method].items() if k != "median_hours_off"} == counted(said)
+    for method in ("rule", "downwind", "near_edge", "next_pass"):
+        assert {
+            k: v for k, v in totals[method].items() if k != "median_hours_off"
+        } == counted(f"{method}_inside_by")
     assert totals["rule"]["missed"] >= 1 and totals["rule"]["did_not_come_in"] >= 1
     assert totals["rule"]["median_hours_off"] is not None
     assert stdout.startswith(
         f"replayed year=2023 detections=625 forecasts={len(rows)}"
         f" arrivals={totals['rule']['warned'] + totals['rule']['missed']}"
         f" rule_warned={totals['rule']['warned']} downwind_warned={totals['downwind']['warned']}"
-        " seconds="
+        f" near_edge_warned={totals['near_edge']['warned']}"
+        f" next_pass_warned={totals['next_pass']['warned']} seconds="
     )
 
 
