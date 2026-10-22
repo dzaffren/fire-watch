@@ -24,8 +24,7 @@ export default function SeasonBacktestPreview() {
     <div className="preview">
       <div className="preview-bar">
         <p className="fw-help">
-          Preview of season-backtest and fair-baseline. The replay totals are the committed 2023 result; the near-edge
-          and next-pass totals come from a scratch rerun until fair-baseline's build redoes the replay. The 2026
+          Preview of season-backtest and fair-baseline. The replay totals are the committed 2023 result. The 2026
           forecasts, seals and transactions are made up, as in the spread-forecast preview.
         </p>
         <label className="preview-pick">
