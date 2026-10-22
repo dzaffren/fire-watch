@@ -210,8 +210,8 @@ function Reading({ id, fire, packHref }: { id: string; fire: FireDetail; packHre
             <ExternalIcon />
           </a>
           <p id="pack-make-help" className="fw-help">
-            Opens this fire as it stands now on a page with its own link, to put in a grievance. The pack never
-            changes, and anyone with the link can check it against the chain.
+            Opens this fire as it stands now on a page with its own link, to put in a grievance. Anyone with the link
+            can check each record against the chain.
           </p>
         </div>
       )}
