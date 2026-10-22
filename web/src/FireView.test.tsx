@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { useState } from "react";
 import { toHex } from "viem";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -180,6 +180,17 @@ describe("FireView", () => {
     expect(screen.queryByText(/First seen as one detection/)).toBeNull();
     expect(screen.queryByText(/^Fire Watch joined/)).toBeNull();
     expect(screen.queryByText(/fires joined to this one$/)).toBeNull();
+  });
+
+  it("gives each note on its own to a fire with no other caveat", () => {
+    show(INSIDE.id, { kind: "ready", fire: { ...fire(INSIDE), first_alone_h: 36 } });
+    expect(
+      screen.getByText("First seen as one detection, then not seen for 36 hours. That detection may be a separate fire."),
+    ).toBeInTheDocument();
+    cleanup();
+
+    show(INSIDE.id, { kind: "ready", fire: { ...fire(INSIDE), first_alone_h: null, joined: AS_PACKED.joined } });
+    expect(screen.getByText(/^Fire Watch joined another fire to this one on 14 Oct 17:20 UTC/)).toBeInTheDocument();
   });
 
   it("puts the notes after can't tell and before never spread and records begin", () => {
