@@ -16,6 +16,7 @@ import pytest
 from eth_account import Account
 from psycopg.rows import dict_row
 from web3 import Web3
+from web3.exceptions import TimeExhausted
 
 from firewatch import concessions, forecast, record_hotspots
 from firewatch.chain import Chain
@@ -273,6 +274,14 @@ def km(edge_m):
     return round(edge_m / 1000, 2)
 
 
+def forget_seals(url):
+    """As if a run sent its root but crashed before storing the receipt."""
+    with psycopg.connect(url) as conn:
+        conn.execute("UPDATE roots SET run = NULL, tx_hash = NULL, sealed_at = NULL")
+        conn.execute("UPDATE hotspots SET tx_hash = NULL, sealed_at = NULL")
+        conn.execute("UPDATE forecasts SET tx_hash = NULL, sealed_at = NULL")
+
+
 def roots_logged(stdout):
     """roots and run from the run's log line."""
     return ROOTS_LOG.search(stdout).groups()
@@ -356,6 +365,99 @@ def test_rerun_adds_nothing(funded):
     assert roots_logged(result.stdout) == ("0", "none")
     assert records(env["DATABASE_URL"]) == first
     assert forecasts(env["DATABASE_URL"]) == made
+    assert contract.w3.eth.block_number == block
+
+
+def test_an_empty_wallet_drops_the_root_and_the_next_run_seals_both_runs(unfunded, firms):
+    wallet, contract, env = unfunded
+    url = env["DATABASE_URL"]
+
+    result = run_recorder(env)
+
+    assert result.returncode == 1
+    assert "insufficient funds" in result.stderr
+    assert logged(result.stdout) == (3, 2, 2, 0, 4)
+    assert roots_logged(result.stdout) == ("0", "none")
+    assert stored_roots(url) == []
+    first = records(url) + forecasts(url)
+    assert [(r["root_id"], r["proof"], r["tx_hash"], r["sealed_at"]) for r in first] == [
+        (None, None, None, None)
+    ] * 4
+    (run,) = runs(url)
+    assert (run["kept"], run["sealed"], run["unsealed"]) == (2, 0, 4)
+    assert "insufficient funds" in run["error"]
+
+    contract.w3.provider.make_request("anvil_setBalance", [wallet.address, hex(10**18)])
+    firms.csv = FIRE_RECORD
+    block = contract.w3.eth.block_number
+    result = run_recorder(env)
+
+    assert result.returncode == 0, result.stderr
+    sealed = records(url) + forecasts(url)
+    assert {r["record_id"] for r in first} < {r["record_id"] for r in sealed}
+    assert logged(result.stdout)[3:] == (len(sealed), 0)
+    assert roots_logged(result.stdout) == ("1", "1")
+    (root,) = stored_roots(url)
+    assert root["run"] == 1
+    assert sent(contract, block) == [root["tx_hash"]]
+    for row in sealed:
+        assert (row["root_id"], row["tx_hash"]) == (root["id"], root["tx_hash"])
+        assert_sealed(contract, row)
+    assert runs(url)[-1]["error"] is None
+
+
+def test_a_stored_root_not_on_chain_is_sent_again_never_dropped(unfunded, monkeypatch):
+    wallet, contract, env = unfunded
+    url = env["DATABASE_URL"]
+    for name, value in env.items():
+        monkeypatch.setenv(name, value)
+
+    def times_out(self, root):
+        raise TimeExhausted("no receipt in 120 seconds")
+
+    with monkeypatch.context() as m:
+        m.setattr(Chain, "seal_root", times_out)
+        assert record_hotspots.main() == 1
+    (stored,) = stored_roots(url)
+    assert stored["run"] is None
+
+    # The earlier send may still land, so a refused resend keeps the root (D110).
+    result = run_recorder(env)
+
+    assert result.returncode == 1
+    assert "insufficient funds" in result.stderr
+    assert stored_roots(url) == [stored]
+    assert {r["root_id"] for r in records(url) + forecasts(url)} == {stored["id"]}
+
+    contract.w3.provider.make_request("anvil_setBalance", [wallet.address, hex(10**18)])
+    result = run_recorder(env)
+
+    assert result.returncode == 0, result.stderr
+    assert roots_logged(result.stdout) == ("1", "1")
+    (root,) = stored_roots(url)
+    assert (root["id"], root["root"], root["run"]) == (stored["id"], stored["root"], 1)
+    for row in records(url) + forecasts(url):
+        assert row["tx_hash"] == root["tx_hash"]
+        assert_sealed(contract, row)
+
+
+def test_a_stored_root_already_on_chain_is_filled_in_not_sent_again(funded):
+    contract, env = funded
+    url = env["DATABASE_URL"]
+    assert run_recorder(env).returncode == 0
+    sealed, made, roots = records(url), forecasts(url), stored_roots(url)
+    forget_seals(url)
+    contract.w3.provider.make_request("anvil_mine", [5])
+    block = contract.w3.eth.block_number
+
+    result = run_recorder(env)
+
+    assert result.returncode == 0, result.stderr
+    assert logged(result.stdout)[3:] == (4, 0)
+    assert roots_logged(result.stdout) == ("1", "1")
+    assert stored_roots(url) == roots
+    assert records(url) == sealed
+    assert forecasts(url) == made
     assert contract.w3.eth.block_number == block
 
 
@@ -563,6 +665,25 @@ def test_seal_waits_for_an_rpc_node_that_has_not_seen_the_block(funded, public_r
     assert result.returncode == 0, result.stderr
     for row in records(env["DATABASE_URL"]):
         assert_sealed(contract, row)
+
+
+def test_a_stored_root_on_chain_is_found_on_an_rpc_that_pruned_old_blocks(funded, public_rpc):
+    contract, env = funded
+    url = env["DATABASE_URL"]
+    # Two seconds apart, as on Base. Without an interval anvil stamps every block the same.
+    contract.w3.provider.make_request("anvil_mine", [100, 2])
+    assert run_recorder(env).returncode == 0
+    sealed, roots = records(url), stored_roots(url)
+    seal_block = contract.w3.eth.get_transaction_receipt(roots[0]["tx_hash"]).blockNumber
+    forget_seals(url)
+    contract.w3.provider.make_request("anvil_mine", [5, 2])
+    public_rpc.pruned_below = seal_block - 20
+
+    result = run_recorder({**env, "RPC_URL": public_rpc.url})
+
+    assert result.returncode == 0, result.stderr
+    assert stored_roots(url) == roots
+    assert records(url) == sealed
 
 
 def test_no_hotspots_stores_nothing(funded, firms):

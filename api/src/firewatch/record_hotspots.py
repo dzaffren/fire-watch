@@ -14,7 +14,7 @@ import time
 from datetime import datetime, timezone
 
 from firewatch import fires, firms, forecast
-from firewatch.chain import Chain
+from firewatch.chain import Chain, Refused
 from firewatch.concessions import MAP_VERSION
 from firewatch.db import connect
 from firewatch.fingerprint import (
@@ -126,7 +126,9 @@ CROSS JOIN LATERAL (
 ) AS c
 WHERE id = %(id)s
 """
+STORED_ROOTS = "SELECT id, root FROM roots WHERE run IS NULL ORDER BY id"
 INSERT_ROOT = "INSERT INTO roots (root) VALUES (%s) RETURNING id"
+DROP_ROOT = "DELETE FROM roots WHERE id = %s"
 SEALED_ROOT = """
 UPDATE roots SET run = %(run)s, tx_hash = %(tx_hash)s, sealed_at = %(sealed_at)s WHERE id = %(id)s
 """
@@ -258,7 +260,19 @@ def _sealed(conn, root_id: int, run: int, tx_hash: bytes, sealed_at, counts: dic
 
 
 def _seal_root(conn, chain: Chain, counts: dict) -> None:
-    """Seals one root over every record not in a root yet; with none, sends nothing (D103)."""
+    """Finishes each stored root with no run, then seals one root over every record not in a
+    root yet; with none, sends nothing (D103, D110)."""
+    for stored in conn.execute(STORED_ROOTS).fetchall():
+        root = bytes(stored["root"])
+        found = chain.run_of_root(root)
+        # Never dropped, even if this send is refused: an earlier send of it may still land.
+        if found is None:
+            sealed = chain.seal_root(root)
+        else:
+            run, sealed_at = found
+            sealed = run, chain.root_tx_hash(root, sealed_at), sealed_at
+        _sealed(conn, stored["id"], *sealed, counts)
+
     leaves = [
         (table, row["id"], leaf(bytes(row["record_id"]), fingerprint_of(row)))
         for table, (unsealed, fingerprint_of) in LEAVES.items()
@@ -280,7 +294,18 @@ def _seal_root(conn, chain: Chain, counts: dict) -> None:
             )
     # Stored before it is sent, so a root sealed by a run that then crashes has its list (D110).
     conn.commit()
-    _sealed(conn, root_id, *chain.seal_root(root), counts)
+    try:
+        sealed = chain.seal_root(root)
+    except Refused:
+        # No transaction exists, so nothing can land: the next run's root takes these records.
+        for table in LEAVES:
+            conn.execute(
+                f"UPDATE {table} SET root_id = NULL, proof = NULL WHERE root_id = %s", (root_id,)
+            )
+        conn.execute(DROP_ROOT, (root_id,))
+        conn.commit()
+        raise
+    _sealed(conn, root_id, *sealed, counts)
 
 
 def main() -> int:

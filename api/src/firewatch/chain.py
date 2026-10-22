@@ -55,6 +55,10 @@ class ChainError(Exception):
     pass
 
 
+class Refused(ChainError):
+    """The node refused the transaction, so it was never sent."""
+
+
 class Chain:
     def __init__(self, rpc_url: str, contract_address: str, private_key: str):
         self.w3 = Web3(Web3.HTTPProvider(rpc_url))
@@ -85,10 +89,10 @@ class Chain:
             )
         except Web3RPCError as e:
             if "insufficient funds" in str(e).lower():
-                raise ChainError(
+                raise Refused(
                     f"insufficient funds in the recorder wallet {self.account.address}"
                 ) from e
-            raise
+            raise Refused(f"the node refused sealRoot: {e}") from e
         receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash, timeout=RECEIPT_TIMEOUT)
         if receipt.status != 1:
             raise ChainError(f"sealRoot transaction 0x{bytes(tx_hash).hex()} reverted")
