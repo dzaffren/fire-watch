@@ -215,7 +215,8 @@ export function ComplaintPack({ source, packRef, initialOpen = null }: Props) {
                 </div>
                 <p className="fw-help rec-note">
                   Your browser worked out each detection's fingerprint and read its seal from FireRecords on Base
-                  Sepolia, a test network. Fire Watch's server only sent the records.
+                  Sepolia, a test network. Fire Watch's server chose which records to send. NASA FIRMS's public
+                  archive shows whether one is missing.
                 </p>
                 {checks.some((c) => c.state === "mismatch") && (
                   <p className="fw-help rec-note">
@@ -393,7 +394,7 @@ export function ComplaintPack({ source, packRef, initialOpen = null }: Props) {
               <footer className="pack-foot">
                 <p className="fw-help">
                   This pack holds every detection of this fire that Fire Watch had stored by{" "}
-                  {detected(pack.as_of_unix)}. It never changes, so passes after that are not in it.
+                  {detected(pack.as_of_unix)}. Passes after that are not in it.
                 </p>
                 <p className="fw-help">
                   Link: <span className="fw-mono pack-link">{window.location.href}</span>

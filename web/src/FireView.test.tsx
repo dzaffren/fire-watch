@@ -149,8 +149,9 @@ describe("FireView", () => {
     expect(make).toHaveAttribute("href", href);
     expect(make).toHaveAttribute("target", "_blank");
     expect(make).toHaveAccessibleDescription(
-      "Opens this fire as it stands now on a page with its own link, to put in a grievance. The pack never changes, and anyone with the link can check it against the chain.",
+      "Opens this fire as it stands now on a page with its own link, to put in a grievance. Anyone with the link can check each record against the chain.",
     );
+    expect(document.body.textContent).not.toMatch(/never changes/);
   });
 
   it("lists the detections oldest first and opens the one picked", () => {

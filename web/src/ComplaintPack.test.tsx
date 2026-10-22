@@ -108,9 +108,15 @@ describe("ComplaintPack", () => {
 
     expect(
       screen.getByText(
-        "This pack holds every detection of this fire that Fire Watch had stored by 2026-10-17 09:00 UTC. It never changes, so passes after that are not in it.",
+        "Your browser worked out each detection's fingerprint and read its seal from FireRecords on Base Sepolia, a test network. Fire Watch's server chose which records to send. NASA FIRMS's public archive shows whether one is missing.",
       ),
     ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "This pack holds every detection of this fire that Fire Watch had stored by 2026-10-17 09:00 UTC. Passes after that are not in it.",
+      ),
+    ).toBeInTheDocument();
+    expect(document.body.textContent).not.toMatch(/never changes|only sent the records/);
     expect(screen.getByText(/Company names are left out on purpose\./)).toBeInTheDocument();
     expect(document.body.textContent).not.toMatch(/\bPT\b|\bTbk\b/);
   });
