@@ -1,6 +1,10 @@
+from pathlib import Path
+
 import psycopg
 
 from firewatch import migrate
+
+NEON_READER = Path(__file__).parents[2] / "infra" / "neon-reader.sql"
 
 FIRE_RECORD_TABLES = {"concessions", "hotspot_concessions", "recorder_runs"}
 READER_TABLES = FIRE_RECORD_TABLES | {"forecasts", "peat", "roots"}
@@ -100,6 +104,26 @@ def test_reader_role_can_read_the_new_tables(database_url):
         while migrate.down(database_url):
             pass
         with psycopg.connect(database_url, autocommit=True) as conn:
+            conn.execute("DROP ROLE firewatch_reader")
+
+
+def test_reader_made_after_the_migrations_can_read_every_table_it_serves(database_url):
+    # A first deploy: `migrate up`, then infra/neon-reader.sql, whose psql password variable
+    # stands in here as a literal.
+    sql = NEON_READER.read_text().replace(":'reader_password'", "'test'")
+    migrate.up(database_url)
+    try:
+        with psycopg.connect(database_url, autocommit=True) as conn:
+            conn.execute(sql)
+            for table in READER_TABLES | {"hotspots"}:
+                assert conn.execute(
+                    "SELECT has_table_privilege('firewatch_reader', %s, 'SELECT')", (table,)
+                ).fetchone() == (True,), table
+    finally:
+        while migrate.down(database_url):
+            pass
+        with psycopg.connect(database_url, autocommit=True) as conn:
+            conn.execute("DROP OWNED BY firewatch_reader")
             conn.execute("DROP ROLE firewatch_reader")
 
 
