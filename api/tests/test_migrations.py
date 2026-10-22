@@ -3,7 +3,8 @@ import psycopg
 from firewatch import migrate
 
 FIRE_RECORD_TABLES = {"concessions", "hotspot_concessions", "recorder_runs"}
-READER_TABLES = FIRE_RECORD_TABLES | {"forecasts", "peat"}
+READER_TABLES = FIRE_RECORD_TABLES | {"forecasts", "peat", "roots"}
+ROOT_COLUMNS = {"root_id", "proof"}
 
 
 def _tables(url):
@@ -14,12 +15,16 @@ def _tables(url):
     return {name for (name,) in rows}
 
 
-def _hotspot_columns(url):
+def _columns(url, table):
     with psycopg.connect(url) as conn:
         rows = conn.execute(
-            "SELECT column_name FROM information_schema.columns WHERE table_name = 'hotspots'"
+            "SELECT column_name FROM information_schema.columns WHERE table_name = %s", (table,)
         ).fetchall()
     return {name for (name,) in rows}
+
+
+def _hotspot_columns(url):
+    return _columns(url, "hotspots")
 
 
 def _postgis(url):
@@ -35,14 +40,24 @@ def _applied(url):
 def _assert_up(url):
     assert {"hotspots", *READER_TABLES} <= _tables(url)
     assert {"fingerprint_version", "map_version"} <= _hotspot_columns(url)
+    assert ROOT_COLUMNS <= _hotspot_columns(url)
+    assert ROOT_COLUMNS <= _columns(url, "forecasts")
     assert _postgis(url)
-    assert _applied(url) == ["001_hotspots", "002_fire_record", "003_forecasts", "004_peat"]
+    assert _applied(url) == [
+        "001_hotspots", "002_fire_record", "003_forecasts", "004_peat", "005_run_roots",
+    ]
 
 
 def test_up_down_up(database_url):
     migrate.up(database_url)
     migrate.up(database_url)
     _assert_up(database_url)
+
+    assert migrate.down(database_url) == "005_run_roots"
+    assert "roots" not in _tables(database_url)
+    assert not ROOT_COLUMNS & _hotspot_columns(database_url)
+    assert not ROOT_COLUMNS & _columns(database_url, "forecasts")
+    assert _applied(database_url) == ["001_hotspots", "002_fire_record", "003_forecasts", "004_peat"]
 
     assert migrate.down(database_url) == "004_peat"
     assert "peat" not in _tables(database_url)
