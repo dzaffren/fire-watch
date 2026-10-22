@@ -29,6 +29,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - A detection's seal time comes from Base Sepolia's clock, and the page reads its seal from the chain even when the server says it isn't sealed. The landing, the tool and the complaint pack claim only what the chain or the data shows, and a pack says Fire Watch's server chose its records.
 - The forecast panel's 2023 replay shows rule version 1 next to three guesses: its near-edge step alone, every fire by the next pass, and the downwind guess. One sentence says what the rule's advance step adds. `backtest-2023` writes both new guesses' totals and a column for each in the CSV.
 - Each recorder run seals all its new detections and forecasts under one Merkle root on a new contract, FireRuns, in one transaction, so no run leaves seals for the next hour. An owner key kept off Azure can replace a leaked recorder key. The tool, the forecast panel and the complaint pack check a newer record against its run's root and an older one on FireRecords, in one read.
+- A fire and its complaint pack say when the fire was first seen as one detection and then not seen for more than 14 hours, and when Fire Watch joined other fires to it, with where each was first seen. "How this is worked out" names joins, NOAA-20's position error and that Trase gives no accuracy for its concession edges. The landing tells its example fire as one detection, then a second fire joined on 14 Oct.
 
 ### Removed
 
