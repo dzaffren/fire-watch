@@ -68,12 +68,13 @@ it("the system's dark and the chosen dark theme hold the same tokens", () => {
 });
 
 it("print whitens only the grounds, so the pack's switch to light sets the ink", () => {
-  expect(PRINT).toEqual({
-    "--fw-bg": "#ffffff",
-    "--fw-surface": "#ffffff",
-    "--fw-table-head": "#ffffff",
-    "--fw-hover-fill": "#ffffff",
-    "--fw-band-moss": "#ffffff",
-    "--fw-band-peat": "#ffffff",
-  });
+  expect(Object.keys(PRINT).sort()).toEqual([
+    "--fw-band-moss",
+    "--fw-band-peat",
+    "--fw-bg",
+    "--fw-hover-fill",
+    "--fw-surface",
+    "--fw-table-head",
+  ]);
+  for (const value of Object.values(PRINT)) expect(rgba(value)).toEqual([255, 255, 255, 1]);
 });
