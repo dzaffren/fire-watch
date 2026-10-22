@@ -141,6 +141,73 @@ Scenario: The owner replaces a leaked recorder key
 - Base mainnet. The roadmap write-up names it (shape O13).
 - The landing's real case. Its 283 seals stay on FireRecords, and its check doesn't change.
 
+## Interface
+
+No layout, token, component or motion changes. The slice adds rows to existing `fw-kv` lists and
+changes some wording, so no preview was built, as in honest-claims. Each row and string is fixed
+below. The design system's two craft checks have nothing new to judge.
+
+**Motion tier:** 0. Nothing new moves, and the check chip keeps its existing `enter` (O5).
+
+**Components used:** `RecordPanel`, `Chip`, the forecast detail in `ForecastPanel`, the pack's
+check block in `ComplaintPack`, `fw-kv`, `fw-help`, `fw-link`, `fw-mono`, `ExternalIcon`. All
+exist in `docs/design/design-system` and `web/src/styles/app.css`.
+
+**Preview:** none. After `/build`, `/?preview=complaint-pack` and `/?preview=spread-forecast` show
+the new rows on fixtures with old and new seals.
+
+The new contract is called FireRuns on the page and in the code.
+
+```mermaid
+flowchart TB
+    A["API: record with run, proof, tx_hash"] -- "record" --> K[the page's check]
+    F[("FireRecords: sealOf(recordId)")] -- "fingerprint, sealedAt" --> K
+    R[("FireRuns: root of run N")] -- "root, sealedAt" --> K
+    K -- "chip, Sealed, Sealed in, roots on a mismatch" --> RP[RecordPanel: tool and pack]
+    K -- "the same, for each forecast" --> FP[forecast detail]
+    K -- "every detection's result" --> PK[pack check block: count, note, contract rows]
+```
+
+The page checks a record with a run against FireRuns, and a record without one against
+FireRecords. The record panel, the forecast detail and the pack's check block show the result.
+
+### A record's rows
+
+| Chain answer | Chip | "Sealed" | "Sealed in" |
+| --- | --- | --- | --- |
+| not yet | Checking | left out | left out |
+| FireRecords' fingerprint equals the record's | Matches the chain | the chain's time, then the gap after detection | FireRecords, in a seal of its own |
+| the proof leads to run N's root on FireRuns | Matches the chain | run N's time, then the gap after detection | FireRuns, run N's root |
+| FireRecords' fingerprint differs | Does not match the chain | the chain's time of the seal it holds | FireRecords, in a seal of its own |
+| the proof doesn't lead to run N's root | Does not match the chain | run N's time | FireRuns, run N's root |
+| no seal on FireRecords, or run N not sealed yet | Not on chain yet | left out | left out |
+| read failed | none: "Couldn't reach Base Sepolia to check this record." and Check again | left out | left out |
+
+"Sealed in" sits after "Fingerprint" and before "Transaction". "Transaction" links to the run's one
+transaction for a record in a root, and to the record's own for an old one. The forecast detail
+gets the same "Sealed in" row, after its fingerprint rows.
+
+On a mismatch, an old record keeps "Sealed fingerprint" and "Fingerprint now". A record in a root
+shows three rows in their place:
+
+| Row | Value |
+| --- | --- |
+| Fingerprint now | the record's fingerprint, worked out in the browser |
+| Run root on chain | run N's root, read from FireRuns |
+| Run root now | the root worked out from the fingerprint now and the record's proof |
+
+### Copy
+
+| Where | Today | After |
+| --- | --- | --- |
+| `RecordPanel.tsx:37`, mismatch note, record in a root | The stored record has changed since it was sealed. The chain still holds the original fingerprint. | The stored record has changed since its run was sealed. The chain still holds the run's original root. |
+| `RecordPanel.tsx:180`, "Show the raw record", record in a root | Fingerprint of this record: `<fingerprint>` | Fingerprint of this record: `<fingerprint>`. Run N's root, worked out from it and the `<k>` proof hashes above: `<root>` |
+| `ComplaintPack.tsx:217`, check note | Your browser worked out each detection's fingerprint and read its seal from FireRecords on Base Sepolia, a test network. Fire Watch's server chose which records to send. NASA FIRMS's public archive shows whether one is missing. | Your browser worked out each detection's fingerprint and checked it on Base Sepolia, a test network. An older detection has a seal of its own on FireRecords. A newer one is under its recorder run's root on FireRuns. Fire Watch's server chose which records to send. NASA FIRMS's public archive shows whether one is missing. |
+| `ComplaintPack.tsx:240`, the "Contract" row | Contract: `<FireRecords address>` | FireRecords: `<address>`, when the pack has a record without a run. FireRuns: `<address>`, when it has a record with one. Each links to its contract on Basescan |
+| `ForecastPanel.tsx:277` | Each forecast is sealed in the run that makes it, or a later run if that one runs out of time. Every one stays listed here, right or wrong. | Each forecast is sealed in the run that makes it, or a later run if that one fails to seal. Every one stays listed here, right or wrong. |
+
+The proof hashes show in the raw record because the API sends them with the record.
+
 ## Technical plan
 
 _(the rest is added at pause 3)_
@@ -209,6 +276,7 @@ Status: active
 | O2 | Who holds the power to replace the recorder key on the new contract? (from shape O12) | question | shape | user | Resolved | 2026-10-22: a separate owner key on the operator's machine, never in Azure or the job. It can only replace the recorder (D104) |
 | O3 | Do new forecasts go into the run's root, or keep their own seals on FireRecords? | question | spec p1 | user | Resolved | 2026-10-22: into the root with the run's detections, so FireRecords' fixed key seals nothing new (D105) |
 | O4 | The chain alone can't say a record is in a run's root; the page needs the API's proof. A record the API sends without its proof reads "Not on chain yet", never "Matches" | flag | spec p1 | user | Accepted risk | 2026-10-22: until complete-packs, whose per-run lists show a missing record. A pack already says the server chose its records (D98). D106 |
+| O5 | Which motion tier the new rows use | question | spec p2 | user | Resolved | 2026-10-22: tier 0. Nothing new moves; the rows appear when the chain answers, and the chip keeps its existing `enter` |
 
 _Never delete this section or its rows. See references/ledger.md._
 
