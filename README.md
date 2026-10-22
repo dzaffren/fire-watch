@@ -58,7 +58,7 @@ with `docker compose up -d --wait --force-recreate --renew-anon-volumes db`.
 
 `load-concessions` downloads the pinned Trase file and refuses it if its checksum differs; give
 it a path and it loads that file as is. `record-hotspots` reads `DATABASE_URL`,
-`FIRMS_MAP_KEY`, `RPC_URL`, `CONTRACT_ADDRESS` and `RECORDER_PRIVATE_KEY` from the
+`FIRMS_MAP_KEY`, `RPC_URL`, `FIRE_RUNS_ADDRESS` and `RECORDER_PRIVATE_KEY` from the
 environment; `load-concessions` needs only `DATABASE_URL`. Keep them in the untracked `.env` at
 the repo root; `--env-file ../.env` loads it, since `uv run` doesn't on its own.
 
@@ -160,14 +160,16 @@ quiet hour can take up to a minute while the API wakes.
    `ETHERSCAN_API_KEY` (a free Etherscan key, kept in `.env`) and `RECORDER_ADDRESS` in the
    environment, run from `contracts/`:
    `forge verify-contract 0x6a55489a05a9c79d2cd35212878d113557dceb2a src/FireRecords.sol:FireRecords --chain 84532 --constructor-args "$(cast abi-encode 'constructor(address)' "$RECORDER_ADDRESS")" --watch`.
-   The deployed FireRecords was verified this way on 2026-10-17.
+   The deployed FireRecords was verified this way on 2026-10-17. Then make the owner key and
+   deploy FireRuns, which the recorder seals its run roots on (D103, D104), as in "Turning on
+   run roots" below.
 3. **Google Maps:** two keys. Production is locked to the site's address and to the Maps
    JavaScript API; development is locked to `http://localhost:5173/*`. Cap map loads at 300 a
    day and set a $1 budget alert in the Cloud console.
 4. **GitHub:** push the repo. CI runs; Deploy pushes `ghcr.io/<owner>/firewatch-api:<sha>` and
    then fails at the Azure login, which is expected the first time. Make that package public,
    and get its digest: `docker buildx imagetools inspect ghcr.io/<owner>/firewatch-api:<sha>`.
-5. **Azure:** `GITHUB_REPO=<owner/name> ALERT_EMAIL=<you> READER_DATABASE_URL=<reader url> IMAGE=ghcr.io/<owner>/firewatch-api@sha256:<digest> OWNER_DATABASE_URL=<owner url> RECORDER_PRIVATE_KEY=<key> FIRMS_MAP_KEY=<key> RPC_URL=https://sepolia.base.org CONTRACT_ADDRESS=<address> infra/setup.sh`.
+5. **Azure:** `GITHUB_REPO=<owner/name> ALERT_EMAIL=<you> READER_DATABASE_URL=<reader url> IMAGE=ghcr.io/<owner>/firewatch-api@sha256:<digest> OWNER_DATABASE_URL=<owner url> RECORDER_PRIVATE_KEY=<key> FIRMS_MAP_KEY=<key> RPC_URL=https://sepolia.base.org FIRE_RUNS_ADDRESS=<address> infra/setup.sh`.
    It creates everything with the cost guardrails and a $1 budget alert, including the
    `firewatch-recorder` job that runs `record-hotspots` on the hour with the recorder's
    settings as secrets, then prints the GitHub variables to set. Set them and rerun Deploy.
@@ -197,6 +199,37 @@ the page); then point the recorder job at the merged sha's image by digest, as a
 count only from their seal, so each day between the merge and the job update loses that day's
 forecasts. The next run's log line shows `forecasts=` and `forecast_ms=`. To roll back, point the
 job at its previous digest; `migrate down` only if the table must go.
+
+Turning on run roots, in order. The recorder then seals one root per run on FireRuns, and the
+owner key can replace the recorder key if it leaks (D103, D104).
+
+1. `migrate up`, which adds the `roots` table and each record's `root_id` and `proof`.
+2. Merge to main. Deploy ships the API and the page, which still check every record on
+   FireRecords.
+3. Make the owner key in an encrypted Foundry keystore on your machine, never in `.env` or
+   Azure: `cast wallet new fire-runs-owner`. Fund it for the deploy and for any replacement:
+   `cast send <owner address> --value 0.003ether --rpc-url https://sepolia.base.org --private-key "$(grep '^RECORDER_PRIVATE_KEY=' .env | cut -d= -f2-)"`.
+4. Deploy FireRuns from the owner key, with the recorder wallet as its recorder, from
+   `contracts/`:
+   `OWNER_ADDRESS=<owner address> RECORDER_ADDRESS=0x6f09c576Be8AFB0f2175A97A0eFa26DE23A532f3 forge script script/DeployRuns.s.sol --rpc-url https://sepolia.base.org --account fire-runs-owner --broadcast`.
+   Verify it, with `ETHERSCAN_API_KEY` in the environment:
+   `forge verify-contract <FireRuns address> src/FireRuns.sol:FireRuns --chain 84532 --watch --constructor-args "$(cast abi-encode 'constructor(address,address)' <owner address> 0x6f09c576Be8AFB0f2175A97A0eFa26DE23A532f3)"`.
+5. `gh variable set FIRE_RUNS_ADDRESS -b <FireRuns address>`, then rerun Deploy, so the page
+   can read FireRuns.
+6. Point the recorder job at the merged sha's image by digest, with the new address:
+   `az containerapp job update -g firewatch -n firewatch-recorder --image ghcr.io/<owner>/firewatch-api@sha256:<digest> --set-env-vars FIRE_RUNS_ADDRESS=<FireRuns address>`.
+   The next run's log line shows `roots=1 run=<n>`, and Basescan shows one `sealRoot` an hour.
+
+To roll back, point the job at its previous digest; it still has `CONTRACT_ADDRESS`, and seals
+any record with no `tx_hash` on FireRecords. The page and the API read both contracts, so they
+stay. `migrate down` only before any root is sealed, since it drops the proofs.
+
+If the recorder key leaks, make and fund a new recorder wallet, then replace the recorder from
+the owner key:
+`cast send <FireRuns address> 'replaceRecorder(address)' <new recorder address> --rpc-url https://sepolia.base.org --account fire-runs-owner`.
+Then give the job the new key:
+`az containerapp job secret set -g firewatch -n firewatch-recorder --secrets recorder-private-key=<new key>`.
+A root from the old key is refused from then on, and roots sealed before still check.
 
 Turning on the damage estimate, in order, before the merge: `migrate up`, which adds the `peat`
 table and lets the read-only role read it; `load-peat`; then merge to main (Deploy ships the API,
