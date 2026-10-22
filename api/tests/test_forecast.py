@@ -10,6 +10,7 @@ from firewatch.forecast import (
     SETTLE,
     Forecast,
     make,
+    nearest,
     outcome,
     rounded_h,
 )
@@ -189,9 +190,16 @@ def test_one_pass_within_375_m_reads_the_next_pass():
 
 
 def test_nearest_detection_ties_go_to_the_first():
-    (fire,) = group([det(1, lat_e5=5, edge_m=200), det(2, lat_e5=10, edge_m=200)], None)
+    first, second = det(1, lat_e5=5, edge_m=200), det(2, lat_e5=10, edge_m=200)
+    (fire,) = group([first, second], None)
     forecast = make(fire, "C", T0, at_edge)
     assert (forecast.from_lat_e5, forecast.from_lon_e5) == (5, 10000000)
+    assert nearest([first, second]) == (first, 200)
+
+
+def test_nearest_inside_detection_is_0_from_the_edge():
+    outside, inside = det(1, edge_m=100), det(2, lat_e5=10, inside=True, edge_m=300)
+    assert nearest([outside, inside]) == (inside, 0)
 
 
 def test_seen_inside_gets_no_forecast():
