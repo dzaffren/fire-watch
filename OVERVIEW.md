@@ -1,6 +1,6 @@
 # ClimateChain hackathon entry
 
-**Status:** Active · **Updated:** 2026-10-21 by /ship replay-pace
+**Status:** Active · **Updated:** 2026-10-22 by /ship palette
 
 Fire Watch, an entry for the IEEE ClimateChain Global Hackathon (deadline 2026-10-25). It shows
 satellite fire hotspots with on-chain proof that each record hasn't changed since it was written,
@@ -39,6 +39,7 @@ for watchdog investigators who file grievances over fires on plantation land.
 | landing-page     | Shipped | A page at the site's address says what Fire Watch is for a newcomer, with a globe of 14 Oct 2026's fires that flies to a real fire; the tool moves to `/?tool`. | docs/specs/landing-page.md        |
 | newcomer-walkthrough | Shipped | The landing walks a judge through one real fire, from the company's claim to a seal check in their own browser, then says how to use the tool. | docs/specs/newcomer-walkthrough.md |
 | replay-pace      | Shipped | Play in a fire's replay holds each satellite pass for 1.5 s, not 0.6 s, so the spread can be followed pass by pass. | docs/specs/replay-pace.md         |
+| palette          | Shipped | Every screen takes colour from a deeper Peatland palette: the maps, the page ground and panels, and two bands on the landing. | docs/specs/palette.md             |
 
 ## More
 
