@@ -81,9 +81,18 @@ describe("RealCase", () => {
     expect(steps[0]).toHaveTextContent("From 12 Oct to 17 Oct 2026, the NOAA-20 satellite saw this fire 283 times near ID-WOOD-CONCESSION-0332");
     expect(steps[1]).toHaveTextContent("The company that holds it can answer that the fire started outside its land and spread in.");
     expect(steps[2]).toHaveTextContent(
-      "The satellite first saw it on 12 Oct 05:16 UTC, outside the concession and 3,100 m from its edge. On this point the record agrees with the company.",
+      "The satellite first saw it on 12 Oct 05:16 UTC as one detection, outside the concession and 3,100 m from its edge. It didn't see the fire again for 25 hours, so that detection may be a separate fire. Scroll on to see what came next, one satellite pass at a time.",
     );
-    expect(steps[3]).toHaveTextContent("13 Oct 06:37 UTC · 35 detections, 6 inside the concession. The fire has crossed the edge.");
+    expect(steps[3]).toHaveTextContent(
+      "13 Oct 06:37 UTC · 35 detections, 6 inside the concession. These include another fire, first seen on this pass more than 1 km from the first, on both sides of the edge.",
+    );
+    expect(steps[6]).toHaveTextContent(
+      "14 Oct 17:20 UTC · 66 detections, 43 inside the concession. On this pass the fires came within 1 km of each other, so Fire Watch counts them as one.",
+    );
+    for (const step of steps) {
+      expect(step).not.toHaveTextContent("On this point the record agrees with the company");
+      expect(step).not.toHaveTextContent("The fire has crossed the edge");
+    }
     expect(steps[7]).toHaveTextContent("6 detections, all outside.");
     expect(steps[9]).toHaveTextContent("33 detections, 26 inside the concession. In all, 164 of the 283 detections were inside.");
     expect(steps[SEALS]).toHaveTextContent("Passes 1 to 6 were sealed on 16 Oct, when recording began");

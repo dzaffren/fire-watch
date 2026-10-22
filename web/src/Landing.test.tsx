@@ -84,7 +84,7 @@ describe("Landing", () => {
     expect(vi.mocked(FireGlobe).mock.lastCall![0].atFire).toBe(true);
     expect(
       screen.getByText(
-        /^A fire in ID-WOOD-CONCESSION-0332, Central Kalimantan, on 14 Oct 2026\. The satellite first saw it on 12 Oct, outside the concession and 3,100 m from its edge\. By 13 Oct it was inside\./,
+        /^A fire in ID-WOOD-CONCESSION-0332, Central Kalimantan, on 14 Oct 2026\. The satellite first saw it on 12 Oct as one detection, 3,100 m outside the concession\. On 14 Oct it joined a second fire, first seen the day before on both sides of the edge\./,
       ),
     ).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "See its complaint pack" })).toHaveAttribute("href", EXAMPLE_PACK);
