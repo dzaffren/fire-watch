@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ConcessionDetail, FireDetail, HotspotRecord } from "./api";
 import { fireDots, FireView, passTimes, Replay, type FireLoad } from "./FireView";
 import raw from "./preview/fire-origin.fixture.json";
+import { AS_PACKED, LIVE_JOINED } from "./preview/OriginConfidencePreview";
 
 // Real VIIRS NOAA-20 detections from 2026-10-12 to 15, grouped into fires by the spec's rule; see the preview.
 type FixtureHotspot = Omit<HotspotRecord, "record_id" | "acquired_at" | "tx_hash" | "sealed_at" | "source" | "fingerprint_version" | "map_version">;
@@ -24,6 +25,11 @@ const ONE_HOUR = { id: "ID-WOOD-CONCESSION-0332", key: "0x13b417c6f54dd95c7c418b
 const ONE_PASS = { id: "ID-WOOD-CONCESSION-0332", key: "0x08fb9ad47abd958004db9297551fe94a158405a81e978620b4ad8a4a67b63c9e" } as const;
 
 const CANT_TELL = "The satellite record can't say which side this fire started on.";
+const ALONE = "First seen as one detection, then not seen for 25 hours. That detection may be a separate fire.";
+const JOINED_ONE =
+  "Fire Watch joined another fire to this one on 14 Oct 17:20 UTC, when they came within 1 km. First seen above is the older of the two. The other was first seen on 13 Oct 06:37 UTC, on both sides of the edge.";
+const JOINED_MANY =
+  "Fire Watch joined 7 other fires to this one, the first time on 14 Oct 17:20 UTC, as they came within 1 km. First seen above is the oldest of them. They are listed below.";
 const iso = (unix: number) => new Date(unix * 1000).toISOString().replace(".000", "");
 
 /** One fire as the API serves it: every detection, oldest first. */
@@ -132,12 +138,82 @@ describe("FireView", () => {
     ).toBeInTheDocument();
   });
 
-  it("writes out how the reading is worked out behind a disclosure", () => {
-    showFire(OUTSIDE);
+  it("says the example fire's first pass is one detection with 25 hours after it, and keeps its reading", () => {
+    // 0332's fire as its pack stands at 17 Oct 09:00 UTC: one detection 3,100 m outside on 12 Oct 05:16.
+    show(ONE_HOUR.id, { kind: "ready", fire: { ...fire(ONE_HOUR), ...AS_PACKED } });
+
+    expect(screen.getByRole("heading", { name: "First seen outside, 3.1 km from the edge" })).toBeInTheDocument();
+    expect(screen.getByText(ALONE)).toBeInTheDocument();
+  });
+
+  it("says when one fire was joined to this one and where the satellite first saw it", () => {
+    show(ONE_HOUR.id, { kind: "ready", fire: { ...fire(ONE_HOUR), ...AS_PACKED } });
+
+    expect(screen.getByText(JOINED_ONE)).toBeInTheDocument();
+    expect(detail("Seen inside from")).toBe("2026-10-13 06:37 UTC");
+    expect(screen.queryByText(/fires joined to this one$/)).toBeNull();
+  });
+
+  it("counts the fires joined to this one and lists them behind a disclosure", () => {
+    show(ONE_HOUR.id, { kind: "ready", fire: { ...fire(ONE_HOUR), ...AS_PACKED, joined: LIVE_JOINED } });
+
+    expect(screen.getByText(JOINED_MANY)).toBeInTheDocument();
+    expect(screen.queryByText(JOINED_ONE)).toBeNull();
+    const list = screen.getByText("The 7 fires joined to this one", { selector: "summary" }).closest("details")!;
+    expect(list).not.toHaveAttribute("open");
+    const table = within(list).getByRole("table", { name: "The 7 fires joined to this one" });
+    const [head, ...rows] = within(table).getAllByRole("row");
+    expect([...head.children].map((c) => c.textContent)).toEqual(["Joined (UTC)", "First seen (UTC)", "Where first seen"]);
+    expect(rows).toHaveLength(7);
+    expect(rows.slice(0, 2).map((r) => [...r.children].map((c) => c.textContent))).toEqual([
+      ["14 Oct 17:20", "13 Oct 06:37", "Both sides of the edge"],
+      ["17 Oct 18:04", "17 Oct 05:23", "Outside, 2.6 km"],
+    ]);
+  });
+
+  it("adds nothing to a firm fire that never joined another", () => {
+    // 0356's fire: one detection 409 m inside, seen again 11 hours later.
+    show(INSIDE.id, { kind: "ready", fire: { ...fire(INSIDE), first_alone_h: null, joined: [] } });
+
+    expect(screen.getByRole("heading", { name: "First seen inside, 410 m from the edge" })).toBeInTheDocument();
+    expect(document.querySelector(".fire-notes")).toBeNull();
+    expect(screen.queryByText(/First seen as one detection/)).toBeNull();
+    expect(screen.queryByText(/^Fire Watch joined/)).toBeNull();
+    expect(screen.queryByText(/fires joined to this one$/)).toBeNull();
+  });
+
+  it("puts the notes after can't tell and before never spread and records begin", () => {
+    show(BOTH.id, {
+      kind: "ready",
+      fire: { ...fire(BOTH), ...AS_PACKED, joined: LIVE_JOINED, never_spread: true },
+    });
+
+    const notes = [...document.querySelectorAll(".fire-notes p")].map((p) => p.textContent);
+    expect(notes).toEqual([
+      CANT_TELL,
+      ALONE,
+      JOINED_MANY,
+      "Seen on 6 passes without spreading. This can be a fixed heat source, such as a mill, or peat smouldering in place.",
+      "Fire Watch's records begin 27 hours before this fire was first seen, so it may have been burning earlier.",
+    ]);
+  });
+
+  it("writes out how the reading is worked out behind a disclosure, with joins and position error", () => {
+    showFire(INSIDE);
 
     const how = screen.getByText("How this is worked out").closest("details")!;
     expect(how).not.toHaveAttribute("open");
     expect(within(how).getByText(/A detection joins a fire when it is within 1 km and 48 hours/)).toBeInTheDocument();
+    expect(
+      within(how).getByText(
+        "A fire that comes within 1 km of another is joined to it, so one fire here can be several that the satellite first saw apart. First seen is the oldest one's.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(how).getByText(
+        "A detection's position can be off as well. Straight below the satellite, NOAA-20 places almost every detection within 400 m of the fire, and most within 200 m (Blonski and others, 2023, doi 10.1117/1.JRS.17.034506). The 375 m margin doesn't allow for this. Concession edges come from Trase's map, which gives no accuracy for its lines.",
+      ),
+    ).toBeInTheDocument();
     expect(within(how).getByText(/NOAA-20 passes about twice a day and cloud can hide a fire/)).toBeInTheDocument();
   });
 

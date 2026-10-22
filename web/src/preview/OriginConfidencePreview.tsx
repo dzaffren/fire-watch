@@ -17,13 +17,13 @@ const CONTRACT: Hex = "0x6a55489a05a9c79d2cd35212878d113557dceb2a";
 const at = (iso: string) => Date.parse(`${iso}:00Z`) / 1000;
 
 // As the pack stands: one detection on 12 Oct 05:16, the next pass 25.35 hours later, and one join on 14 Oct.
-const AS_PACKED: Pick<FireDetail, "first_alone_h" | "joined"> = {
+export const AS_PACKED: Pick<FireDetail, "first_alone_h" | "joined"> = {
   first_alone_h: 25,
   joined: [{ at_unix: at("2026-10-14T17:20"), first_seen_unix: at("2026-10-13T06:37"), first_seen: { reading: "both", inside: false, edge_m: 2 } }],
 };
 
 // The same fire on 22 Oct 05:27 UTC: 869 detections on 19 passes, 8 fires joined.
-const LIVE_JOINED: JoinedFire[] = [
+export const LIVE_JOINED: JoinedFire[] = [
   ["2026-10-14T17:20", "2026-10-13T06:37", "both", false, 2],
   ["2026-10-17T18:04", "2026-10-17T05:23", "outside", false, 2576],
   ["2026-10-18T06:44", "2026-10-17T18:04", "outside", false, 4456],
