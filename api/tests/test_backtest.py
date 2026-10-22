@@ -240,6 +240,13 @@ def test_next_pass_warning_on_0264_did_not_come_in(cut):
     assert (r["next_pass_inside_by"], r["outcome"]) == ("2023-09-29T06:28Z", "not_seen_inside")
 
 
+def test_committed_guesses_say_yes_only_where_the_rule_does():
+    # The forecast panel says so of the committed 2023 result.
+    rows = rows_of(CUT)
+    for said in ("downwind_inside_by", "near_edge_inside_by"):
+        assert [r for r in rows if r[said] and not r["rule_inside_by"]] == []
+
+
 def test_two_runs_write_the_same_bytes(cut, database_url, tmp_path):
     out, _ = cut
     result = run_backtest(database_url, tmp_path)
