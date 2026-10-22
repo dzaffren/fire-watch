@@ -557,7 +557,7 @@ A fire seen on one pass has no rate, so the baseline says no.
 Rejected: the same plus rule version 1's 375 m step (only the direction would differ, so it is not
 naive), "never comes in" (right about 96 times in 100 in 2023, while it warns of nothing).
 Source: docs/specs/season-backtest.md
-Status: active
+Status: superseded by D99
 
 ## D52 · 2026-10-19 · Replay all of 2023
 
@@ -1014,4 +1014,46 @@ that.
 Rejected: only dropping "never changes" (the reader must then guess what the check covers),
 waiting for complete-packs (an unsupported claim stays live until then).
 Source: docs/specs/honest-claims.md
+Status: active
+
+## D99 · 2026-10-22 · Measure the forecast against the downwind, near-edge and next-pass guesses
+
+Why: the downwind guess said yes only where rule version 1 did, 293 of 293 in 2023, so it can't
+show what rule version 1 adds. The near-edge step alone shows what the advance-rate step adds: 6
+more arrivals warned of, and 558 more warnings that didn't come in. The next-pass guess gives the
+floor: 135 of 19,995 forecast moments came in. Its 12 hours are rule version 1 step 5's, not tuned.
+The downwind guess stays because it tests wind, which D48 kept out of the rule. A fire seen on one
+pass has no rate, so the downwind guess says no.
+Rejected: the downwind guess alone (it can only warn of less than rule version 1), dropping the
+downwind guess (it still tests wind), "never comes in" (warns of nothing, D51's reason), rule
+version 1's yes with a fixed 12 hours (the same false alarms as rule version 1), every fire within
+1 km (the distance is picked by hand).
+Supersedes: D51
+Source: docs/specs/fair-baseline.md
+Status: active
+
+## D100 · 2026-10-22 · Say in one sentence, worked out from the totals, what rule version 1's advance step adds
+
+Why: the reader of a forecast can't easily take 6 and 558 out of a table of four methods. The
+sentence holds only numbers the committed totals hold, so it can't claim more than the replay shows.
+Rejected: the numbers only (the reader works out what the rule adds alone).
+Source: docs/specs/fair-baseline.md
+Status: active
+
+## D101 · 2026-10-22 · Leave the bar a rule version 2 must clear to forecast-v2
+
+Why: no rule version 2 exists yet, and on 2023 neither rule version 1 nor the near-edge step does
+better on both counts. forecast-v2 picks the bar with a candidate rule in hand.
+Rejected: setting it here as "no worse on both counts" (no candidate to test it on yet), one score
+such as CSI here (a fourth row on the panel before anything needs it).
+Source: docs/specs/fair-baseline.md
+Status: active
+
+## D102 · 2026-10-22 · Show two counts for each method in the 2023 block, and the hours off under "How this is worked out"
+
+Why: on a 390 px phone the block's table has 303 px. The arrivals warned of, the warnings that
+didn't come in and the median hours off need 368 px together, and the two counts need 293. The
+hours off differ least: 11.7, 11.7, 12.4 and 11.7.
+Rejected: all three numbers in the block (on a phone the table scrolls sideways in its box).
+Source: docs/specs/fair-baseline.md
 Status: active
