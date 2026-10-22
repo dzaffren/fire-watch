@@ -155,6 +155,79 @@ that the totals file doesn't hold.
 - A seal of the result: not planned (D55).
 - Other years: not planned (D52).
 
+## Interface
+
+The forecast panel's 2023 block turns on its side. Rule version 1 and the three guesses are the
+rows, and each number is a column, so the methods compare down a column. The disclosure holds the
+rest of the counts. The concession view and the pack don't change (D43, D46).
+
+```mermaid
+flowchart LR
+    C["Concession: the fires table"] -- "picks a fire" --> F["Fire: forecast panel"]
+    F -- "reads four rows: warned of, didn't come in" --> B["2023 block and the sentence"]
+    B -- "opens How this is worked out" --> D["each guess in words, two count tables, three links"]
+    D -- "Every 2023 forecast, as CSV" --> G["fixtures/backtest/2023-forecasts.csv on GitHub"]
+```
+
+The investigator opens a fire and compares rule version 1 with three guesses in one table. The
+sentence under it says what the rule's advance step adds. The disclosure gives the other counts.
+
+| Part | What shows |
+| ---- | ---------- |
+| Block title | "How this rule did on 2023, replayed", as now |
+| Block table | Columns: "In 2023", "Arrivals warned of, out of 135", "Warnings that didn't come in". Rows: "Rule version 1" (123, "3,751 of 3,874"), "Near-edge step" (117, "3,193 of 3,310"), "Downwind guess" (20, "264 of 284"), "Next-pass guess" (135, "19,860 of 19,995"). Numbers are right-aligned |
+| Under the table | "Rule version 1's advance step warned of 6 arrivals the near-edge step missed, and added 558 warnings that didn't come in." Then "A replay of 2023, run in 2026. Nothing in it was sealed in 2023." |
+| "How this is worked out", after the two existing paragraphs | "The 2023 replay runs this rule, and three guesses, at every moment the recorder would have forecast in 2023. It reads FIRMS's 2023 VIIRS NOAA-20 archive for Indonesia and the same concession map." |
+| | "The near-edge step is this rule's step 5 alone: a fire at most 375 m from the edge is forecast to be seen inside 12 hours after its newest pass. The next-pass guess says that of every fire. The downwind guess moves the fire with ERA5's hourly wind, from Open-Meteo, at the rate it advanced since the pass before. A fire seen on one pass has no rate, so the downwind guess says no." |
+| | "The near-edge step is part of this rule, and in 2023 the downwind guess said yes only where this rule did. So neither warned of an arrival this rule missed." |
+| | "All four forecast at the same moments, and only passes after a forecast was made count. A warning is a forecast that the fire is seen inside." |
+| Counts table, "The rest of the 2023 replay" | Columns: "Forecasts", "Arrivals missed", "Said no, stayed out", "Median hours off". The same four rows: 12, 16,109, 11.7 h · 18, 16,667, 11.7 h · 115, 19,596, 12.4 h · 0, 0, 11.7 h |
+| Shared table, "The same for all four" | "Not checked: joined another fire first" 246 · "Not checked: seen inside before it was made" 21 · "Not counted: its 48 hours end after 2023" 15 · "Forecasts made" 20,277 |
+| Links | "Every 2023 forecast, as CSV", "Redo the 2023 replay", "Forecast rule, version 1, in full", as now |
+
+Median hours off moves from the block to the counts table (O5). On a 390 px phone the block's table
+has 303 px. Three columns of "123 of 135" and "19,860 of 19,995" need 368 px at the system's cell
+padding. The two columns left need 293 px. The hours off differ least across the four methods:
+11.7, 11.7, 12.4 and 11.7.
+
+The states are season-backtest's, unchanged:
+
+| State | What shows |
+| ----- | ---------- |
+| A forecast by rule version 1, in any state | The block and the additions to "How this is worked out" |
+| A forecast changed after its seal | The same. The block is about the rule, not this forecast |
+| A forecast by a rule version with no replay | No block and no additions |
+| No forecasts | One line, no block |
+| Checking, or couldn't reach the chain | The same as the first row. The replay needs no chain read |
+
+The page bundles the totals, so the block has no loading or error state (D59). A method that warned
+of none reads "None warned of" for hours off.
+
+**The page expects:** `near_edge` and `next_pass` on `Backtest` in `web/src/api.ts`, each a
+`BacktestTotals`, in `fixtures/backtest/2023.json`.
+
+**Motion tier:** pending (O6).
+
+**Components used:** `fw-panel`, the section `h3`, `table-box` with `fw-table` and its `num` columns,
+`fw-help`, `fw-link` with the external icon, and the disclosure from the record panel. There is no
+new component and no new token. `app.css` adds two rules: the forecast tables' column heads wrap, and
+a method's name keeps to one line above 720 px.
+
+**Design system:** Fire Watch, `docs/design/design-system/` (D2).
+
+**Preview:** real components in `web/src`, at `http://localhost:5173/?preview=season-backtest` after
+`cd web && pnpm dev`. `&state=none&theme=dark` links straight to one state. `fixtures/backtest/2023.json`
+holds the scratch rerun's near-edge and next-pass totals until `/build` redoes the replay. The 2026
+forecasts are the spread-forecast preview's, which are made up. The drift check passed over the 5
+files written. `tsc -b` is clean, 216 web unit tests pass, and `season-backtest.spec.ts` passes with
+its page checks moved to the four methods. At 390 px and 360 px, with the disclosure open, neither
+table nor the page scrolls sideways.
+
+**Craft checks:** a one-line prompt would rank the methods and colour a winner. This table states
+counts a reader can check against the CSV, and the sentence names the trade-off in numbers. Next to
+Stripe's documentation, the reference for D2, it keeps the same order: the answer in the block, every
+count one click away.
+
 ## Decisions to record
 
 Drafted at pause 1. `/build` appends them to `DECISIONS.md` and flips D51's Status line.
@@ -202,6 +275,8 @@ Status: active
 | O2 | What the shape's "fixed-lead guess" is: every fire by the next pass, rule version 1's yes at a fixed 12 hours, every fire within 1 km, or none | question | spec p1 | user | Resolved | 2026-10-22: every forecast moment says seen inside 12 hours after the newest pass, rule version 1 step 5's lead (D99) |
 | O3 | Whether the panel says in words what the comparison shows, or gives only the numbers | question | spec p1 | user | Resolved | 2026-10-22: one sentence worked out from the totals, and "How this is worked out" says which guesses say yes only where rule version 1 does (D100) |
 | O4 | Who sets what "beat" means for a rule version 2: this slice, as "no worse on both counts" or as CSI, or forecast-v2 | question | spec p1 | user | Resolved | 2026-10-22: forecast-v2 sets it. This slice shows the counts (D101) |
+| O5 | Scenario 4 said the block gives three numbers for each method. On a 390 px phone the three need 368 px of a 303 px table | question | spec p2 | user | Open | — |
+| O6 | Which motion tier the block uses | question | spec p2 | user | Open | — |
 
 _Never delete this section or its rows. See references/ledger.md._
 
