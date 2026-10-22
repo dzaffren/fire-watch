@@ -299,9 +299,9 @@ def create_app(allowed_origin: str) -> FastAPI:
         by_id = {row["record_id"]: row for row in rows}
         log.info(
             "served fire id=%s key=%s as_of=%d detections=%d passes=%d forecasts=%d group_ms=%d"
-            " damage_ms=%d",
+            " damage_ms=%d first_alone_h=%s",
             concession_id, key, as_of, len(ids), found.passes,
-            len(forecasts.get("forecasts", [])), group_ms, damage_ms,
+            len(forecasts.get("forecasts", [])), group_ms, damage_ms, found.first_alone_h,
         )
         pack = {} if site is None else {
             "concession_id": site["id"],
@@ -312,6 +312,7 @@ def create_app(allowed_origin: str) -> FastAPI:
         }
         return {
             **_fire(found),
+            "first_alone_h": found.first_alone_h,
             "as_of_unix": as_of,
             **forecasts,
             **pack,

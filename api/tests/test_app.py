@@ -1,4 +1,5 @@
 import itertools
+import json
 import logging
 import math
 from datetime import datetime, timezone
@@ -18,11 +19,12 @@ FIXTURES = Path(__file__).parents[2] / "fixtures"
 TRASE_CUT = FIXTURES / "concessions" / "trase-cut.geojson"
 FIRE_ORIGIN = FIXTURES / "firms" / "fire-origin.csv"
 PEAT_CUT = FIXTURES / "peat" / "peat-cut.geojson.gz"
+PACK_0332 = FIXTURES.parent / "web" / "public" / "case" / "pack-0332.json"
 C0275, C0332, C0377, C0540 = (
     f"ID-WOOD-CONCESSION-{n}" for n in ("0275", "0332", "0377", "0540")
 )
 RANGE = {"from": "2026-10-11", "to": "2026-10-14"}
-DETAIL_ONLY = ("hotspots", "as_of_unix", "forecasts", "forecasts_from_unix")
+DETAIL_ONLY = ("hotspots", "as_of_unix", "forecasts", "forecasts_from_unix", "first_alone_h")
 _ids = itertools.count(1)
 
 
@@ -125,6 +127,30 @@ def fire_origin(url, created_at="2026-10-17T09:00Z"):
         conn.execute("UPDATE hotspots SET created_at = %s", (created_at,))
     first = min(new, key=lambda h: (h["acquired_at"], h["lat_e5"], h["lon_e5"]))
     return "0x" + bytes(first["record_id"]).hex()
+
+
+def pack_0332(url):
+    """Stores the 283 detections of the landing's example pack, stored by 17 Oct 09:00 UTC and
+    matched to 0332 only (0637 is not in the cut); returns the fire's key."""
+    pack = json.loads(PACK_0332.read_text())
+    with psycopg.connect(url) as conn:
+        for h in pack["hotspots"]:
+            (hotspot_id,) = conn.execute(
+                "INSERT INTO hotspots (record_id, source, lat_e5, lon_e5, acquired_at, frp_e2,"
+                " confidence, fingerprint_version, map_version, created_at)"
+                " VALUES (%s, %s, %s, %s, %s, %s, %s, 2, %s, '2026-10-17T09:00Z') RETURNING id",
+                (
+                    bytes.fromhex(h["record_id"][2:]), h["source"], h["lat_e5"], h["lon_e5"],
+                    h["acquired_at"], h["frp_e2"], h["confidence"], h["map_version"],
+                ),
+            ).fetchone()
+            for match in h["concessions"]:
+                if match["id"] == C0332:
+                    conn.execute(
+                        "INSERT INTO hotspot_concessions VALUES (%s, %s, %s, %s)",
+                        (hotspot_id, C0332, match["inside"], match["edge_m"]),
+                    )
+    return pack["key"]
 
 
 def test_concessions_ranked_by_inside(client, db):
@@ -635,8 +661,8 @@ def test_pack_leaves_out_detections_stored_after_it(client, db):
 
     assert made["as_of_unix"] == unix("2026-10-16T09:00Z")
     assert (live["passes"], live["detections"]) == (4, 4)
-    assert {k: pack[k] for k in made if k not in DETAIL_ONLY[2:]} == {
-        k: v for k, v in made.items() if k not in DETAIL_ONLY[2:]
+    assert {k: pack[k] for k in made if k not in DETAIL_ONLY[2:4]} == {
+        k: v for k, v in made.items() if k not in DETAIL_ONLY[2:4]
     }
 
 
@@ -662,8 +688,8 @@ def test_pack_keeps_its_key_after_a_join_to_an_older_fire(client, db):
 
     assert live.status_code == 404
     assert pack.status_code == 200
-    assert {k: pack.json()[k] for k in made if k not in DETAIL_ONLY[2:]} == {
-        k: v for k, v in made.items() if k not in DETAIL_ONLY[2:]
+    assert {k: pack.json()[k] for k in made if k not in DETAIL_ONLY[2:4]} == {
+        k: v for k, v in made.items() if k not in DETAIL_ONLY[2:4]
     }
 
 
@@ -678,7 +704,7 @@ def test_pack_has_its_concession_map_and_rule(client, db):
         "concession_id": C0332,
         "province": "Kalimantan Tengah",
         "map_version": MAP_VERSION,
-        "rule_version": 1,
+        "rule_version": 2,
     }
     assert pack["boundary"] == concession["boundary"] and len(pack["boundary"]) > 0
     assert (pack["key"], pack["as_of_unix"], pack["detections"]) == (first, as_of, 1)
@@ -855,3 +881,21 @@ def test_no_damage_without_peat(client, db):
 
     assert fire["detections"] == 19
     assert "damage" not in fire and "damage" not in pack
+
+
+def test_fire_says_its_first_sighting_was_one_detection_alone(client, db, caplog):
+    key = pack_0332(db)
+
+    with caplog.at_level(logging.INFO, logger="firewatch.app"):
+        pack = client.get(
+            f"/api/concessions/{C0332}/fires/{key}", params={"as_of": unix("2026-10-17T09:00Z")}
+        ).json()
+    concession = client.get(
+        f"/api/concessions/{C0332}", params={"from": "2026-10-12", "to": "2026-10-17"}
+    ).json()
+
+    assert (pack["detections"], pack["passes"], pack["first_alone_h"]) == (283, 8, 25)
+    assert "first_alone_h=25" in caplog.text
+    (listed,) = concession["fires"]
+    assert listed["key"] == key
+    assert "first_alone_h" not in listed and "joined" not in listed
