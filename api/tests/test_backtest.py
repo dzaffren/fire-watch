@@ -11,7 +11,7 @@ from pathlib import Path
 import httpx
 import pytest
 
-from firewatch import backtest, concessions, fires, migrate
+from firewatch import backtest, concessions, fires, forecast, migrate
 from firewatch.db import connect
 
 ROOT = Path(__file__).parents[2]
@@ -189,6 +189,36 @@ def test_one_pass_fire_gets_no_guess(cut, replayed):
     assert seen_0332(replayed).rate is None
     r = row(rows_of(out), C0332, "2023-10-14T05:46Z", outcome="seen_inside")
     assert r["downwind_inside_by"] == ""
+
+
+def test_near_edge_misses_0263(cut, replayed):
+    out, _ = cut
+    made = made_after(replayed, C0263, utc("2023-09-27T06:05"), utc("2023-09-28T06:05"))
+    assert forecast.nearest(made.newest)[1] == 539
+
+    r = row(rows_of(out), C0263, "2023-09-27T06:05Z", rule_inside_by="2023-09-28T06:05Z")
+    assert (r["near_edge_inside_by"], r["outcome"], r["seen_inside_at"]) == (
+        "", "seen_inside", "2023-09-28T05:46Z",
+    )
+
+
+def test_near_edge_says_no_to_0264_and_it_stays_out(cut, replayed):
+    out, _ = cut
+    made = made_after(replayed, C0264, utc("2023-09-28T18:28"), utc("2023-09-29T06:28"))
+    assert forecast.nearest(made.newest)[1] == 1334
+
+    r = row(rows_of(out), C0264, "2023-09-28T18:28Z")
+    assert (r["near_edge_inside_by"], r["outcome"]) == ("", "not_seen_inside")
+
+
+def test_near_edge_says_12_hours_within_375_m(cut, replayed):
+    out, _ = cut
+    # Rule version 1 step 4 gives this one 24 hours, from its advance rate.
+    made = made_after(replayed, C0332, utc("2023-10-14T05:46"), utc("2023-10-15T05:46"))
+    assert forecast.nearest(made.newest)[1] == 105
+
+    r = row(rows_of(out), C0332, "2023-10-14T05:46Z", rule_inside_by="2023-10-15T05:46Z")
+    assert r["near_edge_inside_by"] == "2023-10-14T17:46Z"
 
 
 def test_two_runs_write_the_same_bytes(cut, database_url, tmp_path):
