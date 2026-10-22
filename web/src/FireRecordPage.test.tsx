@@ -7,6 +7,7 @@ import { fingerprint, forecastFingerprint } from "./fingerprint";
 import { FireMap } from "./FireMap";
 import { FireRecordPage, type FireRecordSource } from "./FireRecordPage";
 import { shortHash } from "./format";
+import { leaf, rootFrom } from "./merkle";
 import raw from "./preview/fire-origin.fixture.json";
 
 vi.mock("./FireMap", () => ({ FireMap: vi.fn(() => null) }));
@@ -91,7 +92,7 @@ function fixtureSource(edit: (r: HotspotRecord) => HotspotRecord = (r) => r): Fi
     // FireRecords holds each record as first stored, sealed 2 h 47 min after detection by the chain's clock.
     sealOf: vi.fn(async (r: HotspotRecord) => {
       const original = sealed.get(r.record_id)!;
-      return { fingerprint: fingerprint(original), sealedAt: Date.parse(original.sealed_at!) / 1000 };
+      return { contract: "FireRecords", fingerprint: fingerprint(original), sealedAt: Date.parse(original.sealed_at!) / 1000 } as const;
     }),
     fingerprint,
   };
@@ -118,6 +119,8 @@ function scenario1Forecasts(): Forecast[] {
       rule_version: 1,
       tx_hash: keccak256(record_id),
       sealed_at: iso(at(madeAt) + 120),
+      run: null,
+      proof: null,
       outcome: "seen_inside",
       outcome_unix: SEEN_INSIDE,
     };
@@ -144,7 +147,7 @@ function forecastSource(edit: (f: Forecast, i: number) => Forecast = (f) => f): 
     forecastSeals: vi.fn(async (forecasts: Forecast[]) =>
       forecasts.map((f) => {
         const original = sealed.find((s) => s.record_id === f.record_id)!;
-        return { fingerprint: forecastFingerprint(original), sealedAt: original.made_unix + 120 };
+        return { contract: "FireRecords", fingerprint: forecastFingerprint(original), sealedAt: original.made_unix + 120 } as const;
       }),
     ),
     forecastFingerprint,
@@ -374,7 +377,7 @@ describe("FireRecordPage", () => {
   it("takes a detection's Sealed time from the chain, not the API's sealed_at", async () => {
     // The API says 17 Oct 00:00; the chain sealed it 16 Oct 02:37:38.
     const source = fixtureSource((r) => ({ ...r, sealed_at: "2026-10-17T00:00:00Z" }));
-    vi.mocked(source.sealOf).mockImplementation(async (r) => ({ fingerprint: fingerprint(r), sealedAt: 1792118258 }));
+    vi.mocked(source.sealOf).mockImplementation(async (r) => ({ contract: "FireRecords", fingerprint: fingerprint(r), sealedAt: 1792118258 }));
     await openFire(source);
 
     fireEvent.click(within(firstRow()).getByRole("button"));
@@ -399,7 +402,7 @@ describe("FireRecordPage", () => {
 
   it("says Not on chain yet only when the chain holds no seal for the record ID", async () => {
     const source = fixtureSource((r) => (isAt(r, FIRST) ? { ...r, tx_hash: null, sealed_at: null } : r));
-    vi.mocked(source.sealOf).mockResolvedValue({ fingerprint: zeroHash, sealedAt: 0 });
+    vi.mocked(source.sealOf).mockResolvedValue({ contract: "FireRecords", fingerprint: zeroHash, sealedAt: 0 });
     await openFire(source);
 
     fireEvent.click(within(firstRow()).getByRole("button"));
@@ -440,6 +443,57 @@ describe("FireRecordPage", () => {
     const original = records(ID).find((r) => isAt(r, FIRST))!;
     expect(kv("Sealed fingerprint")).toHaveTextContent(fp(fingerprint(original)));
     expect(kv("Fingerprint now")).toHaveTextContent(fp(fingerprint(edited(original))));
+    expect(kv("Sealed in")).toHaveTextContent("FireRecords, in a seal of its own");
+  });
+
+  describe("a detection in a run's root", () => {
+    // FIRST and the fire's next stored detection are run 412's two leaves, sealed 13 Oct 20:03 by the chain's clock.
+    const RUN_AT = at("2026-10-13T20:03:00");
+    const RUN_TX = `0x${"c4".repeat(32)}` as const;
+    const first = records(ID).find((r) => isAt(r, FIRST))!;
+    const next = records(ID).find((r) => r.fire_key === KEY && !isAt(r, FIRST))!;
+    const leaves = [first, next].map((r) => leaf(r.record_id, fingerprint(r)));
+    const ROOT = rootFrom(leaves[0], [leaves[1]]);
+    const proofOf = (r: HotspotRecord) =>
+      r.record_id === first.record_id ? [leaves[1]] : r.record_id === next.record_id ? [leaves[0]] : null;
+
+    /** The fixture with both detections in run 412's root; `edit` changes a stored record after the run. */
+    function runSource(edit: (r: HotspotRecord) => HotspotRecord = (r) => r): FireRecordSource {
+      const source = fixtureSource((r) => {
+        const proof = proofOf(r);
+        return edit(proof ? { ...r, tx_hash: RUN_TX, run: 412, proof } : r);
+      });
+      const own = source.sealOf;
+      source.sealOf = vi.fn(async (r: HotspotRecord) => (r.run === 412 ? { contract: "FireRuns", run: 412, root: ROOT, sealedAt: RUN_AT } as const : own(r)));
+      return source;
+    }
+
+    it("matches the chain, sealed at run 412's time, in run 412's root", async () => {
+      const source = runSource();
+      await openFire(source);
+
+      fireEvent.click(within(firstRow()).getByRole("button"));
+
+      const panel = screen.getByRole("article", { name: "Hotspot record" });
+      expect(await within(panel).findByText("Matches the chain")).toBeInTheDocument();
+      expect(kv("Sealed")).toHaveTextContent("2026-10-13 20:03 UTC2 h 26 min after detection");
+      expect(kv("Sealed in")).toHaveTextContent("FireRuns, run 412's root");
+      expect(within(kv("Transaction")).getByRole("link")).toHaveAttribute("href", `https://sepolia.basescan.org/tx/${RUN_TX}`);
+      expect(source.sealOf).toHaveBeenCalledWith(expect.objectContaining({ run: 412, proof: [leaves[1]] }));
+    });
+
+    it("reads Not on chain yet while run 412 is not sealed", async () => {
+      const source = runSource();
+      vi.mocked(source.sealOf).mockResolvedValue({ contract: "FireRuns", run: 412, root: zeroHash, sealedAt: 0 });
+      await openFire(source);
+
+      fireEvent.click(within(firstRow()).getByRole("button"));
+
+      const panel = screen.getByRole("article", { name: "Hotspot record" });
+      expect(await within(panel).findByText("Not on chain yet")).toBeInTheDocument();
+      expect(within(panel).queryByText("Sealed", { selector: "dt" })).toBeNull();
+      expect(within(panel).queryByText("Sealed in", { selector: "dt" })).toBeNull();
+    });
   });
 
   it("a fire from 15 Oct still reads first seen 13 Oct", async () => {
@@ -501,6 +555,30 @@ describe("FireRecordPage", () => {
       "14 Oct 09:00Matches the chain",
       "13 Oct 20:00Matches the chain",
     ]);
+  });
+
+  it("checks a forecast in run 412's root against FireRuns", async () => {
+    // The newest forecast is run 412's only leaf, sealed 14 Oct 20:03 by the chain's clock.
+    const [newest] = scenario1Forecasts();
+    const root = leaf(newest.record_id, forecastFingerprint(newest));
+    const source = forecastSource((f, i) => (i === 0 ? { ...f, run: 412, proof: [] } : f));
+    const own = source.forecastSeals!;
+    source.forecastSeals = vi.fn(async (forecasts: Forecast[]) => {
+      const seals = await own(forecasts);
+      return forecasts.map((f, i) => (f.run === 412 ? { contract: "FireRuns", run: 412, root, sealedAt: at("2026-10-14T20:03:00") } as const : seals[i]));
+    });
+    await openFire(source);
+
+    const panel = screen.getByRole("region", { name: "Forecast to be seen inside by about 15 Oct 05:20 UTC" });
+    expect(await within(panel).findByText("Matches the chain")).toBeInTheDocument();
+    expect(kv("Sealed in")).toHaveTextContent("FireRuns, run 412's root");
+    expect(
+      screen.getByText("Sealed 22 hours 40 minutes before the pass that saw it inside, by Base Sepolia's clock."),
+    ).toBeInTheDocument();
+    expect(source.forecastSeals).toHaveBeenCalledOnce();
+
+    fireEvent.click(screen.getByRole("button", { name: /^14 Oct 09:00/ }));
+    expect(kv("Sealed in")).toHaveTextContent("FireRecords, in a seal of its own");
   });
 
   it("says a forecast changed after its seal does not match the chain, and the others still do", async () => {

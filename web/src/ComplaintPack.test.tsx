@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { zeroHash, type Hex } from "viem";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { HotspotRecord, PackDetail, PackRef } from "./api";
+import type { Seal } from "./chain";
 import { ComplaintPack, type PackSource } from "./ComplaintPack";
 import { fingerprint } from "./fingerprint";
 import { enrich, FIRES, fireHotspots, fixture } from "./preview/fixture";
@@ -41,9 +42,13 @@ function packOf({ id, key }: Fire, waiting: (h: HotspotRecord) => boolean = () =
 const chainOf = (pack: PackDetail) =>
   vi.fn(async (records: HotspotRecord[]) => {
     const sealed = new Map(
-      pack.hotspots.map((h) => [
+      pack.hotspots.map((h): [Hex, Seal] => [
         h.record_id,
-        h.tx_hash ? { fingerprint: fingerprint(h), sealedAt: Date.parse(h.sealed_at!) / 1000 } : { fingerprint: zeroHash, sealedAt: 0 },
+        {
+          contract: "FireRecords",
+          fingerprint: h.tx_hash ? fingerprint(h) : zeroHash,
+          sealedAt: h.tx_hash ? Date.parse(h.sealed_at!) / 1000 : 0,
+        },
       ]),
     );
     return records.map((r) => sealed.get(r.record_id)!);
@@ -173,7 +178,11 @@ describe("ComplaintPack", () => {
     const first = pack.hotspots[0].record_id;
     // The API says 17 Oct 00:00; the chain sealed the first detection 16 Oct 02:37:38.
     chain.mockImplementation(async (records) =>
-      records.map((r) => ({ fingerprint: fingerprint(r), sealedAt: r.record_id === first ? 1792118258 : Date.parse(r.sealed_at!) / 1000 })),
+      records.map((r): Seal => ({
+        contract: "FireRecords",
+        fingerprint: fingerprint(r),
+        sealedAt: r.record_id === first ? 1792118258 : Date.parse(r.sealed_at!) / 1000,
+      })),
     );
     const served = { ...pack, hotspots: pack.hotspots.map((h, i) => (i === 0 ? { ...h, sealed_at: "2026-10-17T00:00:00Z" } : h)) };
     render(<ComplaintPack source={sourceOf(served, chain)} packRef={refOf(FIRES.outside)} />);

@@ -56,6 +56,8 @@ const scenario1: Forecast = {
   rule_version: 1,
   tx_hash: `0x${"b1".repeat(32)}`,
   sealed_at: "2026-10-14T20:02:00Z",
+  run: null,
+  proof: null,
   outcome: "waiting",
   outcome_unix: null,
 };
@@ -96,7 +98,8 @@ function fireOf(id: string, key: Hex, forecasts: Forecast[], forecasts_from_unix
   };
 }
 
-const matches = (sealedAt = SEALED): ForecastCheck => ({ check: { state: "matches" }, sealedAt });
+const OWN = { contract: "FireRecords" } as const;
+const matches = (sealedAt = SEALED): ForecastCheck => ({ check: { state: "matches" }, sealedAt, sealedIn: OWN });
 
 interface Show {
   forecasts?: Forecast[];
@@ -142,10 +145,33 @@ describe("ForecastPanel", () => {
     expect(kv("Checked against")).toHaveTextContent("Passes from its seal to 2026-10-16 20:00 UTC");
     expect(kv("Crosses the edge")).toHaveTextContent("2.84194°S, 112.71793°E");
     expect(kv("Fingerprint")).toHaveTextContent(fp(SEALED_FP));
+    expect(kv("Sealed in")).toHaveTextContent("FireRecords, in a seal of its own");
     expect(within(panel()).getByRole("link", { name: /^View transaction/ })).toHaveAttribute(
       "href",
       `https://sepolia.basescan.org/tx/${scenario1.tx_hash}`,
     );
+  });
+
+  it("reads a forecast in run 412's root as sealed in FireRuns, after its fingerprint", () => {
+    // Run 412's one transaction, sealed 14 Oct 20:03 by the chain's clock.
+    const RUN_TX = `0x${"c4".repeat(32)}` as const;
+    show({
+      forecasts: [{ ...scenario1, tx_hash: RUN_TX, run: 412, proof: [`0x${"d4".repeat(32)}`] }],
+      checks: [{ check: { state: "matches" }, sealedAt: at("2026-10-14T20:03:00"), sealedIn: { contract: "FireRuns", run: 412 } }],
+    });
+
+    expect(within(panel()).getByText("Matches the chain")).toBeInTheDocument();
+    expect(screen.getByText("Sealed 3 minutes after it was made, by Base Sepolia's clock.")).toBeInTheDocument();
+    expect(kv("Sealed in")).toHaveTextContent("FireRuns, run 412's root");
+    const labels = [...panel().querySelectorAll("dt")].map((dt) => dt.textContent);
+    expect(labels.slice(labels.indexOf("Fingerprint"))).toEqual(["Fingerprint", "Sealed in", "Transaction"]);
+    expect(within(kv("Transaction")).getByRole("link")).toHaveAttribute("href", `https://sepolia.basescan.org/tx/${RUN_TX}`);
+  });
+
+  it("leaves out Sealed in until the chain answers with a seal", () => {
+    show({ checks: [{ check: { state: "pending" }, sealedAt: null, sealedIn: null }] });
+
+    expect(within(panel()).queryByText("Sealed in", { selector: "dt" })).toBeNull();
   });
 
   it("waits for the last passes once its 48 hours end, until the recorder closes it", () => {
@@ -207,7 +233,7 @@ describe("ForecastPanel", () => {
   it("hides a changed forecast's outcome, and shows both fingerprints", () => {
     show({
       forecasts: [{ ...scenario1, inside_by_unix: at("2026-10-15T18:40:00"), outcome: "seen_inside", outcome_unix: SEEN_INSIDE }],
-      checks: [{ check: { state: "mismatch", sealed: SEALED_FP }, sealedAt: SEALED }],
+      checks: [{ check: { state: "mismatch", sealed: SEALED_FP }, sealedAt: SEALED, sealedIn: OWN }],
       fingerprints: [CHANGED_FP],
     });
 
@@ -221,7 +247,7 @@ describe("ForecastPanel", () => {
   it("says a forecast not on the chain yet is sealed in the run that makes it, or a later one", () => {
     show({
       forecasts: [{ ...scenario1, tx_hash: null, sealed_at: null }],
-      checks: [{ check: { state: "pending" }, sealedAt: null }],
+      checks: [{ check: { state: "pending" }, sealedAt: null, sealedIn: null }],
     });
 
     expect(within(panel()).getByText("Not on chain yet")).toBeInTheDocument();
@@ -232,14 +258,14 @@ describe("ForecastPanel", () => {
   });
 
   it("says it is reading the seal while it checks", () => {
-    show({ checks: [{ check: { state: "checking" }, sealedAt: null }] });
+    show({ checks: [{ check: { state: "checking" }, sealedAt: null, sealedIn: null }] });
 
     expect(within(panel()).getByText("Checking")).toBeInTheDocument();
     expect(screen.getByText("Reading its seal from Base Sepolia.")).toBeInTheDocument();
   });
 
   it("offers Check again when it couldn't reach the chain", () => {
-    const { onCheckAgain } = show({ checks: [{ check: { state: "error" }, sealedAt: null }] });
+    const { onCheckAgain } = show({ checks: [{ check: { state: "error" }, sealedAt: null, sealedIn: null }] });
 
     expect(screen.getByText("Couldn't reach Base Sepolia to check the forecasts.")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Check again" }));
@@ -357,7 +383,7 @@ describe("ForecastPanel", () => {
       expect(screen.getByText(/in 2023 the downwind guess said yes only where this rule did\. So neither warned of an arrival/)).toBeInTheDocument();
       expect(
         screen.getByText(
-          /^Each forecast is sealed in the run that makes it, or a later run if that one runs out of time\. Every one stays listed here, right or wrong\./,
+          /^Each forecast is sealed in the run that makes it, or a later run if that one fails to seal\. Every one stays listed here, right or wrong\./,
         ),
       ).toBeInTheDocument();
       expect(screen.getByRole("link", { name: "Every 2023 forecast, as CSV" })).toHaveAttribute(

@@ -1,20 +1,21 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import type { Hex } from "viem";
 import type { HotspotRecord, PackDetail, PackRef } from "./api";
+import type { Seal } from "./chain";
 import { DamageSection } from "./Damage";
 import { FireMap } from "./FireMap";
 import { fireArea, fireDots, passTimes, Replay, where } from "./FireView";
 import { count, detected, detectedShort, distance, firstSeenLine, location, plural, shortHash } from "./format";
 import { AlertIcon, ExternalIcon, OkIcon } from "./icons";
-import { checkOf, checkTitle, Chip, overall, RecordPanel, type Check } from "./RecordPanel";
+import { checkSeal, checkTitle, Chip, overall, RecordPanel, type Check, type SealCheck } from "./RecordPanel";
 
 /** Where the pack gets its data; the preview passes fixtures, the app passes the API and the chain. */
 export interface PackSource {
   pack(ref: PackRef): Promise<PackDetail | null>;
   /** FireRecords on Base Sepolia, which the reader's browser reads each seal from. */
   contract: Hex;
-  /** Each record's sealed fingerprint and seal time, in order, in one read; zeros for one not sealed yet. */
-  sealsOf(records: HotspotRecord[]): Promise<{ fingerprint: Hex; sealedAt: number }[]>;
+  /** Each record's seal on FireRecords or its run's root on FireRuns, in order, in one read; zeros for one not sealed yet. */
+  sealsOf(records: HotspotRecord[]): Promise<Seal[]>;
   fingerprint(record: HotspotRecord): Hex;
 }
 
@@ -53,7 +54,7 @@ export function ComplaintPack({ source, packRef, initialOpen = null }: Props) {
   const [load, setLoad] = useState<PackLoad>(packRef ? { kind: "loading" } : { kind: "missing" });
   const [attempt, setAttempt] = useState(0);
   const [slow, setSlow] = useState(false);
-  const [checked, setChecked] = useState<{ pack: PackDetail; checks: Check[]; sealedAt: (number | null)[] } | null>(null);
+  const [checked, setChecked] = useState<{ pack: PackDetail; seals: SealCheck[] } | null>(null);
   const [checkAttempt, setCheckAttempt] = useState(0);
   const [open, setOpen] = useState<number | null>(initialOpen);
   const [replayAt, setReplayAt] = useState<number | null>(null);
@@ -84,25 +85,19 @@ export function ComplaintPack({ source, packRef, initialOpen = null }: Props) {
 
   // A pack the chain hasn't answered for yet reads Checking, also before the read below starts.
   const checks = useMemo(
-    () => (pack && checked?.pack === pack ? checked.checks : (pack?.hotspots.map((): Check => ({ state: "checking" })) ?? [])),
+    () =>
+      pack && checked?.pack === pack ? checked.seals.map((s) => s.check) : (pack?.hotspots.map((): Check => ({ state: "checking" })) ?? []),
     [pack, checked],
   );
 
   useEffect(() => {
     if (!pack) return;
     let live = true;
-    const all = (check: Check) => pack.hotspots.map(() => check);
-    const none = pack.hotspots.map(() => null);
-    setChecked({ pack, checks: all({ state: "checking" }), sealedAt: none });
+    const all = (check: Check) => pack.hotspots.map((): SealCheck => ({ check, sealedAt: null, sealedIn: null }));
+    setChecked({ pack, seals: all({ state: "checking" }) });
     source.sealsOf(pack.hotspots).then(
-      (seals) =>
-        live &&
-        setChecked({
-          pack,
-          checks: seals.map((s, i) => checkOf(s.fingerprint, fps[i])),
-          sealedAt: seals.map((s) => s.sealedAt || null),
-        }),
-      () => live && setChecked({ pack, checks: all({ state: "error" }), sealedAt: none }),
+      (seals) => live && setChecked({ pack, seals: seals.map((s, i) => checkSeal(s, pack.hotspots[i], fps[i])) }),
+      () => live && setChecked({ pack, seals: all({ state: "error" }) }),
     );
     return () => {
       live = false;
@@ -377,7 +372,8 @@ export function ComplaintPack({ source, packRef, initialOpen = null }: Props) {
                                     record={h}
                                     fingerprint={fps[i]}
                                     check={checks[i] ?? { state: "checking" }}
-                                    sealedAt={checked?.pack === pack ? checked.sealedAt[i] : null}
+                                    sealedAt={checked?.pack === pack ? checked.seals[i].sealedAt : null}
+                                    sealedIn={checked?.pack === pack ? checked.seals[i].sealedIn : null}
                                     onCheckAgain={() => setCheckAttempt((n) => n + 1)}
                                   />
                                 </td>
