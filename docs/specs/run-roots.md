@@ -435,6 +435,13 @@ recorder in the e2e. No lockfile changes. Only one chunk runs the API suite.
 
 Recorded as D103, D104, D105, D106, D107, D108, D109, D110.
 
+## Review
+
+2026-10-22 · 3 raw findings, 2 survived, 2 fixed.
+
+- correctness · `api/src/firewatch/app.py:69` · grant the reader `roots` in `infra/neon-reader.sql`, with a test that runs it after `migrate up` · `533a8b5`
+- correctness · `web/e2e/run-roots.spec.ts:77` · count each root's records under any other transaction, unsent included · `4bad362`
+
 ## Open items
 
 | ID | What | Type | Raised at | Owner | Status | Answer |
@@ -451,6 +458,7 @@ Recorded as D103, D104, D105, D106, D107, D108, D109, D110.
 | O10 | The Rollout order set the `FIRE_RUNS_ADDRESS` variable but didn't rebuild the page, which takes the address at build time | flag | build | user | Decided alone | Chose: the README reruns Deploy after the variable is set, before the job switch. The job keeps `CONTRACT_ADDRESS` beside `FIRE_RUNS_ADDRESS`, so rollback is the previous image alone. Other: the plan's order, where new run roots would read "Couldn't reach Base Sepolia" until the next deploy. Undo: drop the rerun from README step 5. 2026-10-22 |
 | O11 | The Interface table gives a mismatch's "Sealed" as the seal's time alone, with no gap after detection | flag | build | user | Decided alone | Chose: keep "then the gap after detection" on a mismatch, as the panel does today for every seal. Other: drop the gap on a mismatch. Undo: in `RecordPanel.tsx`, show the gap only when the check matches. 2026-10-22 |
 | O12 | `web/src/ComplaintPack.test.tsx` "reads the site, dates and basis of the 0332 fire" times out at vitest's 5 s in the full `pnpm test`. It passes alone in 3.1 s | flag | build | user | Decided alone | Chose: leave it. It fails the same way at 95c4af1, which holds `main`'s page code (5.9 s and 7.0 s in two runs). Other: raise its timeout here. Undo: none needed; raise the timeout in its own fix. 2026-10-22 |
+| O13 | `infra/neon-reader.sql`, which the plan didn't name, granted the API's reader only the six older tables. On a first deploy the reader is made after `migrate up`, so it couldn't read `roots`, and every fire request failed (review) | flag | review | user | Decided alone | Chose: add `roots` to its grant, with a test that runs it after `migrate up` (commit 533a8b5). Other: grant `roots` from the API's code at start. Undo: `git revert 533a8b5`. 2026-10-22 |
 
 _Never delete this section or its rows. See references/ledger.md._
 
