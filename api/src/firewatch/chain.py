@@ -1,4 +1,4 @@
-"""The recorder's side of the FireRecords contract (contracts/src/FireRecords.sol)."""
+"""The recorder's side of the FireRuns contract (contracts/src/FireRuns.sol)."""
 
 import time
 from datetime import datetime, timezone
@@ -11,42 +11,43 @@ RECEIPT_TIMEOUT = 120
 # A public RPC is several nodes behind one URL; the one asked may not have a new block yet.
 BLOCK_TRIES = 10
 BLOCK_RETRY_SECONDS = 1
-ZERO = b"\x00" * 32
 
 # Hand-written so the API does not depend on a contracts build.
 ABI = [
     {
         "type": "function",
-        "name": "seal",
+        "name": "sealRoot",
         "stateMutability": "nonpayable",
-        "inputs": [
-            {"name": "recordId", "type": "bytes32"},
-            {"name": "fingerprint", "type": "bytes32"},
-        ],
-        "outputs": [],
+        "inputs": [{"name": "root", "type": "bytes32"}],
+        "outputs": [{"name": "run", "type": "uint256"}],
     },
     {
         "type": "function",
-        "name": "sealOf",
+        "name": "runOfRoot",
         "stateMutability": "view",
-        "inputs": [{"name": "recordId", "type": "bytes32"}],
+        "inputs": [{"name": "root", "type": "bytes32"}],
         "outputs": [
-            {"name": "fingerprint", "type": "bytes32"},
+            {"name": "found", "type": "bool"},
+            {"name": "run", "type": "uint256"},
             {"name": "sealedAt", "type": "uint64"},
         ],
     },
     {
         "type": "event",
-        "name": "Sealed",
+        "name": "RootSealed",
         "anonymous": False,
         "inputs": [
-            {"name": "recordId", "type": "bytes32", "indexed": True},
-            {"name": "fingerprint", "type": "bytes32", "indexed": False},
+            {"name": "run", "type": "uint256", "indexed": True},
+            {"name": "root", "type": "bytes32", "indexed": True},
         ],
     },
     {"type": "error", "name": "NotRecorder", "inputs": []},
-    {"type": "error", "name": "AlreadySealed", "inputs": [{"name": "recordId", "type": "bytes32"}]},
-    {"type": "error", "name": "EmptyFingerprint", "inputs": []},
+    {"type": "error", "name": "EmptyRoot", "inputs": []},
+    {
+        "type": "error",
+        "name": "AlreadySealed",
+        "inputs": [{"name": "root", "type": "bytes32"}, {"name": "run", "type": "uint256"}],
+    },
 ]
 
 
@@ -62,17 +63,18 @@ class Chain:
         )
         self.account = Account.from_key(private_key)
 
-    def sealed(self, record_id: bytes) -> datetime | None:
-        """When record_id was sealed, or None if it is not sealed."""
-        fingerprint, sealed_at = self.contract.functions.sealOf(record_id).call()
-        if fingerprint == ZERO:
+    def run_of_root(self, root: bytes) -> tuple[int, datetime] | None:
+        """root's run and the block time it was sealed at, or None if it is not sealed."""
+        found, run, sealed_at = self.contract.functions.runOfRoot(root).call()
+        if not found:
             return None
-        return datetime.fromtimestamp(sealed_at, timezone.utc)
+        return run, datetime.fromtimestamp(sealed_at, timezone.utc)
 
-    def seal(self, record_id: bytes, fingerprint: bytes) -> tuple[bytes, datetime]:
-        """Seals and waits for the receipt; returns the tx hash and the block time."""
+    def seal_root(self, root: bytes) -> tuple[int, bytes, datetime]:
+        """Seals root and waits for the receipt; returns its run, the tx hash and the block
+        time."""
         try:
-            tx = self.contract.functions.seal(record_id, fingerprint).build_transaction(
+            tx = self.contract.functions.sealRoot(root).build_transaction(
                 {
                     "from": self.account.address,
                     "nonce": self.w3.eth.get_transaction_count(self.account.address, "pending"),
@@ -89,9 +91,14 @@ class Chain:
             raise
         receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash, timeout=RECEIPT_TIMEOUT)
         if receipt.status != 1:
-            raise ChainError(f"seal transaction 0x{bytes(tx_hash).hex()} reverted")
+            raise ChainError(f"sealRoot transaction 0x{bytes(tx_hash).hex()} reverted")
+        (sealed,) = self.contract.events.RootSealed().process_receipt(receipt)
         block = self._block(receipt.blockNumber)
-        return bytes(tx_hash), datetime.fromtimestamp(block.timestamp, timezone.utc)
+        return (
+            sealed.args.run,
+            bytes(tx_hash),
+            datetime.fromtimestamp(block.timestamp, timezone.utc),
+        )
 
     def now(self) -> datetime:
         """The latest block's time: the clock every seal is stamped with (D50)."""
@@ -100,20 +107,17 @@ class Chain:
     def balance_eth(self) -> float:
         return float(Web3.from_wei(self.w3.eth.get_balance(self.account.address), "ether"))
 
-    def seal_tx_hash(self, record_id: bytes) -> bytes:
-        """The hash of the transaction that sealed record_id."""
-        sealed_at = self.sealed(record_id)
-        if sealed_at is None:
-            raise ChainError(f"0x{record_id.hex()} is not sealed")
+    def root_tx_hash(self, root: bytes, sealed_at: datetime) -> bytes:
+        """The hash of the transaction that sealed root at sealed_at."""
         # Search only the blocks stamped with the seal's time; public RPCs cap getLogs ranges.
         ts = int(sealed_at.timestamp())
-        logs = self.contract.events.Sealed.get_logs(
+        logs = self.contract.events.RootSealed.get_logs(
             from_block=self._first_block_after(ts - 1),
             to_block=self._first_block_after(ts) - 1,
-            argument_filters={"recordId": record_id},
+            argument_filters={"root": root},
         )
         if not logs:
-            raise ChainError(f"no Sealed event found for 0x{record_id.hex()}")
+            raise ChainError(f"no RootSealed event found for 0x{root.hex()}")
         return bytes(logs[0].transactionHash)
 
     def _first_block_after(self, ts: int) -> int:
