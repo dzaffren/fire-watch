@@ -34,3 +34,4 @@
 - Read a CSS time token with its unit; the build writes `600ms` as `.6s` — [css-time-tokens-in-seconds](css-time-tokens-in-seconds.md)
 - Move a branch stacked on another slice with `git rebase --onto` once that slice merges — [stacked-branch-after-rebase-merge](stacked-branch-after-rebase-merge.md)
 - Unmount before unstubbing a global, and wait for the effect, not the DOM — [unmount-before-unstub](unmount-before-unstub.md)
+- Give the db's Docker bridge back `172.19.0.1/16` when Postgres resets connections — [docker-bridge-loses-address](docker-bridge-loses-address.md)

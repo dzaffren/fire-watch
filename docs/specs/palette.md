@@ -1,6 +1,6 @@
 # Palette
 
-**Version:** v1 · **Status:** Refined · **Type:** Enhancement · **Project type:** Web UI
+**Version:** v1 · **Status:** Built · **Type:** Enhancement · **Project type:** Web UI
 
 **Depends on:** newcomer-walkthrough
 
@@ -273,7 +273,7 @@ Reusing: `themeColour` and `themeFill`; the pack's `beforeprint` switch and `Fir
 
 | Scenario | Test | Command |
 | -------- | ---- | ------- |
-| 1 The landing opens on colour | `web/e2e/palette.spec.ts` › "a judge meets the palette on the landing, the tool's map and the printed pack"; `web/src/globe.test.ts` › "draws the sea in --fw-water" | `cd web && pnpm e2e palette`; `cd web && pnpm test` |
+| 1 The landing opens on colour | `web/e2e/palette.spec.ts` › "a judge meets the palette on the landing, the tool's map and the printed pack"; `web/src/globe.test.ts` › "draws the sea in --fw-water and the land in --fw-map" | `cd web && pnpm e2e palette`; `cd web && pnpm test` |
 | 2 The map reads as land, water and the concession | the e2e reads `window.__fakeMap.styles`: land `#d9e8c4`, water `#bdd6e0`; `palette.test.ts` › fire on land, the wash and water | `cd web && pnpm e2e palette`; `cd web && pnpm test` |
 | 3 The ground carries colour and the rules hold | the e2e reads the tool's ground, `rgb(238, 243, 228)`; the slice adds no use of `--fw-accent` or `--fw-fire`, which `/review` checks in the diff | `cd web && pnpm e2e palette` |
 | 4 Every pair passes WCAG AA | `web/src/palette.test.ts` › "every text, control and fire pair passes AA in light and dark" | `cd web && pnpm test` |
@@ -310,6 +310,7 @@ Recorded as D94, D95, D96.
 | O5 | What colour goes inside a concession: acacia green, peat brown, or D29's ink tint | question | spec p2 | user | Resolved | 2026-10-21: acacia green; fire keeps 3.38:1 on it in light and 5.11:1 in dark (D96) |
 | O6 | The peat band, `#e9e0d1`, is a warm beige near the cream that generated sites often use | flag | spec p2 | user | Resolved | 2026-10-21: keep it; earth under the moss hero |
 | O7 | Safari's drawing of the bands' border image is unchecked: WebKit can't launch on this host without `sudo` installs. Chrome and Firefox draw both bands full width | unproven | spec p3 | user | Accepted risk | 2026-10-21: gradient border images have worked in Safari for years, and a miss shows the plain ground with the text's contrast kept |
+| O8 | The design drift check flags the three hex map colours that `web/e2e/palette.spec.ts` expects | flag | build | user | Decided alone | Chose: keep the spec's hex values in the e2e; they are expected values in a test, not UI. Other: read the expected values from `colors.css`, which would only echo the tokens back. Undo: replace the three literals with values read from `colors.css`. 2026-10-22 |
 
 _Never delete this section or its rows. See references/ledger.md._
 
