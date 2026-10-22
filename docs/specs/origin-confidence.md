@@ -110,9 +110,9 @@ Scenario: A fire joined from two first seen apart
   And until 14 Oct 17:20 UTC it was two fires more than 1 km apart
   And the second was first seen on 13 Oct 06:37 UTC, 2 m from the edge, 6 of its 16 detections inside
   When the investigator opens this fire
-  Then it says "Two fires first seen apart were joined on 14 Oct 17:20 UTC, when they came within
-    1 km. First seen gives the older. The other was first seen on 13 Oct 06:37 UTC, on both sides
-    of the edge."
+  Then it says "Fire Watch joined two fires here on 14 Oct 17:20 UTC, when they came within 1 km.
+    First seen above is the older fire's. The other was first seen on 13 Oct 06:37 UTC, on both
+    sides of the edge."
   And "Seen inside from 13 Oct 06:37 UTC" stays, as the joined fire's
 
 Scenario: A firm, unjoined fire gets no note, and the method names its limits
@@ -120,9 +120,10 @@ Scenario: A firm, unjoined fire gets no note, and the method names its limits
   And the satellite saw it again 11 hours later, and it never joined another fire
   When the investigator opens this fire
   Then it reads "First seen inside, 410 m from the edge" with no one-detection or joined note
-  And "How this is worked out" names the VIIRS position error, under 400 m and mostly under 200 m
-  And it says the concession edges come from permit maps that state no position accuracy
-  And it says a fire can be several, joined as they came within 1 km
+  And "How this is worked out" says "Straight below the satellite, NOAA-20 places almost every
+    detection within 400 m of the fire, and most within 200 m"
+  And it says "Concession edges come from Trase's map, which gives no accuracy for its lines."
+  And it says "one fire here can be several that the satellite first saw apart"
 
 Scenario: The pack carries the notes
   Given the investigator makes a pack of 0332's fire, cut at 17 Oct 09:00 UTC
@@ -133,15 +134,18 @@ Scenario: The pack carries the notes
 Scenario: The landing tells 0332's fire as the record shows it
   Given the landing's example, 0332's pack cut at 17 Oct 09:00 UTC
   When a judge scrolls the walkthrough
-  Then the hero caption no longer says "By 13 Oct it was inside"
-  And the pass 1 step says the satellite first saw it as one detection 3,100 m outside, then not
-    for 25 hours
-  And the pass 2 step says a second group, more than 1 km away, sat on both sides of the edge
-  And the pass 5 step says the two were joined
-  And no step says the record agrees with the company about where it started
+  Then the hero caption says "The satellite first saw it on 12 Oct as one detection, 3,100 m
+    outside the concession. On 14 Oct it joined a second fire, first seen the day before on both
+    sides of the edge."
+  And the pass 1 step says "It didn't see the fire again for 25 hours, so that detection may be a
+    separate fire."
+  And the pass 2 step says "These include another fire, first seen on this pass more than 1 km from
+    the first, on both sides of the edge."
+  And the pass 5 step says "On this pass the fires came within 1 km of each other, so Fire Watch
+    counts them as one."
+  And no step says "On this point the record agrees with the company" or "The fire has crossed the
+    edge"
 ```
-
-The exact copy is settled at pause 2.
 
 ## Scope
 
@@ -168,6 +172,75 @@ The exact copy is settled at pause 2.
 - A wider margin for position error — forecast-v2 can take it with the forecast's own 375 m step
   (D115).
 - Marking weak and joined fires in the concession list — not planned (D116).
+
+## Interface
+
+The fire view and the pack get two notes under the reading, the same sentences in both. A fire
+joined from more than two gets its list: behind a disclosure in the fire view, under Basis in the
+pack, which prints. The method text names joins, position error and the concession edges, in both.
+The landing's hero caption and three walkthrough steps tell 0332's fire as the record shows it.
+
+```mermaid
+flowchart LR
+    API["fire route and pack: first_alone_h, joined"] -- "hours, joined fires" --> N[OriginNotes]
+    N -- "under the reading" --> FV[fire view]
+    N -- "under the reading, in Caveats" --> PK[pack]
+    API -- "joined, 2 or more" --> T[JoinedTable]
+    T -- "disclosure" --> FV
+    T -- "under Basis, printed" --> PK
+    API -- "committed pack-0332.json" --> RC[landing walkthrough]
+```
+
+Each place reads the same two fields, so the fire view, the pack and the landing say the same
+thing.
+
+| Where | When | Copy |
+| ----- | ---- | ---- |
+| Fire view, pack | `first_alone_h` is set | First seen as one detection, then not seen for 25 hours. That detection may be a separate fire. |
+| Fire view, pack | one fire joined | Fire Watch joined two fires here on 14 Oct 17:20 UTC, when they came within 1 km. First seen above is the older fire's. The other was first seen on 13 Oct 06:37 UTC, on both sides of the edge. |
+| Fire view, pack | 2 or more joined | Fire Watch joined 8 fires here, the first time on 14 Oct 17:20 UTC, as they came within 1 km. First seen above is the oldest fire's. The 7 others are listed below. (Pack: "listed under Basis.") |
+| Fire view disclosure, pack Basis | 2 or more joined | "The 7 fires joined to this one", then a table: Joined (UTC), First seen (UTC), Where first seen ("Both sides of the edge", "Outside, 2.6 km") |
+| Method, both | always | A fire that comes within 1 km of another is joined to it, so one fire here can be several that the satellite first saw apart. First seen is the oldest one's. |
+| Method, both | always | A detection's position can be off as well. Straight below the satellite, NOAA-20 places almost every detection within 400 m of the fire, and most within 200 m (Blonski and others, 2023, doi 10.1117/1.JRS.17.034506). The 375 m margin doesn't allow for this. Concession edges come from Trase's map, which gives no accuracy for its lines. |
+| Landing hero caption | at the example fire | A fire in ID-WOOD-CONCESSION-0332, Central Kalimantan, on 14 Oct 2026. The satellite first saw it on 12 Oct as one detection, 3,100 m outside the concession. On 14 Oct it joined a second fire, first seen the day before on both sides of the edge. |
+| Walkthrough, pass 1 | `first_alone_h` is set | The satellite first saw it on 12 Oct 05:16 UTC as one detection, outside the concession and 3,100 m from its edge. It didn't see the fire again for 25 hours, so that detection may be a separate fire. Scroll on to see what came next, one satellite pass at a time. |
+| Walkthrough, a pass | a joined fire was first seen on it | 13 Oct 06:37 UTC · 35 detections, 6 inside the concession. These include another fire, first seen on this pass more than 1 km from the first, on both sides of the edge. |
+| Walkthrough, a pass | a join happened on it | 14 Oct 17:20 UTC · 66 detections, 43 inside the concession. On this pass the fires came within 1 km of each other, so Fire Watch counts them as one. |
+
+The notes sit after "The satellite record can't say which side this fire started on" and before
+the never-spread and records-begin notes. A one-pass fire and a fire with nothing joined show
+nothing new. The two dropped lines are "On this point the record agrees with the company" and
+"The fire has crossed the edge".
+
+**The page expects** (pause 3 settles it): the fire route and the pack add `first_alone_h`, whole
+hours or null (D112), and `joined`, oldest join first, each `{at_unix, first_seen_unix,
+first_seen}` with `first_seen` read from that fire's own first pass (`JoinedFire` in
+`web/src/api.ts`). The concession list gets neither (D116). The committed `pack-0332.json` gets
+both from the redone curl line (D90).
+
+**Phone.** At 390 px the joined table's headers and times wrap, so the fire panel and the pack stay
+inside the screen; on wider screens the two times stay on one line. The new disclosure's summary
+takes the existing `.fire-reading summary` touch padding.
+
+**Motion tier:** 1, and nothing new moves. The notes enter with the panel's `enter`; the new
+disclosure opens with the fire panel's existing details animation, which reduced motion already
+stops (O7).
+
+**Components used:** `fw-panel`, `fw-help`, `fw-kv`, `fw-table` in `table-box`, and the
+disclosure from the fire panel. No new token. One layout rule in `web/src/styles/app.css`,
+`.joined`, keeps the two times unwrapped on wide screens, as `.forecast .table-box th.method` does.
+
+**Design system:** Fire Watch, `docs/design/design-system/` (D2, D4, D94).
+
+**Preview:** real components in `web/src`: `OriginNotes`, `JoinedTable` and `OriginMethod` in
+`FireView.tsx`, used by `ComplaintPack.tsx`; captions in `RealCase.tsx` and `Landing.tsx`. Run
+`cd web && pnpm dev` and open `http://localhost:5173/?preview=origin-confidence`. Six states, with
+themes: 0332's fire as its pack stands; the same with the live list of 8 joined fires (O8); 0356's
+firm fire; 0332's pack, with and without the long list; and the landing. The 0332 data is the
+committed `pack-0332.json` plus the two new fields; 0356's is fire-origin's fixture. Seals stand
+in. Drift check passed over the 9 files written. Two unit tests fail on the old copy until
+`/build` rewrites them: `RealCase.test.tsx` "tells the fire, the claim, …" and `Landing.test.tsx`
+"goes to the example fire, …".
 
 ## Decisions to record
 
@@ -246,6 +319,8 @@ Status: active
 | O4 | What does the page say about a fire joined from fires first seen apart? | question | spec p1 | user | Resolved | 2026-10-22: a note on each joined fire says when it was joined and where each other fire was first seen (D114) |
 | O5 | VIIRS positions can be off by up to 400 m, and D26's 375 m margin counts none of it. Widening it also moves the forecast, which uses the same margin (`api/src/firewatch/forecast.py:98`, `:101`), its sealed rule and the 2023 replay | flag | spec p1 | user | Resolved | 2026-10-22: name it in "How this is worked out" with its numbers and source, and keep 375 m. The forecast, its sealed rule and the 2023 replay don't change (D115) |
 | O6 | Does the concession list mark weak and joined fires? | question | spec p1 | user | Resolved | 2026-10-22: no. The notes show in the fire view and the pack; the list stays as it is (D116) |
+| O7 | Which motion tier the notes and the joined list use | question | spec p2 | user | Resolved | 2026-10-22: tier 1, nothing new. The notes take the panel's `enter`; the disclosure takes the fire panel's existing details animation |
+| O8 | The preview's long joined list is 7 rows read from the live database on 22 Oct: times, readings and edge distances of 0332's fire, no company names. Commit it? | question | spec p2 | user | Resolved | 2026-10-22: yes, in `web/src/preview/OriginConfidencePreview.tsx`. The landing already commits this fire's pack |
 
 _Never delete this section or its rows. See references/ledger.md._
 
