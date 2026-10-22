@@ -35,3 +35,4 @@
 - Move a branch stacked on another slice with `git rebase --onto` once that slice merges — [stacked-branch-after-rebase-merge](stacked-branch-after-rebase-merge.md)
 - Unmount before unstubbing a global, and wait for the effect, not the DOM — [unmount-before-unstub](unmount-before-unstub.md)
 - Give the db's Docker bridge back `172.19.0.1/16` when Postgres resets connections — [docker-bridge-loses-address](docker-bridge-loses-address.md)
+- Check colours in tests without hex literals; the drift check reads them as UI — [no-hex-in-tests](no-hex-in-tests.md)

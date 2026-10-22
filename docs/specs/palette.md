@@ -1,6 +1,6 @@
 # Palette
 
-**Version:** v1 · **Status:** Built · **Type:** Enhancement · **Project type:** Web UI
+**Version:** v1 · **Status:** Shipped · **Type:** Enhancement · **Project type:** Web UI
 
 **Depends on:** newcomer-walkthrough
 
