@@ -1,6 +1,6 @@
 # ClimateChain hackathon entry
 
-**Status:** Active · **Updated:** 2026-10-22 by /ship fair-baseline
+**Status:** Active · **Updated:** 2026-10-22 by /ship run-roots
 
 Fire Watch, an entry for the IEEE ClimateChain Global Hackathon (deadline 2026-10-25). It shows
 satellite fire hotspots with on-chain proof that each record hasn't changed since it was written,
@@ -17,7 +17,7 @@ for watchdog investigators who file grievances over fires on plantation land.
 
 ## Where things are
 
-- `contracts/` — FireRecords, the write-once seal contract (Foundry)
+- `contracts/` — FireRuns, which seals one root per recorder run, and FireRecords, which holds the older seals (Foundry)
 - `api/` — the hourly `record-hotspots` recorder, `load-concessions`, and the read-only FastAPI service
 - `web/` — the fire record page (Vite, React, TypeScript) and the e2e test
 - `fixtures/` — FIRMS CSVs, a cut of the Trase concession map, and fingerprint vectors shared by Python and TypeScript
@@ -42,6 +42,7 @@ for watchdog investigators who file grievances over fires on plantation land.
 | palette          | Shipped | Every screen takes colour from a deeper Peatland palette: the maps, the page ground and panels, and two bands on the landing. | docs/specs/palette.md             |
 | honest-claims    | Shipped | Each detection's seal time comes from the chain, the page reads the chain even when the API says a record is unsealed, and six lines of copy claim no more than the chain or the data show. | docs/specs/honest-claims.md       |
 | fair-baseline    | Shipped | The 2023 replay adds rule version 1's near-edge step alone and a next-pass guess beside the downwind guess. The forecast panel shows all four, and one sentence says what the rule adds. | docs/specs/fair-baseline.md       |
+| run-roots        | Shipped | The recorder seals one Merkle root per run on FireRuns, whose recorder key an owner key can replace. The page checks each new record's proof against its run's root, and old seals still check on FireRecords. | docs/specs/run-roots.md           |
 
 ## More
 

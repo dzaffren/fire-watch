@@ -26,6 +26,7 @@ for watchdog investigators who file grievances over fires on plantation land.
 - Every screen takes colour from a deeper Peatland palette: the maps, the page ground and panels, and two bands on the landing.
 - Each detection's seal time comes from the chain, the page reads the chain even when the API says a record is unsealed, and six lines of copy claim no more than the chain or the data show.
 - The 2023 replay adds rule version 1's near-edge step alone and a next-pass guess beside the downwind guess. The forecast panel shows all four, and one sentence says what the rule adds.
+- The recorder seals one Merkle root per run on FireRuns, whose recorder key an owner key can replace. The page checks each new record's proof against its run's root, and old seals still check on FireRecords.
 
 ## Docs
 
