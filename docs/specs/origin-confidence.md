@@ -213,8 +213,8 @@ nothing new. The two dropped lines are "On this point the record agrees with the
 "The fire has crossed the edge".
 
 **The page expects** (pause 3 settles it): the fire route and the pack add `first_alone_h`, whole
-hours or null (D112), and `joined`, oldest join first, each `{at_unix, first_seen_unix,
-first_seen}` with `first_seen` read from that fire's own first pass (`JoinedFire` in
+hours or null (D112), and `joined`, oldest join first, each with `at_unix`, `first_seen_unix`
+and `first_seen`, `first_seen` read from that fire's own first pass (`JoinedFire` in
 `web/src/api.ts`). The concession list gets neither (D116). The committed `pack-0332.json` gets
 both from the redone curl line (D90).
 
@@ -309,7 +309,7 @@ login, as before. The committed copy holds the same public FIRMS detections and 
 | `api/src/firewatch/fires.py:79` | `Fire` gains `first_alone_h: int \| None` | Scenario 1 |
 | `api/src/firewatch/fires.py:151` | `_fire()` sets `first_alone_h` from `passes[0]` and `passes[1]` | Scenario 1 |
 | `api/src/firewatch/fires.py` (new function) | `Joined(at, first_seen_at, first_seen)` and `joined(fire)`. A union-find over the fire's own detections, pass by pass, with the 0.01° grid (`CELL_E5`), `distance_m`, `JOIN_M` and `JOIN_TIME` that `_components()` uses. After each pass, each group that was apart from the first detection's group and now shares its root is listed. Its first seen is `_first_seen()` of the group's detections on its earliest pass. A prototype took 24 ms on the live 0332 fire's 869 detections (2026-10-22, this machine) | Scenario 2 |
-| `api/src/firewatch/app.py:262-321` | The fire route adds `first_alone_h` and `joined`, each `{at_unix, first_seen_unix, first_seen}`. `_fire()` (`:159`) stays as it is, so the concession route sends neither (D116). The log line (`:301`) gains `joined=%d first_alone_h=%s` | Scenarios 1, 2, 4 |
+| `api/src/firewatch/app.py:262-321` | The fire route adds `first_alone_h` and `joined`, each with `at_unix`, `first_seen_unix` and `first_seen`. `_fire()` (`:159`) stays as it is, so the concession route sends neither (D116). The log line (`:301`) gains `joined=%d first_alone_h=%s` | Scenarios 1, 2, 4 |
 | `api/tests/test_fires.py` | `test_rule_version_is_2`. 0332's 283 detections, from `web/public/case/pack-0332.json`: `first_alone_h` 25, and one join, on 14 Oct 17:20, of the fire first seen 13 Oct 06:37 on both sides, 2 m from the edge. Made-up cases: a gap of exactly 14 h gives none and 14 h 1 min gives 14; a one-pass fire gives none; two fires that join each other before joining the first are listed once; two joined on one pass are both listed. 0356 from `fixtures/fires/scenarios.json`: neither | Scenarios 1–3 |
 | `api/tests/test_app.py` | The fire route on 0332's 283 detections (0332 matches only; 0637 is not in `trase-cut.geojson`), cut at 17 Oct 09:00: both fields. The concession route has neither key. `:681` expects `rule_version` 2 | Scenarios 1, 2, 4 |
 | `web/src/` (pause 2 code) | `OriginNotes`, `JoinedTable`, `OriginMethod` in `FireView.tsx`, used by `ComplaintPack.tsx`; `seenWhere` in `format.ts`; `JoinedFire` and the two fields in `api.ts`; captions in `RealCase.tsx` and `Landing.tsx`; `.joined` in `styles/app.css`; the preview | Scenarios 1–5 |
