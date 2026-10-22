@@ -2,7 +2,15 @@ import json
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from firewatch.fires import RULE_VERSION, Detection, FirstSeen, distance_m, group
+from firewatch.fires import (
+    RULE_VERSION,
+    Detection,
+    FirstSeen,
+    Joined,
+    distance_m,
+    group,
+    joined,
+)
 
 ROOT = Path(__file__).parents[2]
 SCENARIOS = json.loads((ROOT / "fixtures" / "fires" / "scenarios.json").read_text())
@@ -100,6 +108,7 @@ def test_0356_first_seen_inside_and_0372_outside():
     assert fire.outside_from is None
     assert fire.recorded_before_h is None
     assert fire.first_alone_h is None
+    assert joined(fire) == []
 
     same = fire_first_seen(
         group(concession("ID-WOOD-CONCESSION-0372"), STARTED), "2026-10-14T06:20", 4
@@ -211,3 +220,58 @@ def test_first_alone_only_after_more_than_14_h():
 def test_one_pass_fire_is_never_first_alone():
     (fire,) = group([det(1)], None)
     assert fire.first_alone_h is None
+
+
+def test_0332_joined_a_fire_first_seen_on_both_sides():
+    (fire,) = group(pack_0332(), None)
+    (other,) = joined(fire)
+    assert other.at == utc("2026-10-14T17:20")
+    assert other.first_seen_at == utc("2026-10-13T06:37")
+    assert other.first_seen == FirstSeen(reading="both", inside=False, edge_m=2)
+
+
+def test_fires_that_joined_each_other_first_are_listed_once():
+    first = det(1)
+    # Two fires 2 km apart and 2 km from the first, joined to each other on pass 2.
+    north = det(2, lat_e5=2 * LAT_E5_999_M, inside=True, edge_m=500)
+    farther = det(3, lat_e5=4 * LAT_E5_999_M, inside=False, edge_m=800)
+    between = det(4, lat_e5=3 * LAT_E5_999_M, minutes=600)
+    link = det(5, lat_e5=LAT_E5_999_M, minutes=1200)
+    (fire,) = group([first, north, farther, between, link], None)
+    assert joined(fire) == [
+        Joined(
+            at=T0 + timedelta(minutes=1200),
+            first_seen_at=T0,
+            first_seen=FirstSeen(reading="both", inside=True, edge_m=500),
+        )
+    ]
+
+
+def test_two_fires_joined_on_one_pass_are_both_listed():
+    first = det(1)
+    north = det(2, lat_e5=2 * LAT_E5_999_M, minutes=600, inside=True, edge_m=400)
+    farther = det(3, lat_e5=4 * LAT_E5_999_M, minutes=600, inside=False, edge_m=2000)
+    links = [
+        det(4, lat_e5=LAT_E5_999_M, minutes=1200),
+        det(5, lat_e5=3 * LAT_E5_999_M, minutes=1200),
+    ]
+    (fire,) = group([first, north, farther, *links], None)
+    assert joined(fire) == [
+        Joined(
+            at=T0 + timedelta(minutes=1200),
+            first_seen_at=T0 + timedelta(minutes=600),
+            first_seen=FirstSeen(reading="inside", inside=True, edge_m=400),
+        ),
+        Joined(
+            at=T0 + timedelta(minutes=1200),
+            first_seen_at=T0 + timedelta(minutes=600),
+            first_seen=FirstSeen(reading="outside", inside=False, edge_m=2000),
+        ),
+    ]
+
+
+def test_a_fire_joined_on_the_pass_it_appears_is_not_listed():
+    appears = det(2, lat_e5=2 * LAT_E5_999_M, minutes=600)
+    link = det(3, lat_e5=LAT_E5_999_M, minutes=600)
+    (fire,) = group([det(1), appears, link], None)
+    assert joined(fire) == []

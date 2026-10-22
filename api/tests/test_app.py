@@ -24,7 +24,9 @@ C0275, C0332, C0377, C0540 = (
     f"ID-WOOD-CONCESSION-{n}" for n in ("0275", "0332", "0377", "0540")
 )
 RANGE = {"from": "2026-10-11", "to": "2026-10-14"}
-DETAIL_ONLY = ("hotspots", "as_of_unix", "forecasts", "forecasts_from_unix", "first_alone_h")
+DETAIL_ONLY = (
+    "hotspots", "as_of_unix", "forecasts", "forecasts_from_unix", "first_alone_h", "joined"
+)
 _ids = itertools.count(1)
 
 
@@ -899,3 +901,21 @@ def test_fire_says_its_first_sighting_was_one_detection_alone(client, db, caplog
     (listed,) = concession["fires"]
     assert listed["key"] == key
     assert "first_alone_h" not in listed and "joined" not in listed
+
+
+def test_fire_lists_the_fires_joined_to_it(client, db, caplog):
+    key = pack_0332(db)
+
+    with caplog.at_level(logging.INFO, logger="firewatch.app"):
+        pack = client.get(
+            f"/api/concessions/{C0332}/fires/{key}", params={"as_of": unix("2026-10-17T09:00Z")}
+        ).json()
+
+    assert pack["joined"] == [
+        {
+            "at_unix": unix("2026-10-14T17:20Z"),
+            "first_seen_unix": unix("2026-10-13T06:37Z"),
+            "first_seen": {"reading": "both", "inside": False, "edge_m": 2},
+        }
+    ]
+    assert "joined=1 first_alone_h=25" in caplog.text

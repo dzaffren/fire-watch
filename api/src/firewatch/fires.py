@@ -22,6 +22,10 @@ The rule, so anyone can redo it from the stored detections:
    gives the whole hours between, rounded down.
 9. When the first pass is one detection and the next pass came more than 14 hours after it,
    first alone gives the whole hours between, rounded down.
+10. Take the passes in order, and after each, group the detections seen so far by steps 2 and 3.
+    Each fire that a pass joins to the fire holding the first detection is listed once, with
+    the pass's time and its own first seen, read by step 5 from its own first pass. A fire
+    listed there can already be two that joined each other.
 
 Steps 1 to 8 are version 1's, so every reading is the same as in version 1.
 
@@ -97,6 +101,13 @@ class Fire:
     first_alone_h: int | None
 
 
+@dataclass(frozen=True)
+class Joined:
+    at: datetime
+    first_seen_at: datetime
+    first_seen: FirstSeen
+
+
 def distance_m(a: Detection, b: Detection) -> float:
     lat_a, lat_b = radians(a.lat_e5 / 1e5), radians(b.lat_e5 / 1e5)
     d_lat = lat_b - lat_a
@@ -105,35 +116,39 @@ def distance_m(a: Detection, b: Detection) -> float:
     return 2 * EARTH_RADIUS_M * asin(sqrt(h))
 
 
+def _root(parent: list[int], i: int) -> int:
+    while parent[i] != i:
+        parent[i] = parent[parent[i]]
+        i = parent[i]
+    return i
+
+
+def _link(
+    ordered: list[Detection], parent: list[int], cells: dict[tuple[int, int], list[int]], i: int
+) -> None:
+    """Adds detection i to the grid and joins it to each one already there within 1 km and
+    48 hours."""
+    a = ordered[i]
+    row, col = a.lat_e5 // CELL_E5, a.lon_e5 // CELL_E5
+    for d_row in (-1, 0, 1):
+        for d_col in (-1, 0, 1):
+            for j in cells.get((row + d_row, col + d_col), ()):
+                b = ordered[j]
+                if abs(b.acquired_at - a.acquired_at) <= JOIN_TIME and distance_m(a, b) <= JOIN_M:
+                    # The lower index is the older detection, so it stays the root.
+                    low, high = sorted((_root(parent, i), _root(parent, j)))
+                    parent[high] = low
+    cells.setdefault((row, col), []).append(i)
+
+
 def _components(ordered: list[Detection]) -> list[list[int]]:
     parent = list(range(len(ordered)))
-
-    def root(i: int) -> int:
-        while parent[i] != i:
-            parent[i] = parent[parent[i]]
-            i = parent[i]
-        return i
-
     cells: dict[tuple[int, int], list[int]] = {}
-    for i, d in enumerate(ordered):
-        cells.setdefault((d.lat_e5 // CELL_E5, d.lon_e5 // CELL_E5), []).append(i)
-    for (row, col), members in cells.items():
-        for d_row in (-1, 0, 1):
-            for d_col in (-1, 0, 1):
-                for j in cells.get((row + d_row, col + d_col), ()):
-                    for i in members:
-                        a, b = ordered[i], ordered[j]
-                        if (
-                            i < j
-                            and abs(b.acquired_at - a.acquired_at) <= JOIN_TIME
-                            and distance_m(a, b) <= JOIN_M
-                        ):
-                            # The lower index is the older detection, so it stays the root.
-                            low, high = sorted((root(i), root(j)))
-                            parent[high] = low
+    for i in range(len(ordered)):
+        _link(ordered, parent, cells, i)
     groups: dict[int, list[int]] = {}
     for i in range(len(ordered)):
-        groups.setdefault(root(i), []).append(i)
+        groups.setdefault(_root(parent, i), []).append(i)
     return list(groups.values())
 
 
@@ -199,6 +214,39 @@ def group(detections, recording_started: datetime | None) -> list[Fire]:
         _fire([ordered[i] for i in members], recording_started)
         for members in sorted(_components(ordered))
     ]
+
+
+def joined(fire: Fire) -> list[Joined]:
+    """Each fire a pass joined to the one holding the fire's first detection, oldest join
+    first."""
+    ordered = list(fire.detections)
+    parent = list(range(len(ordered)))
+    cells: dict[tuple[int, int], list[int]] = {}
+    passes: list[list[int]] = [[] for _ in range(fire.passes)]
+    for i, number in enumerate(fire.pass_numbers):
+        passes[number - 1].append(i)
+    found = []
+    for members in passes:
+        # Detection 0 always stays its fire's root.
+        apart: dict[int, list[int]] = {}
+        for i in range(members[0]):
+            if (r := _root(parent, i)) != 0:
+                apart.setdefault(r, []).append(i)
+        for i in members:
+            _link(ordered, parent, cells, i)
+        for r, before in apart.items():
+            if _root(parent, r) == 0:
+                number = fire.pass_numbers[before[0]]
+                found.append(
+                    Joined(
+                        at=ordered[members[0]].acquired_at,
+                        first_seen_at=ordered[passes[number - 1][0]].acquired_at,
+                        first_seen=_first_seen(
+                            [ordered[i] for i in before if fire.pass_numbers[i] == number]
+                        ),
+                    )
+                )
+    return found
 
 
 def stored(conn, concession_id: str, as_of: datetime | None) -> tuple[list[Fire], int]:

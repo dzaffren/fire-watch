@@ -297,11 +297,13 @@ def create_app(allowed_origin: str) -> FastAPI:
                     "forecasts_from_unix": _unix(started),
                 }
         by_id = {row["record_id"]: row for row in rows}
+        joined = fires.joined(found)
         log.info(
             "served fire id=%s key=%s as_of=%d detections=%d passes=%d forecasts=%d group_ms=%d"
-            " damage_ms=%d first_alone_h=%s",
+            " damage_ms=%d joined=%d first_alone_h=%s",
             concession_id, key, as_of, len(ids), found.passes,
-            len(forecasts.get("forecasts", [])), group_ms, damage_ms, found.first_alone_h,
+            len(forecasts.get("forecasts", [])), group_ms, damage_ms, len(joined),
+            found.first_alone_h,
         )
         pack = {} if site is None else {
             "concession_id": site["id"],
@@ -313,6 +315,14 @@ def create_app(allowed_origin: str) -> FastAPI:
         return {
             **_fire(found),
             "first_alone_h": found.first_alone_h,
+            "joined": [
+                {
+                    "at_unix": _unix(j.at),
+                    "first_seen_unix": _unix(j.first_seen_at),
+                    "first_seen": asdict(j.first_seen),
+                }
+                for j in joined
+            ],
             "as_of_unix": as_of,
             **forecasts,
             **pack,
