@@ -28,6 +28,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Every screen takes colour from a deeper Peatland palette: moss land, slate water and an acacia green wash inside each concession on the maps and the globe, a moss page ground, and moss and peat bands on the landing. A printed complaint pack is a white page with its map in colour.
 - A detection's seal time comes from Base Sepolia's clock, and the page reads its seal from the chain even when the server says it isn't sealed. The landing, the tool and the complaint pack claim only what the chain or the data shows, and a pack says Fire Watch's server chose its records.
 - The forecast panel's 2023 replay shows rule version 1 next to three guesses: its near-edge step alone, every fire by the next pass, and the downwind guess. One sentence says what the rule's advance step adds. `backtest-2023` writes both new guesses' totals and a column for each in the CSV.
+- Each recorder run seals all its new detections and forecasts under one Merkle root on a new contract, FireRuns, in one transaction, so no run leaves seals for the next hour. An owner key kept off Azure can replace a leaked recorder key. The tool, the forecast panel and the complaint pack check a newer record against its run's root and an older one on FireRecords, in one read.
 
 ### Removed
 
