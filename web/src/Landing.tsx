@@ -40,7 +40,7 @@ export function Landing({ caseSource }: { caseSource: CaseSource }) {
       <main className="landing-main">
         <div className="landing-hero">
           <section className="landing-intro" aria-labelledby="h-landing">
-            <h1 id="h-landing">Show where a plantation fire started, on records anyone can check.</h1>
+            <h1 id="h-landing">Show where satellites first saw a plantation fire, on records anyone can check.</h1>
             <p className="landing-lede">
               Watchdog groups use Fire Watch to report a fire on plantation land to the companies that buy from it. It
               shows where satellites first saw the fire and how it spread, and the buyer checks every record in their

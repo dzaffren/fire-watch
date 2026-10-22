@@ -71,7 +71,7 @@ describe("FireView", () => {
     expect(detail("Last seen")).toBe("2026-10-15 18:43 UTC");
     expect(detail("Passes")).toBe("4, with 19 detections");
     expect(
-      screen.getByText("Recording had started 38 hours before this fire was first seen, so it may have been burning earlier."),
+      screen.getByText("Fire Watch's records begin 38 hours before this fire was first seen, so it may have been burning earlier."),
     ).toBeInTheDocument();
     expect(screen.queryByText(CANT_TELL)).toBeNull();
   });
@@ -83,7 +83,7 @@ describe("FireView", () => {
     expect(detail("First seen")).toBe("2026-10-14 06:20 UTC");
     expect(screen.queryByText("Seen outside from")).toBeNull();
     expect(screen.queryByText("Seen inside from")).toBeNull();
-    expect(screen.queryByText(/Recording had started/)).toBeNull();
+    expect(screen.queryByText(/records begin/)).toBeNull();
   });
 
   it("reads the same fire from the neighbouring concession as first seen outside", () => {
@@ -121,11 +121,14 @@ describe("FireView", () => {
 
   it("counts recording hours, and says less than an hour under one", () => {
     showFire(ONE_HOUR);
-    expect(screen.getByText(/^Recording had started 1 hour before/)).toBeInTheDocument();
+    expect(
+      screen.getByText("Fire Watch's records begin 1 hour before this fire was first seen, so it may have been burning earlier."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Recording had started/)).toBeNull();
 
     show(ONE_HOUR.id, { kind: "ready", fire: { ...fire(ONE_HOUR), recorded_before_h: 0 } });
     expect(
-      screen.getByText("Recording had started less than an hour before this fire was first seen, so it may have been burning earlier."),
+      screen.getByText("Fire Watch's records begin less than an hour before this fire was first seen, so it may have been burning earlier."),
     ).toBeInTheDocument();
   });
 

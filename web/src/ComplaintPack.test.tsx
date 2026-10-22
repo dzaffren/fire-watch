@@ -73,6 +73,10 @@ describe("ComplaintPack", () => {
     expect(await screen.findByRole("heading", { level: 1, name: "First seen outside, 950 m from the edge" })).toBeInTheDocument();
     expect(screen.getByText("Complaint pack, as of 2026-10-17 09:00 UTC")).toBeInTheDocument();
     expect(screen.getByText("ID-WOOD-CONCESSION-0332, Kalimantan Tengah")).toBeInTheDocument();
+    expect(
+      screen.getByText("Fire Watch's records begin 38 hours before this fire was first seen, so it may have been burning earlier."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Recording had started/)).toBeNull();
     expect(await screen.findByRole("heading", { name: "19 of 19 detections match the chain" })).toBeInTheDocument();
 
     expect(kv("Concession")).toBe("ID-WOOD-CONCESSION-0332");

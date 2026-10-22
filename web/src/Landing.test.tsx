@@ -30,8 +30,9 @@ describe("Landing", () => {
     render(<Landing caseSource={caseSource} />);
 
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
-      "Show where a plantation fire started, on records anyone can check.",
+      "Show where satellites first saw a plantation fire, on records anyone can check.",
     );
+    expect(document.body.textContent).not.toMatch(/fire started/);
     expect(screen.getByText(/^Watchdog groups use Fire Watch to report a fire on plantation land/)).toHaveTextContent(
       "the buyer checks every record in their own browser",
     );

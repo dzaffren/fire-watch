@@ -163,8 +163,8 @@ function Reading({ id, fire, packHref }: { id: string; fire: FireDetail; packHre
           )}
           {hours !== null && (
             <p className="fw-help">
-              Recording had started {hours < 1 ? "less than an hour" : plural(hours, "hour", "hours")} before this fire
-              was first seen, so it may have been burning earlier.
+              Fire Watch's records begin {hours < 1 ? "less than an hour" : plural(hours, "hour", "hours")} before this
+              fire was first seen, so it may have been burning earlier.
             </p>
           )}
         </div>

@@ -9,7 +9,7 @@ const LIST_NOTE = "4 concessions, ranked by hotspots inside.";
 const EXAMPLE_PACK =
   "/?pack=ID-WOOD-CONCESSION-0332&fire=0x13b417c6f54dd95c7c418b5df3f34963cf00f46555d5cae74693cdffbb1d1cf7&as_of=1792227600";
 
-const HEADLINE = "Show where a plantation fire started, on records anyone can check.";
+const HEADLINE = "Show where satellites first saw a plantation fire, on records anyone can check.";
 
 // Puts a step of the real case across the reading line, 60% down the screen.
 async function toStep(page: Page, step: number) {

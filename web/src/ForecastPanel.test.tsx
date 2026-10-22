@@ -216,7 +216,7 @@ describe("ForecastPanel", () => {
     expect(within(panel()).queryByText("Fingerprint")).toBeNull();
   });
 
-  it("says a forecast not on the chain yet is sealed in the run that makes it", () => {
+  it("says a forecast not on the chain yet is sealed in the run that makes it, or a later one", () => {
     show({
       forecasts: [{ ...scenario1, tx_hash: null, sealed_at: null }],
       checks: [{ check: { state: "pending" }, sealedAt: null }],
@@ -224,7 +224,7 @@ describe("ForecastPanel", () => {
 
     expect(within(panel()).getByText("Not on chain yet")).toBeInTheDocument();
     expect(
-      screen.getByText("Not on the chain yet. The recorder seals each forecast in the run that makes it."),
+      screen.getByText("Not on the chain yet. The recorder seals each forecast in the run that makes it, or a later one."),
     ).toBeInTheDocument();
     expect(kv("Transaction")).toHaveTextContent("Not sent yet");
   });
@@ -333,6 +333,11 @@ describe("ForecastPanel", () => {
         ["Forecasts made", "20,277, the same for both"],
       ]);
       expect(screen.getByText(/moves the fire with ERA5's hourly wind, from Open-Meteo, at the rate it advanced/)).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          /^Each forecast is sealed in the run that makes it, or a later run if that one runs out of time\. Every one stays listed here, right or wrong\./,
+        ),
+      ).toBeInTheDocument();
       expect(screen.getByRole("link", { name: "Every 2023 forecast, as CSV" })).toHaveAttribute(
         "href",
         "https://github.com/dzaffren/fire-watch/blob/main/fixtures/backtest/2023-forecasts.csv",
