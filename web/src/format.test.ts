@@ -10,6 +10,7 @@ import {
   firstSeenShort,
   gap,
   location,
+  seenWhere,
   whereFromEdge,
 } from "./format";
 
@@ -80,6 +81,14 @@ describe("format", () => {
       "First seen 60 m outside the edge, within one satellite pixel of it",
     );
     expect(firstSeenLine({ reading: "both", inside: false, edge_m: 23 })).toBe("First seen on both sides of the edge");
+  });
+
+  it("says where a first pass saw a fire, to follow a date in a sentence", () => {
+    expect(seenWhere({ reading: "both", inside: false, edge_m: 2 })).toBe("on both sides of the edge");
+    expect(seenWhere({ reading: "edge", inside: true, edge_m: 158 })).toBe("160 m inside the edge, within one satellite pixel of it");
+    expect(seenWhere({ reading: "edge", inside: false, edge_m: 64 })).toBe("60 m outside the edge, within one satellite pixel of it");
+    expect(seenWhere({ reading: "inside", inside: true, edge_m: 409 })).toBe("inside, 410 m from the edge");
+    expect(seenWhere({ reading: "outside", inside: false, edge_m: 2576 })).toBe("outside, 2.6 km from the edge");
   });
 
   it("shortens the reading for the fires table", () => {
