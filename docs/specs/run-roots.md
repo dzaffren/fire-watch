@@ -1,6 +1,6 @@
 # Run roots
 
-**Version:** v1 · **Status:** Draft · **Type:** Enhancement · **Project type:** Web UI
+**Version:** v1 · **Status:** Refined · **Type:** Enhancement · **Project type:** Web UI
 
 **Shape doc:** docs/specs/judge-review/shape.md
 **Depends on:** None
@@ -210,12 +210,230 @@ The proof hashes show in the raw record because the API sends them with the reco
 
 ## Technical plan
 
-_(the rest is added at pause 3)_
+### Approach
+
+A new contract, FireRuns, keeps an ordered list of roots, each with its block time. Its recorder
+seals a root, and its owner replaces the recorder. Each run of `record-hotspots` builds one Merkle
+tree over every record still unsealed, stores the root and each record's proof in Neon, and then
+sends the root. The fire route sends each record's run number and proof. The page reads FireRuns
+for a record with a run and FireRecords for one without, in one Multicall3 call, and works out
+the root from the record itself.
+
+Relies on: D7, D10, D15, D17, D20, D21, D35, D38, D50, D97, D98, D103, D104, D105, D106, D107,
+D108, D109, D110
+
+```mermaid
+flowchart TB
+    subgraph recorder["record-hotspots job (Azure)"]
+        RH[record_hotspots.py] -- "leaves" --> MP[merkle.py]
+    end
+    RH -- "roots row, root_id and proof per record" --> DB[(Neon: roots, hotspots, forecasts)]
+    RH -- "sealRoot(root)" --> FR[(FireRuns, Base Sepolia)]
+    OK[owner keystore, operator's machine] -- "replaceRecorder(address)" --> FR
+    DB -- "rows with run and proof" --> API["GET /api/concessions/{id}/fires/{key}"]
+    API -- "records with run and proof" --> PG[page: chain.ts and merkle.ts]
+    PG -- "aggregate3: runOf(run), sealOf(recordId)" --> MC[(Multicall3)]
+    MC -- "runOf" --> FR
+    MC -- "sealOf" --> FRec[(FireRecords)]
+```
+
+The recorder writes proofs to Neon and roots to FireRuns. The page gets proofs from the API and
+roots and old seals from the chain, all through one Multicall3 read.
+
+```mermaid
+sequenceDiagram
+    participant R as record-hotspots
+    participant D as Neon
+    participant F as FireRuns
+    participant A as API
+    participant P as page
+    R->>D: store detections, make forecasts (as today)
+    R->>F: runOfRoot(root) for each stored root with no run
+    F-->>R: sealed or not; resend the root if not
+    R->>R: tree over unsealed records: root, proofs
+    R->>D: INSERT roots, SET root_id and proof (commit)
+    R->>F: sealRoot(root)
+    F-->>R: receipt: RootSealed(run, root), block time
+    R->>D: SET run, tx_hash, sealed_at (commit)
+    P->>A: GET fire
+    A-->>P: records with run and proof
+    P->>F: runOf(run), through Multicall3
+    F-->>P: root, sealedAt
+    P->>P: rootFrom(leaf(recordId, fingerprint), proof) equals root?
+```
+
+A run seals before it records the run number, and records the root before it seals. A crash at
+any point leaves a state that the next run finishes.
+
+```mermaid
+flowchart LR
+    API[API, not trusted] -- "record, run, proof" --> P[reader's browser]
+    C[(Base Sepolia, trusted)] -- "root and time of run N, or FireRecords seal" --> P
+    P -- "Matches only if the record and proof give run N's root" --> U((reader))
+```
+
+The browser trusts only the chain. A wrong record, run or proof gives "Does not match" or "Not on
+chain yet", never "Matches" (D106).
+
+### Changes
+
+| File | What changes | Why |
+| ---- | ------------ | --- |
+| `contracts/src/FireRuns.sol` | New. `owner` (immutable) and `recorder`. `sealRoot(bytes32 root) returns (uint256 run)`: recorder only, refuses a zero root and a root already held, pushes the root with `uint64(block.timestamp)`, emits `RootSealed(uint256 indexed run, bytes32 indexed root)`. `replaceRecorder(address)`: owner only, refuses the zero address, emits `RecorderReplaced(previous, next)`. `runOf(uint256)` gives the root and time, or zeros past the end. `runOfRoot(bytes32)` gives whether it is sealed, its run and time | 1, 4, 5 |
+| `contracts/test/FireRuns.t.sol` | New. Seal by the recorder, refusals for any other key, a zero root and a repeat root, zeros past the end, a replacement by the owner only, the old key refused after it, both events | 5 |
+| `contracts/script/DeployRuns.s.sol` | New, as `Deploy.s.sol`: reads `OWNER_ADDRESS` and `RECORDER_ADDRESS` | 1, 5 |
+| `api/migrations/005_run_roots.up.sql`, `.down.sql` | New `roots` table. `hotspots` and `forecasts` get `root_id` and `proof bytea[]`. The reader role gets SELECT on `roots`. Down drops them | 1, 4 |
+| `api/src/firewatch/merkle.py` | New. `leaf(record_id, fingerprint)` and `tree(leaves)`, which gives the root and each leaf's proof (D108) | 1, 3 |
+| `fixtures/merkle-vectors.json` | New. Trees of 1, 2, 3 and 5 leaves with their roots and proofs, from real record IDs and fingerprints, read by both test suites | 1, 3 |
+| `api/src/firewatch/chain.py:17` | The ABI becomes FireRuns'. `seal`, `sealed` and `seal_tx_hash` give way to `seal_root(root)`, which returns the run, the transaction hash and the block time from the receipt, `run_of_root(root)`, and `root_tx_hash(root, sealed_at)`, which reuses `_first_block_after`. `now`, `balance_eth` and `_block` stay | 1, 4 |
+| `api/src/firewatch/record_hotspots.py:30`, `:230`, `:236`, `:286`, `:300` | The 40-minute budget, `SEALS` and `_seal` go. A new `_seal_root` first finishes the stored roots with no run, then builds a tree over the hotspots and forecasts with no `tx_hash` and no `root_id`, stores it, sends it, and fills in `run`, `tx_hash` and `sealed_at`. A send the node refuses drops the new root at once (D110). The chain address comes from `FIRE_RUNS_ADDRESS`. The log line adds `roots=` and `run=` | 1, 4 |
+| `api/src/firewatch/app.py:62`, `:72`, `:164`, `:310` | `FIRE_HOTSPOTS` and `FORECASTS` join `roots` for `run`. The fire route's records and `_forecast` add `run` and `proof` as hex, both null until the root is sealed. The concession route doesn't change (D109) | 1, 2 |
+| `web/src/merkle.ts` | New. `leaf(recordId, fingerprint)` and `rootFrom(leaf, proof)`, as `merkle.py` (D108) | 1, 3 |
+| `web/src/chain.ts` | Adds FireRuns' `runOf` and `checkReads(records)`. For each record it reads `runOf(run)` on FireRuns, each run once, or `sealOf(recordId)` on FireRecords, in one `aggregate3` per 500 reads (D38). It returns a `Seal` with its contract. `sealsOf` stays for the landing. `sealOf` and `sealsWithTime` go | 1, 2 |
+| `web/src/RecordPanel.tsx:7`, `:42`, `:80`, `:158` | `checkSeal(seal, record, fingerprint)` gives the check, the seal time and `sealedIn`. `RecordPanel` takes `sealedIn` and shows the rows and copy in the Interface section | 1, 2, 3 |
+| `web/src/ForecastPanel.tsx:111`, `:239`, `:277` | `ForecastCheck` gains `sealedIn`. The forecast detail shows the same rows. The copy at `:277` changes | 1, 3 |
+| `web/src/FireRecordPage.tsx:15`, `:152`, `:174` | `FireRecordSource.sealOf` and `forecastSeals` return `Seal`s, checked with `checkSeal` | 1, 3 |
+| `web/src/ComplaintPack.tsx:12`, `:97`, `:217`, `:240` | `PackSource.contract` becomes `contracts: { records, runs }`, and `sealsOf` returns `Seal`s. The note and the contract rows follow the Interface section | 2, 3 |
+| `web/src/api.ts:10`, `:68`, `:187`, `:204` | `HotspotRecord` and `Forecast` gain `run` and `proof`. Both sources call `checkReads` | 1, 2 |
+| `web/src/vite-env.d.ts:6` | Adds `VITE_FIRE_RUNS_ADDRESS` | 1 |
+| `web/src/preview/*` | The fixture sources return `Seal`s. The complaint-pack and spread-forecast previews add records in a two-leaf root, one changed | 1, 3 |
+| `web/e2e/env.ts`, `web/e2e/global-setup.ts` | Deploys FireRuns as anvil account 0's second contract, `0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512`, with account 1 as owner. Runs 1 and 2 seal from account 0. Then the owner replaces the recorder with account 2, and runs 3 and 4 seal from it. Last, it moves the first pass of 0332's fire back to FireRecords, as the recorder sealed records before the switch | 2, 5 |
+| `web/e2e/run-roots.spec.ts` | New. The slice's e2e, below | all |
+| `.github/workflows/deploy.yml:94` | Passes `VITE_FIRE_RUNS_ADDRESS` from the GitHub variable `FIRE_RUNS_ADDRESS` | 1 |
+| `infra/setup.sh:16`, `:60`, `:115` | The job gets `FIRE_RUNS_ADDRESS` in place of `CONTRACT_ADDRESS`, and the printout names the new GitHub variable | 1 |
+| `README.md` | "Turning on run roots": the operator's steps under Rollout. "First deploy" deploys and verifies FireRuns too | 1, 5 |
+
+Reusing: `Chain._first_block_after` and `_block` for the receipt and event lookups, the advisory
+lock and the run row in `record_hotspots.main`, `fingerprint_v2` and `forecast_fingerprint` for the
+leaves, the Multicall3 read and its 500-record chunks from `chain.ts`, the shared-vector pattern
+of `fixtures/fingerprint-vectors.json`, `checkOf` for FireRecords seals, and the e2e's `run`,
+`rpc` and `evm_mine` helpers.
+
+### Data
+
+```mermaid
+erDiagram
+    ROOTS ||--o{ HOTSPOTS : "proves"
+    ROOTS ||--o{ FORECASTS : "proves"
+    ROOTS {
+        bigserial id PK
+        bytea root UK "32 bytes"
+        bigint run UK "FireRuns' number; null until sealed"
+        bytea tx_hash "null until sealed"
+        timestamptz sealed_at "block time; null until sealed"
+        timestamptz created_at
+    }
+    HOTSPOTS {
+        bigint root_id FK "new; null for a FireRecords seal"
+        bytea_array proof "new; with root_id"
+    }
+    FORECASTS {
+        bigint root_id FK "new; null for a FireRecords seal"
+        bytea_array proof "new; with root_id"
+    }
+```
+
+A record's `tx_hash` and `sealed_at` take its root's values once the root is sealed. Every
+existing "unsealed means `tx_hash IS NULL`" query then stays true: the recorder's count, the
+health route, and the recorder check (D20).
+
+**Migration:** expand only. `005_run_roots` adds a table and nullable columns. No backfill: the
+17,173 detections and 856 forecasts sealed on FireRecords keep `root_id` null. The switch is the
+job's new image. There is no contract step, because old records go on using FireRecords.
+
+**Reverse:** point the job at its previous image first. The old recorder seals any record with no
+`tx_hash` on FireRecords, including one in an unsent root. The page and the API read both
+contracts, so they stay. `migrate down` drops the table and the columns. Run it only before any
+root is sealed, because it removes the proofs those records need. `test_migrations.py` covers up,
+down and up again.
+
+### Earn-it
+
+| Added | Triggered by |
+| ----- | ------------ |
+| FireRuns | Scenarios 1 and 5: one transaction per run, and a recorder that can be replaced (D103) |
+| `runOfRoot` and the repeat-root refusal | The risk of a crash between the root's transaction and the database commit (D110) |
+| `roots` table, `root_id`, `proof` | Scenario 1: the page needs each record's proof. Scenario 4: a root waits for a later run |
+| `merkle.py`, `merkle.ts`, `fixtures/merkle-vectors.json` | Scenarios 1 and 3: Python builds the tree and the browser checks it, byte for byte |
+| `FIRE_RUNS_ADDRESS`, `VITE_FIRE_RUNS_ADDRESS` | Scenario 1: the job and the page must find FireRuns |
+| The owner's Foundry keystore | Scenario 5 and D104: the owner key stays off Azure and out of `.env` |
+
+No new dependency: the API has `eth_abi` and `eth_utils`, and the page has `viem`.
+
+### Non-functionals
+
+|                      |                                                                               |
+| -------------------- | ----------------------------------------------------------------------------- |
+| **Load**             | One root transaction an hour. The biggest run so far had 1,297 records (22 Oct 2026 08:00 UTC), so 11 proof hashes each. The backfill day, 7,388 detections, would need 13. 0332's 283-detection pack grows from 30 KB to about 100 KB gzipped (simulated 2026-10-22) |
+| **Breaks first**     | At 10×, a 4,880-detection fire's route carries about 1.5 MB gzipped of proofs. Then move proofs to a route of their own, asked for only by the pack. The root transaction stays one per run |
+| **Security surface** | `sealRoot`: the recorder key only. `replaceRecorder`: the owner key only, from an encrypted Foundry keystore on the operator's machine. The page trusts the chain and hashes what the API sends. A wrong record, run or proof can't read "Matches" (D106). New data: roots and proofs, all public. No new secret in Azure or GitHub |
+| **Proof it works**   | The job's log line: `recorded fetched=… sealed=1297 unsealed=0 roots=1 run=412 …`. Basescan shows one `sealRoot` an hour on FireRuns. `/api/health` keeps `last_sealed` and `unsealed=0` |
+| **Rollout**          | No flag, as D81. In order: `migrate up` on Neon; merge, so Deploy ships the API and the page, which read both contracts; deploy and verify FireRuns from the owner keystore; set the `FIRE_RUNS_ADDRESS` variable; point the job at the merged image with `FIRE_RUNS_ADDRESS` set (D21). Rollback: the job's previous image |
+
+The operator's steps, with the real recorder address:
+
+```sh
+cast wallet new fire-runs-owner --password
+cast send <owner address> --value 0.003ether --rpc-url https://sepolia.base.org \
+  --private-key "$(grep '^RECORDER_PRIVATE_KEY=' .env | cut -d= -f2-)"
+cd contracts && OWNER_ADDRESS=<owner address> RECORDER_ADDRESS=0x6f09c576Be8AFB0f2175A97A0eFa26DE23A532f3 \
+  forge script script/DeployRuns.s.sol --rpc-url https://sepolia.base.org --account fire-runs-owner --broadcast
+forge verify-contract <FireRuns address> src/FireRuns.sol:FireRuns --chain 84532 --watch \
+  --constructor-args "$(cast abi-encode 'constructor(address,address)' <owner address> 0x6f09c576Be8AFB0f2175A97A0eFa26DE23A532f3)"
+```
+
+`/build` hands these over with the real addresses filled in, as each one becomes known.
+
+### Test plan
+
+| Scenario | Test | Command |
+| -------- | ---- | ------- |
+| 1, 4 | `api/tests/test_merkle.py`: the shared vectors, a 1-leaf tree, every proof leads to its root | `cd api && uv run pytest tests/test_merkle.py` |
+| 1 | `api/tests/test_record_hotspots.py`: one run on anvil seals one root for its detections and forecasts, and each proof leads to `runOf(run)` | `cd api && PATH=$HOME/.foundry/bin:$PATH uv run pytest tests/test_record_hotspots.py` |
+| 4 | the same file: an empty wallet drops the root; the next run seals both runs' records in one root. A stored root already on the chain is filled in, not resent | the same |
+| 5 | the same file: after `replaceRecorder`, the old key's run fails and the new key's run seals | the same |
+| 5 | `contracts/test/FireRuns.t.sol` | `cd contracts && forge test --match-contract FireRuns && forge fmt --check` |
+| 1, 2 | `api/tests/test_app.py`: the fire route sends `run` and `proof` for a sealed root, nulls for a record on FireRecords or in an unsent root | `cd api && uv run pytest tests/test_app.py` |
+| 1, 3 | `api/tests/test_migrations.py`: up, down and up with `005_run_roots`; the reader can read `roots` | `cd api && uv run pytest tests/test_migrations.py` |
+| 1, 3 | `web/src/merkle.test.ts`: the shared vectors | `cd web && pnpm test src/merkle.test.ts` |
+| 1, 2 | `web/src/chain.test.ts`: one `aggregate3` mixes FireRuns and FireRecords reads, each run read once | `cd web && pnpm test src/chain.test.ts` |
+| 1, 2, 3 | `web/src/RecordPanel.test.tsx`, `ComplaintPack.test.tsx`, `ForecastPanel.test.tsx`: each row in the Interface table, the note, the contract rows | `cd web && pnpm test` |
+
+**E2E:** `web/e2e/run-roots.spec.ts`. It opens the complaint pack of 0332's fire, whose first pass
+sits on FireRecords and whose other passes sit in roots from both recorder keys. It reads "N of N
+detections match the chain" and both contract rows. It opens one old and one new detection and
+reads "Sealed in" for each. It changes a new detection's fire power and reads "Does not match the
+chain", then puts it back. It opens the fire's forecast and reads "Sealed in" with FireRuns. It
+taps the FireRuns link at 390 px, as the phone tap lessons say. Command: `cd web && pnpm e2e
+e2e/run-roots.spec.ts`; the whole suite with `pnpm e2e`.
+
+### Chunks
+
+| Chunk | Scenarios | Files owned |
+| ----- | --------- | ----------- |
+| A | 5 | `contracts/src/FireRuns.sol`, `contracts/test/FireRuns.t.sol`, `contracts/script/DeployRuns.s.sol` |
+| B | 1, 3, 4, 5 (recorder) | `api/`, `fixtures/merkle-vectors.json` |
+| C | 1, 2, 3 (page) and the e2e | `web/`, `.github/workflows/deploy.yml`, `infra/setup.sh`, `README.md` |
+
+A, then B, then C: B's tests deploy A's FireRuns build, and C reads B's vectors and runs B's
+recorder in the e2e. No lockfile changes. Only one chunk runs the API suite.
+
+### Risks
+
+| Risk | Mitigation |
+| ---- | ---------- |
+| The deadline is 25 Oct 2026, three days off, and the switch needs the operator's hands | The API and the page ship first and work with FireRecords alone. The job switch is the last step. If it waits, nothing breaks |
+| A crash after the root's transaction, before the commit | The root and the proofs are stored first. The next run asks `runOfRoot` and fills it in, or sends it again. FireRuns refuses a repeat (D110) |
+| Python and TypeScript build different roots | Both test suites read `fixtures/merkle-vectors.json` |
+| A thief with the recorder key adds roots before the owner replaces the key | They can't change or reorder a stored root, and a true record still checks. complete-packs must allow for roots with no stored list |
+| The e2e's FireRecords history is staged, not recorded | Only 0332's first pass is moved, and the comment says it copies how the recorder sealed before the switch |
+| Forecast seal times in the e2e move by a few seconds, as roots replace single seals | `/build` updates the expected times in `spread-forecast.spec.ts` |
+| A lost owner key means the recorder can't be replaced | A new contract, as scope says. The keystore has a password, and the operator backs it up |
 
 ### Decisions to record
 
-Drafted at pause 1. `/build` appends them to `DECISIONS.md` and flips D19's Status line to
-`superseded by D103` and D49's to `superseded by D105`.
+Drafted at pauses 1 and 3. `/build` appends them to `DECISIONS.md` and flips the Status lines:
+D19 to `superseded by D103`, D49 to `superseded by D105` and D9 to `superseded by D107`.
 
 ```markdown
 ## D103 · 2026-10-22 · Seal one Merkle root per run on a new contract whose recorder can be replaced
@@ -233,11 +451,12 @@ Status: active
 
 ## D104 · 2026-10-22 · A separate owner key, kept off Azure, can replace the recorder
 
-Why: a leaked recorder key must be replaceable without a new contract. The owner key stays on the
-operator's machine, never in Azure or the job, so a leak of the job's key doesn't take it too. The
-owner key can do nothing but replace the recorder.
+Why: a leaked recorder key must be replaceable without a new contract. The owner key stays in an
+encrypted Foundry keystore on the operator's machine, never in `.env`, Azure or the job, so a leak
+of the job's key doesn't take it too. The owner key deploys FireRuns and can then do nothing but
+replace the recorder.
 Rejected: a Safe multisig with 2 of 3 keys (one operator holds all three today, so it adds steps
-but no second person).
+but no second person), the owner key in `.env` (it would sit beside the recorder key).
 Source: docs/specs/run-roots.md
 Status: active
 
@@ -264,6 +483,54 @@ each run's full list, which shows a missing record. A pack already says that Fir
 chose its records (D98). The seal time still comes from the chain alone (D97).
 Rejected: "Should be sealed by now" for a record older than the newest root (an unsealed record's
 time is also the API's word, so it adds a clock without closing the gap).
+Source: docs/specs/run-roots.md
+Status: active
+
+## D107 · 2026-10-22 · Only FireRuns' recorder key seals, once per root, and each record keeps its random record ID
+
+Why: a root must come from the recorder and never change. FireRuns numbers each root in order and
+refuses a root it already holds. Each row keeps its random 32-byte record ID, which goes into its
+leaf with its fingerprint, so no two records share a leaf. FireRecords still holds the seals made
+before the switch, one per record ID, from its fixed recorder.
+Rejected: open sealing (anyone could add roots, and complete-packs couldn't tell the recorder's
+runs from anyone else's).
+Supersedes: D9
+Source: docs/specs/run-roots.md
+Status: active
+
+## D108 · 2026-10-22 · Hash each leaf twice, sort the leaves, and hash each pair in sorted order
+
+Why: Python builds the tree and TypeScript checks it, so the format must give identical bytes in
+both (D17). A leaf is keccak256 of keccak256 of the ABI-encoded record ID and fingerprint. The
+second hash stops a leaf from passing for an inner node. Sorted leaves let complete-packs rebuild a
+root from a run's list in any order. A pair hashed in sorted order needs no left or right flag, as
+OpenZeppelin's MerkleProof checks it. An odd node at the end of a level goes up unchanged.
+Rejected: OpenZeppelin's merkle-tree package (a new JavaScript dependency, and the recorder is
+Python), leaves in stored order (complete-packs would need that order to rebuild the root), one
+hash per leaf (a 64-byte leaf could pass for an inner node).
+Source: docs/specs/run-roots.md
+Status: active
+
+## D109 · 2026-10-22 · Store each record's proof in Neon, and send proofs only in the fire route
+
+Why: the page needs a record's proof to check it, and the fire route serves the tool's record
+panel and the pack. A simulation of 0332's 283-detection pack with proofs gave about 100 KB
+gzipped, against 30 KB today (2026-10-22). Proofs from one run share their upper hashes, which gzip
+shrinks. The concession route opens no record, so it carries no proof.
+Rejected: working out the proofs on each request (the API would read a whole run's records for each
+fire), a proof route per record (one more request for each opened record, and hundreds for a pack).
+Source: docs/specs/run-roots.md
+Status: active
+
+## D110 · 2026-10-22 · Store a root and its proofs before sending it, and finish a stored root before making a new one
+
+Why: a root sealed with no stored list can never be explained, and complete-packs needs each run's
+list. A run first asks FireRuns about each stored root with no run number. It fills in one that is
+sealed and sends again one that isn't, and FireRuns refuses a root twice. A send that the node
+refuses, such as from an empty wallet, drops its root at once, so the next run seals those records
+in its own root.
+Rejected: sending first and storing after (a crash between them leaves a sealed root with no stored
+list), dropping a stored root whose transaction may still land (it could land later with no list).
 Source: docs/specs/run-roots.md
 Status: active
 ```
@@ -293,3 +560,14 @@ _Never delete this section or its rows. See references/ledger.md._
 - **Basescan**: the public block explorer for Base Sepolia.
 - **anvil**: a local test chain from Foundry, which the e2e runs on.
 - **e2e**: end-to-end: one test that walks the whole slice as a user would.
+- **Leaf**: the hash of one record at the bottom of a Merkle tree.
+- **Inner node**: the hash of two nodes below it in the tree.
+- **Receipt**: the chain's answer once a transaction is in a block: whether it worked, and the
+  events it gave.
+- **Foundry keystore**: a key file that Foundry keeps encrypted with a password, used with
+  `--account`.
+- **Advisory lock**: a Postgres lock that the recorder takes so that only one run works at a time.
+- **gzip**: the compression the API already applies to its answers.
+- **Backfill**: filling new columns from the data already there. This slice has none: old records
+  keep their FireRecords seals.
+- **Lockfile**: the file that pins each dependency's exact version. This slice changes none.
