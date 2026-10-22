@@ -1,0 +1,122 @@
+[
+  {
+    "name": "one leaf, 0332's fire",
+    "leaves": [
+      {
+        "record_id": "0x13b417c6f54dd95c7c418b5df3f34963cf00f46555d5cae74693cdffbb1d1cf7",
+        "fingerprint": "0xdfb79e53dda36e541d89b3c88806a8f41b3f0e232ac8adadbffc6713137fe3c5",
+        "leaf": "0x511065b36a21ff16470f0652886f4c704647ea6999f5c2b7ea174870079ffa62",
+        "proof": []
+      }
+    ],
+    "root": "0x511065b36a21ff16470f0652886f4c704647ea6999f5c2b7ea174870079ffa62"
+  },
+  {
+    "name": "two leaves, 0332's fire",
+    "leaves": [
+      {
+        "record_id": "0x0e36b6f1b7f6f3a8a34313ad7fce0950ddec04a547c4e00f98fb478baa2419c7",
+        "fingerprint": "0x55972c71c2c3597f819052e4a97862d07b6091706ef3deb7d44d53bfd04f738e",
+        "leaf": "0xc8853fe33d658bf5a5d9d65df573e7d660290d77ccd0d693093cc2bd3d628410",
+        "proof": [
+          "0xe4ebe837382cb2957e921c332b5aac927caccb37a3e90e70988af22d1d0e3b22"
+        ]
+      },
+      {
+        "record_id": "0xdc1049998bce444276af657728c31fdf9ed678fac5d9556f83fa8bebfe05e780",
+        "fingerprint": "0x0346d4a09c88d16c3ece76792fc6e81be47db23c1d9805b78f46185a30e215ad",
+        "leaf": "0xe4ebe837382cb2957e921c332b5aac927caccb37a3e90e70988af22d1d0e3b22",
+        "proof": [
+          "0xc8853fe33d658bf5a5d9d65df573e7d660290d77ccd0d693093cc2bd3d628410"
+        ]
+      }
+    ],
+    "root": "0xfd75fa30ad6165f8fd790dc181f54224cc40f18201d9dca969e72ac6ecd97dbc"
+  },
+  {
+    "name": "three leaves, the odd one goes up, 0332's fire",
+    "leaves": [
+      {
+        "record_id": "0x414bd0e06f69a51a02c315230bc8ec60c126b0c108e09c2fcc88fb64d4c3ac3a",
+        "fingerprint": "0x559c83e215bf26ead5279dda607a91e5c2e03a4f23b51e4033e66ad993386ef4",
+        "leaf": "0x483c4f9f3119465d4a68797964cc97590b1abc2a3fdadcd43763a957e7f21161",
+        "proof": [
+          "0xe5dc500a9a08b1dcf291a8ef30c4a753d759f471ac0171c9bfc88ffa05b72609"
+        ]
+      },
+      {
+        "record_id": "0x62573516b317c2a15e809e9e232fe09b9df07415aa8d53f2557d14e8a498ad2b",
+        "fingerprint": "0x6e13bbdf4eaa471a82f763bbf3086e3a8ebb6434bef70ef2e026dfaf1c78c879",
+        "leaf": "0x343362128093e6ebd3bb34d351e37bc8603ab345c78d7aa13a229cbd7d31cbf8",
+        "proof": [
+          "0x22bb78d66a969dde265b75eb51b5cd31b404e37b7b91e9f0a636658d812c7ff4",
+          "0x483c4f9f3119465d4a68797964cc97590b1abc2a3fdadcd43763a957e7f21161"
+        ]
+      },
+      {
+        "record_id": "0x22e7b5f45adf114ae8f77306d5872b0b117082ad2e521e148e28a7a9087b5f32",
+        "fingerprint": "0xecc9d42081db5aed0440ce9cca3a20ea40273c404d4e09bd2a0eccc16fd0d7a6",
+        "leaf": "0x22bb78d66a969dde265b75eb51b5cd31b404e37b7b91e9f0a636658d812c7ff4",
+        "proof": [
+          "0x343362128093e6ebd3bb34d351e37bc8603ab345c78d7aa13a229cbd7d31cbf8",
+          "0x483c4f9f3119465d4a68797964cc97590b1abc2a3fdadcd43763a957e7f21161"
+        ]
+      }
+    ],
+    "root": "0xddde319ffdca1c87ea243346ccec491a9e565e6165597341216d82e5d949b816"
+  },
+  {
+    "name": "five leaves, 0332's fire",
+    "leaves": [
+      {
+        "record_id": "0x065522939038628353f7c2dbdaca906704aa2b21aabf20b785ae6741f7b48384",
+        "fingerprint": "0x87fe60ad06bed3921bab7b6660be5276e0b25f1cf8533c7cb9d8047774fdd5ab",
+        "leaf": "0x9a6e54e32226fd66ded0e532d86f6c9ca4abf3d8a5396d802c6ab6e17d607d1c",
+        "proof": [
+          "0xa87b2cd6eb1c12894031daa1e8f4ecd768d2817544a1fd8f2a660af0b0a3a78a",
+          "0xbef3bcb1dbf40eea86b40a189eeaba2d169bc7d686901aaf81cdc610c106dcf5",
+          "0xec289e8d03737167b73d528b48d223449e6e5ea1b3b757abc4cdc75cdf3131f1"
+        ]
+      },
+      {
+        "record_id": "0x55431e71195240f84e8c4cfc30a6a17b3e68f89828d661803506dca3ec3ab534",
+        "fingerprint": "0xabb57975a09b16bfefbc414faa27fcc2f4315e375dd5f423c0b8c4c1d7749495",
+        "leaf": "0x43109eb2b01c0cf71b40142fe72848b89c0efe29718f71d7c172582fc765f70a",
+        "proof": [
+          "0x36eb06119cde6787b13e6ccf11cfbd7e69fcf70b50425191a15739000b03390e",
+          "0x25e0d1f237bb0c97f1e69d5c4505532fb54fb4bd54765f9eb9c3460648962df3",
+          "0xec289e8d03737167b73d528b48d223449e6e5ea1b3b757abc4cdc75cdf3131f1"
+        ]
+      },
+      {
+        "record_id": "0xfd36d7d36ae199889f99d88e2ef80b3276c2f5e2a8c1e598b79e49c84d818b4e",
+        "fingerprint": "0x9bfb3c65eba1b4e0bc29c363400e01279047eea9ccbc12c949928aebf5f28fa3",
+        "leaf": "0xec289e8d03737167b73d528b48d223449e6e5ea1b3b757abc4cdc75cdf3131f1",
+        "proof": [
+          "0x2f3bbd9cdc34470b8f067e44852dfbb659c3533ed77112b23fe6ccd01c070cb4"
+        ]
+      },
+      {
+        "record_id": "0x3a116a127fd989c9d2cfc49b44958a63bd9f309ffc10742a6a4aeeb4ca897c21",
+        "fingerprint": "0x8d74de4b7cac5ae0386f9d920fb49ca8a1e8fc923616172053caa4d2ba88fcaa",
+        "leaf": "0x36eb06119cde6787b13e6ccf11cfbd7e69fcf70b50425191a15739000b03390e",
+        "proof": [
+          "0x43109eb2b01c0cf71b40142fe72848b89c0efe29718f71d7c172582fc765f70a",
+          "0x25e0d1f237bb0c97f1e69d5c4505532fb54fb4bd54765f9eb9c3460648962df3",
+          "0xec289e8d03737167b73d528b48d223449e6e5ea1b3b757abc4cdc75cdf3131f1"
+        ]
+      },
+      {
+        "record_id": "0x29e2d12b397b022a5c871fabab33091f0efe31de08b5273835079ecae11e36c6",
+        "fingerprint": "0xa231c2e315c878e60b5fd4859287dc9bdd4b5cfa90f474315a9becbaab47f809",
+        "leaf": "0xa87b2cd6eb1c12894031daa1e8f4ecd768d2817544a1fd8f2a660af0b0a3a78a",
+        "proof": [
+          "0x9a6e54e32226fd66ded0e532d86f6c9ca4abf3d8a5396d802c6ab6e17d607d1c",
+          "0xbef3bcb1dbf40eea86b40a189eeaba2d169bc7d686901aaf81cdc610c106dcf5",
+          "0xec289e8d03737167b73d528b48d223449e6e5ea1b3b757abc4cdc75cdf3131f1"
+        ]
+      }
+    ],
+    "root": "0x1218cd32ca9855e4acdbf39565c5823671f4c2d928bd36efd7061b8ad47d8eb6"
+  }
+]
