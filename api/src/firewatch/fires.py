@@ -1,4 +1,4 @@
-"""Group one concession's detections into fires, rule version 1.
+"""Group one concession's detections into fires, rule version 2.
 
 The rule, so anyone can redo it from the stored detections:
 
@@ -20,6 +20,10 @@ The rule, so anyone can redo it from the stored detections:
    first detection.
 8. When the fire was first seen less than 48 hours after recording started, recorded before
    gives the whole hours between, rounded down.
+9. When the first pass is one detection and the next pass came more than 14 hours after it,
+   first alone gives the whole hours between, rounded down.
+
+Steps 1 to 8 are version 1's, so every reading is the same as in version 1.
 
 `stored()` groups the detections stored by a given time, as the API and the recorder both need.
 
@@ -33,7 +37,7 @@ from datetime import datetime, timedelta
 from math import asin, cos, radians, sin, sqrt
 from time import perf_counter
 
-RULE_VERSION = 1
+RULE_VERSION = 2
 EARTH_RADIUS_M = 6_371_008.8
 JOIN_M = 1000
 JOIN_TIME = timedelta(hours=48)
@@ -43,6 +47,8 @@ EDGE_DOUBT_M = 375
 NEVER_SPREAD_PASSES = 4
 NEVER_SPREAD_M = 750
 RECORDED_BEFORE = timedelta(hours=48)
+# NOAA-20 passes about every 12 hours, so a longer gap means it missed the fire at least once.
+FIRST_ALONE = timedelta(hours=14)
 CELL_E5 = 1000
 
 RECORDING_STARTED = """
@@ -88,6 +94,7 @@ class Fire:
     outside_from: datetime | None
     never_spread: bool
     recorded_before_h: int | None
+    first_alone_h: int | None
 
 
 def distance_m(a: Detection, b: Detection) -> float:
@@ -159,6 +166,11 @@ def _fire(detections: list[Detection], recording_started: datetime | None) -> Fi
 
     first = detections[0]
     since_start = first.acquired_at - recording_started if recording_started else None
+    alone = (
+        passes[1][0].acquired_at - first.acquired_at
+        if len(passes) > 1 and len(passes[0]) == 1
+        else None
+    )
     return Fire(
         key=first.record_id,
         detections=tuple(detections),
@@ -173,6 +185,9 @@ def _fire(detections: list[Detection], recording_started: datetime | None) -> Fi
         and all(distance_m(first, d) <= NEVER_SPREAD_M for d in detections),
         recorded_before_h=int(since_start // timedelta(hours=1))
         if since_start is not None and since_start < RECORDED_BEFORE
+        else None,
+        first_alone_h=int(alone // timedelta(hours=1))
+        if alone is not None and alone > FIRST_ALONE
         else None,
     )
 

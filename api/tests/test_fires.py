@@ -4,9 +4,10 @@ from pathlib import Path
 
 from firewatch.fires import RULE_VERSION, Detection, FirstSeen, distance_m, group
 
-SCENARIOS = json.loads(
-    (Path(__file__).parents[2] / "fixtures" / "fires" / "scenarios.json").read_text()
-)
+ROOT = Path(__file__).parents[2]
+SCENARIOS = json.loads((ROOT / "fixtures" / "fires" / "scenarios.json").read_text())
+# The landing's example fire as its pack stands at 17 Oct 2026 09:00 UTC: 283 detections.
+PACK_0332 = json.loads((ROOT / "web" / "public" / "case" / "pack-0332.json").read_text())
 STARTED = datetime.fromisoformat(SCENARIOS["recording_started"])
 T0 = datetime(2026, 10, 13, 6, 0, tzinfo=timezone.utc)
 # One degree of latitude on the 6,371,008.8 m sphere is 111,195.08 m.
@@ -34,6 +35,22 @@ def concession(concession_id):
     ]
 
 
+def pack_0332():
+    return [
+        Detection(
+            record_id=bytes.fromhex(h["record_id"][2:]),
+            lat_e5=h["lat_e5"],
+            lon_e5=h["lon_e5"],
+            acquired_at=datetime.fromisoformat(h["acquired_at"]),
+            inside=match["inside"],
+            edge_m=match["edge_m"],
+        )
+        for h in PACK_0332["hotspots"]
+        for match in h["concessions"]
+        if match["id"] == "ID-WOOD-CONCESSION-0332"
+    ]
+
+
 def fire_first_seen(fires, at, size):
     (fire,) = [f for f in fires if f.first_seen_at == utc(at) and len(f.detections) == size]
     return fire
@@ -50,8 +67,8 @@ def det(n, lat_e5=0, minutes=0, inside=True, edge_m=1000):
     )
 
 
-def test_rule_version_is_1():
-    assert RULE_VERSION == 1
+def test_rule_version_is_2():
+    assert RULE_VERSION == 2
 
 
 def test_0332_groups_into_34_fires():
@@ -82,6 +99,7 @@ def test_0356_first_seen_inside_and_0372_outside():
     assert fire.inside_from == utc("2026-10-14T06:20")
     assert fire.outside_from is None
     assert fire.recorded_before_h is None
+    assert fire.first_alone_h is None
 
     same = fire_first_seen(
         group(concession("ID-WOOD-CONCESSION-0372"), STARTED), "2026-10-14T06:20", 4
@@ -172,3 +190,24 @@ def test_never_spread_at_4_passes_not_at_3():
 def test_reading_both_wins_over_edge():
     (fire,) = group([det(1, inside=True, edge_m=100), det(2, inside=False, edge_m=500)], None)
     assert fire.first_seen == FirstSeen(reading="both", inside=True, edge_m=100)
+
+
+def test_0332_first_seen_alone_for_25_hours():
+    (fire,) = group(pack_0332(), None)
+    assert (len(fire.detections), fire.passes) == (283, 8)
+    assert fire.first_seen == FirstSeen(reading="outside", inside=False, edge_m=3100)
+    assert fire.first_alone_h == 25
+
+
+def test_first_alone_only_after_more_than_14_h():
+    (fire,) = group([det(1), det(2, minutes=14 * 60)], None)
+    assert fire.first_alone_h is None
+    (fire,) = group([det(1), det(2, minutes=14 * 60 + 1)], None)
+    assert fire.first_alone_h == 14
+    (fire,) = group([det(1), det(2, lat_e5=10), det(3, minutes=20 * 60)], None)
+    assert fire.first_alone_h is None
+
+
+def test_one_pass_fire_is_never_first_alone():
+    (fire,) = group([det(1)], None)
+    assert fire.first_alone_h is None
