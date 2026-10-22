@@ -172,6 +172,8 @@ button.fw-link { margin: 0; padding: 0; border: 0; background: none; font: inher
 .forecast .table-box tbody th { text-align: left; font-weight: var(--fw-weight-regular); color: var(--fw-muted); background: none; white-space: normal; }
 .forecast .table-box tbody tr:last-child th { border-bottom: 0; }
 .forecast details .table-box { margin-top: var(--fw-space-2); }
+.forecast .fw-table thead th { white-space: normal; vertical-align: bottom; }
+.forecast .table-box th.method { white-space: nowrap; }
 
 /* Damage estimate: a fire's ground, CO2 and cost, split at the edge (docs/specs/damage-estimate.md) */
 .damage h2 { font-size: var(--fw-text-lg); font-weight: var(--fw-weight-semibold); }
@@ -234,6 +236,7 @@ a.fw-btn { text-decoration: none; }
   .app-top { padding: var(--fw-space-3) var(--fw-space-4); flex-wrap: wrap; }
   .app-main { grid-template-columns: minmax(0, 1fr); }
   .rec-col { padding: var(--fw-space-5) var(--fw-space-4); overflow: visible; }
+  .forecast .table-box th.method { white-space: normal; }
   .map-col { height: 320px; border-left: 0; border-top: var(--fw-border) solid var(--fw-line); }
 }
 

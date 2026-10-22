@@ -85,9 +85,9 @@ export interface BacktestTotals {
   median_hours_off: number | null;
 }
 
-/** A forecast rule replayed over 2023 at every moment the recorder would have forecast, next to the
- *  downwind guess (D51–D55). Both forecast at the same moments, so the arrivals and the forecasts
- *  not checked are the same for both. */
+/** A forecast rule replayed over 2023 at every moment the recorder would have forecast, next to
+ *  three guesses (D52–D55, D99). All four forecast at the same moments, so the arrivals and the
+ *  forecasts not checked are the same for all. */
 export interface Backtest {
   rule_version: number;
   forecasts: number;
@@ -96,6 +96,10 @@ export interface Backtest {
   ends_after_2023: number;
   rule: BacktestTotals;
   downwind: BacktestTotals;
+  /** The rule's step 5 alone: at most 375 m from the edge means 12 hours after the pass. */
+  near_edge: BacktestTotals;
+  /** Every fire, 12 hours after the pass. */
+  next_pass: BacktestTotals;
 }
 
 /** A fire's ground in hectares: its detections' joined 375 m squares, split at the concession's edge

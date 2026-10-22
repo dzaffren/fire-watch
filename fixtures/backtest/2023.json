@@ -17,5 +17,19 @@
     "did_not_come_in": 264,
     "stayed_out": 19596,
     "median_hours_off": 12.4
+  },
+  "near_edge": {
+    "warned": 117,
+    "missed": 18,
+    "did_not_come_in": 3193,
+    "stayed_out": 16667,
+    "median_hours_off": 11.7
+  },
+  "next_pass": {
+    "warned": 135,
+    "missed": 0,
+    "did_not_come_in": 19860,
+    "stayed_out": 0,
+    "median_hours_off": 11.7
   }
 }

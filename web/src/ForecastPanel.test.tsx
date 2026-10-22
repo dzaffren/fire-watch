@@ -29,7 +29,7 @@ const vector = (name: string) => vectors.find((v) => v.name.startsWith(name))!.f
 const SEALED_FP = vector("0332 fire after its 14 Oct 17:20 pass");
 const CHANGED_FP = vector("the scenario 1 forecast with its time changed");
 
-/** A 2023 replay of rule version 1, next to the downwind guess. */
+/** A 2023 replay of rule version 1, next to three guesses. */
 const REPLAY: Backtest = {
   rule_version: 1,
   forecasts: 20277,
@@ -38,6 +38,8 @@ const REPLAY: Backtest = {
   ends_after_2023: 15,
   rule: { warned: 123, missed: 12, did_not_come_in: 3751, stayed_out: 16109, median_hours_off: 11.7 },
   downwind: { warned: 19, missed: 116, did_not_come_in: 256, stayed_out: 19604, median_hours_off: 9 },
+  near_edge: { warned: 117, missed: 18, did_not_come_in: 3193, stayed_out: 16667, median_hours_off: 11.7 },
+  next_pass: { warned: 135, missed: 0, did_not_come_in: 19860, stayed_out: 0, median_hours_off: 11.7 },
 };
 
 /** Scenario 1's forecast: made 14 Oct 20:00 after the 17:20 pass, inside by about 15 Oct 05:20. */
@@ -305,34 +307,54 @@ describe("ForecastPanel", () => {
     const cells = (table: HTMLElement) =>
       within(table).getAllByRole("row").map((r) => Array.from(r.children).map((c) => c.textContent));
 
-    it("shows how rule version 1 did on 2023, next to the downwind guess", () => {
+    it("shows how rule version 1 did on 2023, next to three guesses", () => {
       show({ backtest: REPLAY });
 
       const block = screen.getByRole("heading", { name: "How this rule did on 2023, replayed" }).parentElement!;
       expect(cells(within(block).getByRole("table", { name: "How this rule did on 2023, replayed" }))).toEqual([
-        ["In 2023", "Rule version 1", "Downwind guess"],
-        ["Arrivals warned of", "123 of 135", "19 of 135"],
-        ["Warnings that didn't come in", "3,751 of 3,874", "256 of 275"],
-        ["Median hours off", "11.7 h", "9.0 h"],
+        ["In 2023", "Arrivals warned of, out of 135", "Warnings that didn't come in"],
+        ["Rule version 1", "123", "3,751 of 3,874"],
+        ["Near-edge step", "117", "3,193 of 3,310"],
+        ["Downwind guess", "19", "256 of 275"],
+        ["Next-pass guess", "135", "19,860 of 19,995"],
       ]);
+      expect(
+        within(block).getByText(
+          "Rule version 1's advance step warned of 6 arrivals the near-edge step missed, and added 558 warnings that didn't come in.",
+        ),
+      ).toBeInTheDocument();
       expect(within(block).getByText("A replay of 2023, run in 2026. Nothing in it was sealed in 2023.")).toBeInTheDocument();
     });
 
-    it("gives every count, the method and both links under How this is worked out", () => {
+    it("says one arrival and one warning when the advance step adds one of each", () => {
+      show({ backtest: { ...REPLAY, near_edge: { ...REPLAY.near_edge, warned: 122, did_not_come_in: 3750 } } });
+
+      expect(
+        screen.getByText(
+          "Rule version 1's advance step warned of 1 arrival the near-edge step missed, and added 1 warning that didn't come in.",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("gives every other count, each guess and both links under How this is worked out", () => {
       show({ backtest: REPLAY });
 
-      expect(cells(screen.getByRole("table", { name: "Every count of the 2023 replay" }))).toEqual([
-        ["Forecasts", "Rule version 1", "Downwind guess"],
-        ["Warnings that came in", "123", "19"],
-        ["Warnings that didn't come in", "3,751", "256"],
-        ["Arrivals missed", "12", "116"],
-        ["Said no, and stayed out", "16,109", "19,604"],
-        ["Not checked: joined another fire first", "246, the same for both"],
-        ["Not checked: seen inside before it was made", "21, the same for both"],
-        ["Not counted: its 48 hours end after 2023", "15, the same for both"],
-        ["Forecasts made", "20,277, the same for both"],
+      expect(cells(screen.getByRole("table", { name: "The rest of the 2023 replay" }))).toEqual([
+        ["Forecasts", "Arrivals missed", "Said no, stayed out", "Median hours off"],
+        ["Rule version 1", "12", "16,109", "11.7 h"],
+        ["Near-edge step", "18", "16,667", "11.7 h"],
+        ["Downwind guess", "116", "19,604", "9.0 h"],
+        ["Next-pass guess", "0", "0", "11.7 h"],
       ]);
+      expect(cells(screen.getByRole("table", { name: "The same for all four" }))).toEqual([
+        ["Not checked: joined another fire first", "246"],
+        ["Not checked: seen inside before it was made", "21"],
+        ["Not counted: its 48 hours end after 2023", "15"],
+        ["Forecasts made", "20,277"],
+      ]);
+      expect(screen.getByText(/^The near-edge step is this rule's step 5 alone: a fire at most 375 m from the edge/)).toBeInTheDocument();
       expect(screen.getByText(/moves the fire with ERA5's hourly wind, from Open-Meteo, at the rate it advanced/)).toBeInTheDocument();
+      expect(screen.getByText(/in 2023 the downwind guess said yes only where this rule did\. So neither warned of an arrival/)).toBeInTheDocument();
       expect(
         screen.getByText(
           /^Each forecast is sealed in the run that makes it, or a later run if that one runs out of time\. Every one stays listed here, right or wrong\./,
@@ -351,8 +373,8 @@ describe("ForecastPanel", () => {
     it("reads None warned of for a method that warned of none", () => {
       show({ backtest: { ...REPLAY, downwind: { ...REPLAY.downwind, warned: 0, median_hours_off: null } } });
 
-      const table = screen.getByRole("table", { name: "How this rule did on 2023, replayed" });
-      expect(cells(table)[3]).toEqual(["Median hours off", "11.7 h", "None warned of"]);
+      const table = screen.getByRole("table", { name: "The rest of the 2023 replay" });
+      expect(cells(table)[3]).toEqual(["Downwind guess", "116", "19,604", "None warned of"]);
     });
 
     it("shows no replay for a forecast by a rule version with none", () => {
