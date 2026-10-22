@@ -1,6 +1,6 @@
 # ClimateChain hackathon entry
 
-**Status:** Active · **Updated:** 2026-10-22 by /ship palette
+**Status:** Active · **Updated:** 2026-10-22 by /ship honest-claims
 
 Fire Watch, an entry for the IEEE ClimateChain Global Hackathon (deadline 2026-10-25). It shows
 satellite fire hotspots with on-chain proof that each record hasn't changed since it was written,
@@ -40,6 +40,7 @@ for watchdog investigators who file grievances over fires on plantation land.
 | newcomer-walkthrough | Shipped | The landing walks a judge through one real fire, from the company's claim to a seal check in their own browser, then says how to use the tool. | docs/specs/newcomer-walkthrough.md |
 | replay-pace      | Shipped | Play in a fire's replay holds each satellite pass for 1.5 s, not 0.6 s, so the spread can be followed pass by pass. | docs/specs/replay-pace.md         |
 | palette          | Shipped | Every screen takes colour from a deeper Peatland palette: the maps, the page ground and panels, and two bands on the landing. | docs/specs/palette.md             |
+| honest-claims    | Shipped | Each detection's seal time comes from the chain, the page reads the chain even when the API says a record is unsealed, and six lines of copy claim no more than the chain or the data show. | docs/specs/honest-claims.md       |
 
 ## More
 
