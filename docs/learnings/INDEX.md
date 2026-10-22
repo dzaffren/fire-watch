@@ -36,3 +36,5 @@
 - Unmount before unstubbing a global, and wait for the effect, not the DOM — [unmount-before-unstub](unmount-before-unstub.md)
 - Give the db's Docker bridge back `172.19.0.1/16` when Postgres resets connections — [docker-bridge-loses-address](docker-bridge-loses-address.md)
 - Check colours in tests without hex literals; the drift check reads them as UI — [no-hex-in-tests](no-hex-in-tests.md)
+- Import only self-contained `src` files into an e2e spec; `format.ts` fails `tsc -b` — [e2e-no-app-imports](e2e-no-app-imports.md)
+- Clear a module mock before counting its calls; vitest here keeps calls across tests — [vitest-keeps-mock-calls](vitest-keeps-mock-calls.md)
