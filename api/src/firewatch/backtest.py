@@ -42,6 +42,9 @@ The near-edge step, rule version 1 step 5 alone (D99):
    the edge, 0 when that detection is inside.
 2. At 375 m or less, the fire is forecast to be seen inside 12 hours after the newest pass's first
    detection. Otherwise the step says no.
+
+The next-pass guess (D99): every forecast moment says the fire is seen inside 12 hours after the
+newest pass's first detection, rule version 1 step 5's lead.
 """
 
 import argparse
@@ -82,8 +85,8 @@ WIND_TRIES = 3
 TIME = "%Y-%m-%dT%H:%MZ"
 COLUMNS = [
     "concession_id", "fire_first_seen_at", "fire_latitude", "fire_longitude", "after_pass_at",
-    "made_at", "rule_inside_by", "downwind_inside_by", "near_edge_inside_by", "outcome",
-    "seen_inside_at",
+    "made_at", "rule_inside_by", "downwind_inside_by", "near_edge_inside_by",
+    "next_pass_inside_by", "outcome", "seen_inside_at",
 ]
 WIND_COLUMNS = ["latitude", "longitude", "hour", "speed_ms", "from_deg"]
 
@@ -363,6 +366,11 @@ def near_edge(made: list[Replayed]) -> list[datetime | None]:
     ]
 
 
+def next_pass(made: list[Replayed]) -> list[datetime]:
+    """The next-pass guess's inside-by time for each forecast."""
+    return [r.forecast.after_pass_at + timedelta(hours=forecast.STEP_H) for r in made]
+
+
 def outcome_of(r: Replayed) -> str:
     if r.forecast.until_at + forecast.SETTLE > YEAR_END:
         return "ends_after_2023"
@@ -461,7 +469,11 @@ def main(argv: list[str] | None = None, client: httpx.Client | None = None) -> i
                 file=sys.stderr,
             )
             return 1
-        guesses = {"downwind": downwind(conn, made, wind), "near_edge": near_edge(made)}
+        guesses = {
+            "downwind": downwind(conn, made, wind),
+            "near_edge": near_edge(made),
+            "next_pass": next_pass(made),
+        }
 
     result = totals(made, guesses)
     args.out.mkdir(parents=True, exist_ok=True)
