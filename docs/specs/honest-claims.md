@@ -1,6 +1,6 @@
 # honest-claims
 
-**Version:** v1 · **Status:** Refined · **Type:** Enhancement · **Project type:** Web UI
+**Version:** v1 · **Status:** Built · **Type:** Enhancement · **Project type:** Web UI
 
 **Shape doc:** docs/specs/judge-review/shape.md
 **Depends on:** None
@@ -83,7 +83,7 @@ Scenario: A detection's seal time comes from the chain
   And Base Sepolia sealed it at 16 Oct 2026 02:37:38 UTC
   And the API sends 17 Oct 2026 00:00 UTC as its sealed_at
   When the reader opens it in the tool, or in the fire's complaint pack
-  Then "Sealed" shows 16 Oct 2026 02:37 UTC and its gap after detection
+  Then "Sealed" shows 2026-10-16 02:37 UTC and its gap after detection
 
 Scenario: The page asks the chain even when the API says a detection is unsealed
   Given the API sends a detection of 0332's fire with no tx_hash
@@ -317,6 +317,8 @@ Recorded as D97, D98.
 | O2 | Does the pack say now that Fire Watch's server chose its records, or wait for complete-packs? | question | spec p1 | user | Resolved | Say it now, with FIRMS's public archive as the way to find a missing record (D24). complete-packs changes the line again. 2026-10-22 |
 | O3 | When the chain can't be reached, what does the "Sealed" row show? | question | spec p1 | user | Resolved | Nothing: the row is left out until the chain answers. 2026-10-22 |
 | O4 | What does the concession list say in place of "Recording started"? | question | spec p1 | user | Resolved | "Detections from 2026-10-12." No new data from the API. 2026-10-22 |
+| O5 | Scenario 1 said `Then "Sealed" shows 16 Oct 2026 02:37 UTC and its gap after detection`. The "Sealed" row writes every time as `2026-10-16 02:37 UTC`, and the Interface changes no format. | flag | build | user | Decided alone | Chose: keep the row's format, and write scenario 1 as `2026-10-16 02:37 UTC`. Other: write the seal time as "16 Oct 2026 02:37 UTC", unlike "Detected" beside it. Undo: put back the old scenario 1, and change `detected(sealedAt)` in `web/src/RecordPanel.tsx`. 2026-10-22 |
+| O6 | The plan didn't name `web/src/preview/fixture.ts`. The four preview fakes each need a record's seal and time. | flag | build | user | Decided alone | Chose: add `chainSeal` to `fixture.ts`, which returns the fingerprint and `sealed_at` as the fake chain's time, or zeros for an unsealed record. All four previews use it. Other: the same three lines in each preview. Undo: inline `chainSeal` in each preview; part of commit `ac51477`. 2026-10-22 |
 
 _Never delete this section or its rows. See references/ledger.md._
 
