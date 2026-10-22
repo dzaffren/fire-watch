@@ -5,7 +5,7 @@ import type { Seal } from "../chain";
 import { forecastFingerprint } from "../fingerprint";
 import { FireRecordPage, type FireRecordSource, type View } from "../FireRecordPage";
 import { passTimes } from "../FireView";
-import { chainSeal, enrich, fingerprintOf, FIRES, fireHotspots, fixture, iso, never, param, syncPreview, THEMES, wait, WAIT_MS, type Theme } from "./fixture";
+import { chainSeal, enrich, fingerprintOf, FIRES, fireHotspots, fixture, inRun, iso, never, param, syncPreview, THEMES, wait, WAIT_MS, type Theme } from "./fixture";
 import "./preview.css";
 
 // Forecasts made up over the fire-origin fixture's real fires, as if the recorder had forecast
@@ -21,6 +21,8 @@ const WAITING_AS_OF = at("2026-10-14T20:30:00");
 // The other states, while the waiting fire's forecast made 15 Oct 21:00 has its 48 hours to run.
 export const AS_OF = at("2026-10-16T00:00:00");
 const SEAL_AFTER_S = 120;
+// Run 412, sealed 14 Oct 20:03 UTC by the chain's clock.
+const RUN_412_AT = at("2026-10-14T20:03:00");
 const HORIZON_S = 48 * 3600;
 
 const FIRE = {
@@ -43,6 +45,8 @@ const STATES = {
   hit: "2. Came true, and one before said no (0332)",
   stayedOut: "3. Said inside, stayed out; said no, stayed out (0540)",
   mismatch: "4. A forecast changed after its seal (0332)",
+  runs: "Two forecasts in one run's root (0332)",
+  runMismatch: "4. A forecast changed after its run was sealed (0332)",
   joined: "5. Joined another fire first (0332)",
   pending: "Newest not on chain yet",
   checking: "Checking the chain",
@@ -165,14 +169,24 @@ function forecastsFor(fire: FireRef, waiting: boolean): Forecast[] {
 export function makeSource(state: State): FireRecordSource {
   const waiting = state === "waiting" || state === "pending";
   const sealed = new Map<Hex, Hex>();
-  const stored = (fire: FireRef) =>
-    forecastsFor(fire, waiting).map((f, i) => {
-      sealed.set(f.record_id, forecastFingerprint(f));
+  const roots = new Map<number, { root: Hex; sealedAt: number }>();
+  const stored = (fire: FireRef) => {
+    let forecasts = forecastsFor(fire, waiting);
+    forecasts.forEach((f) => sealed.set(f.record_id, forecastFingerprint(f)));
+    // After the switch: the 09:00 run failed to seal, so the 20:00 run sealed both its forecast and
+    // the 09:00 one in a two-leaf root.
+    if ((state === "runs" || state === "runMismatch") && fire.key === FIRE.outside.key) {
+      const run = inRun(forecasts.slice(0, 2), 412, RUN_412_AT, forecastFingerprint);
+      roots.set(412, { root: run.root, sealedAt: RUN_412_AT });
+      forecasts = [...run.records, ...forecasts.slice(2)];
+    }
+    return forecasts.map((f, i) => {
       // Scenario 4: the stored forecast time moved from 05:20 to 18:40 after its seal.
-      if (state === "mismatch" && i === 0) return { ...f, inside_by_unix: at("2026-10-15T18:40:00") };
+      if ((state === "mismatch" || state === "runMismatch") && i === 0) return { ...f, inside_by_unix: at("2026-10-15T18:40:00") };
       if (state === "pending" && i === 0) return { ...f, tx_hash: null, sealed_at: null };
       return f;
     });
+  };
 
   return {
     async concessions() {
@@ -219,11 +233,15 @@ export function makeSource(state: State): FireRecordSource {
       if (state === "checking") return never();
       await wait(WAIT_MS * 2);
       if (state === "chainError") throw new Error("preview: chain unreachable");
-      return forecasts.map((f): Seal =>
-        f.tx_hash
+      return forecasts.map((f): Seal => {
+        if (f.run != null) {
+          const { root, sealedAt } = roots.get(f.run) ?? { root: zeroHash, sealedAt: 0 };
+          return { contract: "FireRuns", run: f.run, root, sealedAt };
+        }
+        return f.tx_hash
           ? { contract: "FireRecords", fingerprint: sealed.get(f.record_id) ?? zeroHash, sealedAt: Date.parse(f.sealed_at!) / 1000 }
-          : { contract: "FireRecords", fingerprint: zeroHash, sealedAt: 0 },
-      );
+          : { contract: "FireRecords", fingerprint: zeroHash, sealedAt: 0 };
+      });
     },
     forecastFingerprint,
   };

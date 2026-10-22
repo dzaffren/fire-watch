@@ -146,11 +146,14 @@ function outcomeLine(f: Forecast, check: Check, now: number, short = false): str
 }
 
 /** What the chain says about this forecast, in one sentence. */
-function sealLine(f: Forecast, { check, sealedAt }: ForecastCheck): string {
+function sealLine(f: Forecast, { check, sealedAt, sealedIn }: ForecastCheck): string {
   if (check.state === "pending") {
     return "Not on the chain yet. The recorder seals each forecast in the run that makes it, or a later one.";
   }
   if (check.state === "checking") return "Reading its seal from Base Sepolia.";
+  if (check.state === "mismatch" && sealedIn?.contract === "FireRuns") {
+    return "This forecast has changed since its run was sealed. The chain still holds the run's original root.";
+  }
   if (check.state === "mismatch") {
     return "This forecast has changed since it was sealed. The chain still holds the original fingerprint.";
   }
@@ -231,7 +234,7 @@ export function ForecastPanel({ fire, checks, fingerprints, picked, now, backtes
               <dd className="fw-mono">{location(f.crossing.lat_e5, f.crossing.lon_e5)}</dd>
             </>
           )}
-          <SealRows fingerprint={fp} check={state.check} sealedIn={state.sealedIn} />
+          <SealRows record={f} fingerprint={fp} check={state.check} sealedIn={state.sealedIn} />
           <dt>Transaction</dt>
           <dd>
             {f.tx_hash ? (

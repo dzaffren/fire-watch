@@ -15,10 +15,12 @@ const OWN = { contract: "FireRecords" } as const;
 // Hotspots A and B as the only two leaves of run 412, sealed 2026-10-14 08:03:12 UTC by the chain's clock.
 const RUN = { contract: "FireRuns", run: 412 } as const;
 const RUN_SEALED_AT = 1791964992;
-const RUN_TX = "0x3b1f0c27a6e8d4f95b2c7e1a0d9f8e6c5b4a39281706f5e4d3c2b1a098f7e6d5";
-const A_LEAF = "0x80f45cb1a19941b1b7d3c74f282e51ed36df829aea2d7708adf14a9571a9b11c";
-const B_LEAF = "0x00be3acc420ecd8f82f3f55d3369ea4ae3fc13dfd7e3e3b95714238f401503a2";
-const RUN_ROOT = "0x5e11c4070cf64b7a13a2533fbf4ab6c17cfa8065e0446c079070a2cbd0a5a71d";
+const RUN_TX: Hex = "0x3b1f0c27a6e8d4f95b2c7e1a0d9f8e6c5b4a39281706f5e4d3c2b1a098f7e6d5";
+const A_LEAF: Hex = "0x80f45cb1a19941b1b7d3c74f282e51ed36df829aea2d7708adf14a9571a9b11c";
+const B_LEAF: Hex = "0x00be3acc420ecd8f82f3f55d3369ea4ae3fc13dfd7e3e3b95714238f401503a2";
+const RUN_ROOT: Hex = "0x5e11c4070cf64b7a13a2533fbf4ab6c17cfa8065e0446c079070a2cbd0a5a71d";
+// The root that hotspot B, edited, and its proof lead to.
+const EDITED_ROOT: Hex = "0xef7c72bcf520d37493833919fa0d11b373f9e9f4436af96107de39925402d7fb";
 
 const hotspotA: HotspotRecord = {
   record_id: `0x${"ab".repeat(32)}`,
@@ -206,6 +208,44 @@ describe("RecordPanel, a record in a run's root", () => {
     expect(within(raw).getByText(new RegExp(`"${B_LEAF}"`))).toBeInTheDocument();
     expect(raw.querySelector("p")).toHaveTextContent(
       `Fingerprint of this record: ${A_FP.slice(2)}. Run 412's root, worked out from it and the 1 proof hash above: ${RUN_ROOT.slice(2)}`,
+    );
+  });
+
+  it("shows the fingerprint now and both roots when a record in run 412 changed", () => {
+    const edited = { ...hotspotB, tx_hash: RUN_TX, run: 412, proof: [A_LEAF] };
+    render(
+      <RecordPanel
+        record={edited}
+        fingerprint={B_EDITED_FP}
+        check={{ state: "mismatch", sealed: RUN_ROOT }}
+        sealedAt={RUN_SEALED_AT}
+        sealedIn={RUN}
+        onCheckAgain={() => {}}
+      />,
+    );
+
+    expect(screen.getByText("Does not match the chain")).toBeInTheDocument();
+    expect(
+      screen.getByText("The stored record has changed since its run was sealed. The chain still holds the run's original root."),
+    ).toBeInTheDocument();
+    expect(row("Fingerprint now")).toHaveTextContent("aea5b4e67c…bcfe5c");
+    expect(row("Run root on chain")).toHaveTextContent("5e11c4070c…a5a71d");
+    expect(row("Run root now")).toHaveTextContent("ef7c72bcf5…02d7fb");
+    expect(screen.queryByText("Fingerprint", { selector: "dt" })).toBeNull();
+    expect(screen.queryByText("Sealed fingerprint", { selector: "dt" })).toBeNull();
+    expect(row("Sealed")).toHaveTextContent("2026-10-14 08:03 UTC1 h 45 min after detection");
+    const labels = [...document.querySelectorAll("dt")].map((dt) => dt.textContent);
+    expect(labels.slice(labels.indexOf("Fingerprint now"))).toEqual([
+      "Fingerprint now",
+      "Run root on chain",
+      "Run root now",
+      "Sealed in",
+      "Transaction",
+    ]);
+
+    const raw = screen.getByText("Show the raw record").closest("details") as HTMLElement;
+    expect(raw.querySelector("p")).toHaveTextContent(
+      `Fingerprint of this record: ${B_EDITED_FP.slice(2)}. Run 412's root, worked out from it and the 1 proof hash above: ${EDITED_ROOT.slice(2)}`,
     );
   });
 
