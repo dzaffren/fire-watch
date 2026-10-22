@@ -1,6 +1,7 @@
 import { keccak256, toHex, zeroHash, type Hex } from "viem";
 import type { ConcessionSummary, FireSummary, HotspotRecord, Ring } from "../api";
 import type { Seal } from "../chain";
+import { leaf, rootFrom } from "../merkle";
 import raw from "./fire-origin.fixture.json";
 
 // Real VIIRS NOAA-20 detections from 2026-10-12 to 15 near four concessions, grouped into fires by
@@ -37,6 +38,8 @@ export const FIRES = {
   still: { id: "ID-WOOD-CONCESSION-0540", key: "0xceb010accad1087b319b17528fcdf3cfd6d4285a099a88671ae1e9ea9d86fe18" },
   largest: { id: "ID-WOOD-CONCESSION-0332", key: "0x13b417c6f54dd95c7c418b5df3f34963cf00f46555d5cae74693cdffbb1d1cf7" },
 } as const satisfies Record<string, { id: string; key: Hex }>;
+// FireRuns, at the address the e2e's anvil gives it; it is not on Base Sepolia yet.
+export const FIRE_RUNS: Hex = "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512";
 const SEAL_AFTER_S = 2 * 3600 + 47 * 60;
 export const WAIT_MS = 350;
 
@@ -52,6 +55,35 @@ export const chainSeal = (sealed: HotspotRecord): Seal =>
   sealed.sealed_at
     ? { contract: "FireRecords", fingerprint: fingerprintOf(sealed), sealedAt: Date.parse(sealed.sealed_at) / 1000 }
     : { contract: "FireRecords", fingerprint: zeroHash, sealedAt: 0 };
+
+interface Sealable {
+  record_id: Hex;
+  tx_hash: Hex | null;
+  sealed_at: string | null;
+  run?: number | null;
+  proof?: Hex[] | null;
+}
+
+/** Records sealed under one run's root, as the recorder stores them: the run, its one transaction,
+ *  its block time and each record's proof. The tree is built as merkle.py builds it (D108). */
+export function inRun<T extends Sealable>(records: T[], run: number, sealedAt: number, fingerprint: (r: T) => Hex) {
+  const leaves = records.map((r) => leaf(r.record_id, fingerprint(r)));
+  let level = [...leaves].sort();
+  const at = new Map(level.map((l, i) => [l, i]));
+  const proofs = new Map(level.map((l) => [l, [] as Hex[]]));
+  while (level.length > 1) {
+    for (const [l, i] of at) {
+      if ((i ^ 1) < level.length) proofs.get(l)!.push(level[i ^ 1]);
+      at.set(l, i >> 1);
+    }
+    level = level.flatMap((n, i) => (i % 2 ? [] : [i + 1 < level.length ? rootFrom(n, [level[i + 1]]) : n]));
+  }
+  const tx_hash = keccak256(toHex(`run:${run}`));
+  return {
+    root: level[0],
+    records: records.map((r, i) => ({ ...r, run, proof: proofs.get(leaves[i])!, tx_hash, sealed_at: iso(sealedAt) })),
+  };
+}
 
 export function enrich(h: FixtureHotspot, unsealed: boolean): HotspotRecord {
   const record_id = keccak256(toHex(`${h.lat_e5},${h.lon_e5},${h.acquired_unix}`));
