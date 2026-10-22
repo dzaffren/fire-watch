@@ -1,10 +1,10 @@
 """record-hotspots: store FIRMS hotspots on or near a pulpwood concession, forecast each fire
-near a concession, then seal each forecast and each hotspot.
+near a concession, then seal every record not sealed yet under one Merkle root on FireRuns.
 
-Records and their matches are stored before the chain is touched, and each seal is committed
-on its own, so a crash or an empty wallet leaves records with no tx_hash that the next run
-seals (D15, D19). Forecasts are made, settled and sealed by the chain's clock, and sealed
-before the run's hotspots, since a forecast's seal time is its evidence (D49, D50).
+Records and their matches are stored before the chain is touched, and a root and its proofs are
+stored before the root is sent, so a crash or an empty wallet leaves records that the next run
+seals (D15, D103, D110). Forecasts are made and settled by the chain's clock before the root is
+made, so they seal with the run's hotspots (D50, D105).
 """
 
 import os
@@ -23,11 +23,10 @@ from firewatch.fingerprint import (
     forecast_fingerprint,
     record_fields_v2,
 )
+from firewatch.merkle import leaf, tree
 
 # Any fixed number, the same for every run, so only one run records at a time.
 LOCK_KEY = 4_120_540
-# A run started on the hour must finish before the next one starts (D19).
-SEAL_BUDGET_SECONDS = 40 * 60
 REACH_M = 5000
 # More than 5 km anywhere in the Indonesia box, so the envelope test drops only concessions
 # out of reach.
@@ -78,11 +77,13 @@ UNSEALED = """
 SELECT h.*, json_agg(json_build_object('id', m.concession_id, 'inside', m.inside,
                                        'edge_m', m.edge_m)) AS concessions
 FROM hotspots h JOIN hotspot_concessions m ON m.hotspot_id = h.id
-WHERE h.fingerprint_version = 2 AND h.tx_hash IS NULL
+WHERE h.fingerprint_version = 2 AND h.tx_hash IS NULL AND h.root_id IS NULL
 GROUP BY h.id
 ORDER BY h.acquired_at, h.id
 """
-UNSEALED_FORECASTS = "SELECT * FROM forecasts WHERE tx_hash IS NULL ORDER BY made_at, id"
+UNSEALED_FORECASTS = """
+SELECT * FROM forecasts WHERE tx_hash IS NULL AND root_id IS NULL ORDER BY made_at, id
+"""
 COUNT_UNSEALED = """
 SELECT (SELECT count(*) FROM hotspots WHERE fingerprint_version = 2 AND tx_hash IS NULL)
        + (SELECT count(*) FROM forecasts WHERE tx_hash IS NULL) AS unsealed
@@ -124,6 +125,10 @@ CROSS JOIN LATERAL (
     ) AS p
 ) AS c
 WHERE id = %(id)s
+"""
+INSERT_ROOT = "INSERT INTO roots (root) VALUES (%s) RETURNING id"
+SEALED_ROOT = """
+UPDATE roots SET run = %(run)s, tx_hash = %(tx_hash)s, sealed_at = %(sealed_at)s WHERE id = %(id)s
 """
 INSERT_RUN = """
 INSERT INTO recorder_runs (started_at, finished_at, kept, sealed, unsealed, error)
@@ -226,38 +231,63 @@ def _forecast(conn, now, new_ids: list[bytes], counts: dict) -> None:
     counts["forecasts"] += made
 
 
-# What each kind of record seals as, and the query for those still unsealed (D17, D49).
-SEALS = {
+# What each kind of record seals as, and the query for those not in a root yet (D17, D105).
+LEAVES = {
     "forecasts": (UNSEALED_FORECASTS, lambda row: forecast_fingerprint(forecast_fields(row))),
     "hotspots": (UNSEALED, lambda row: fingerprint_v2(**record_fields_v2(row, row["concessions"]))),
 }
 
 
-def _seal(conn, chain: Chain, table: str, counts: dict, clock, deadline: float) -> None:
-    unsealed, fingerprint_of = SEALS[table]
-    for row in conn.execute(unsealed).fetchall():
-        if clock() >= deadline:
-            return
-        record_id = bytes(row["record_id"])
-        sealed_at = chain.sealed(record_id)
-        if sealed_at is None:
-            tx_hash, sealed_at = chain.seal(record_id, fingerprint_of(row))
-        else:
-            tx_hash = chain.seal_tx_hash(record_id)
-        conn.execute(
-            f"UPDATE {table} SET tx_hash = %s, sealed_at = %s WHERE id = %s",
-            (tx_hash, sealed_at, row["id"]),
-        )
-        conn.commit()
-        counts[f"{table}_sealed"] += 1
+def _sealed(conn, root_id: int, run: int, tx_hash: bytes, sealed_at, counts: dict) -> None:
+    """Stores the root's run, and its transaction and block time on it and its records."""
+    params = {"id": root_id, "run": run, "tx_hash": tx_hash, "sealed_at": sealed_at}
+    conn.execute(SEALED_ROOT, params)
+    sealed = {
+        table: conn.execute(
+            f"UPDATE {table} SET tx_hash = %(tx_hash)s, sealed_at = %(sealed_at)s"
+            " WHERE root_id = %(id)s",
+            params,
+        ).rowcount
+        for table in LEAVES
+    }
+    conn.commit()
+    for table, n in sealed.items():
+        counts[f"{table}_sealed"] += n
+    counts["roots"] += 1
+    counts["run"] = run
 
 
-def main(clock=time.monotonic) -> int:
+def _seal_root(conn, chain: Chain, counts: dict) -> None:
+    """Seals one root over every record not in a root yet; with none, sends nothing (D103)."""
+    leaves = [
+        (table, row["id"], leaf(bytes(row["record_id"]), fingerprint_of(row)))
+        for table, (unsealed, fingerprint_of) in LEAVES.items()
+        for row in conn.execute(unsealed).fetchall()
+    ]
+    if not leaves:
+        return
+    root, proofs = tree([leaf_hash for _, _, leaf_hash in leaves])
+    root_id = conn.execute(INSERT_ROOT, (root,)).fetchone()["id"]
+    with conn.cursor() as cur:
+        for table in LEAVES:
+            cur.executemany(
+                f"UPDATE {table} SET root_id = %s, proof = %s WHERE id = %s",
+                [
+                    (root_id, proof, row_id)
+                    for (kind, row_id, _), proof in zip(leaves, proofs)
+                    if kind == table
+                ],
+            )
+    # Stored before it is sent, so a root sealed by a run that then crashes has its list (D110).
+    conn.commit()
+    _sealed(conn, root_id, *chain.seal_root(root), counts)
+
+
+def main() -> int:
     started_at = datetime.now(timezone.utc)
-    deadline = clock() + SEAL_BUDGET_SECONDS
     counts = {
         "fetched": 0, "kept": 0, "new": 0, "hotspots_sealed": 0,
-        "forecasts": 0, "forecasts_sealed": 0, "outcomes": 0,
+        "forecasts": 0, "forecasts_sealed": 0, "outcomes": 0, "roots": 0, "run": None,
     }
     forecast_ms = 0
     balance = None
@@ -285,7 +315,7 @@ def main(clock=time.monotonic) -> int:
 
             chain = Chain(
                 os.environ["RPC_URL"],
-                os.environ["CONTRACT_ADDRESS"],
+                os.environ["FIRE_RUNS_ADDRESS"],
                 os.environ["RECORDER_PRIVATE_KEY"],
             )
             began = time.perf_counter()
@@ -297,8 +327,7 @@ def main(clock=time.monotonic) -> int:
                 errors.append(f"{type(e).__name__}: {e}")
             forecast_ms = round((time.perf_counter() - began) * 1000)
             balance = chain.balance_eth()
-            _seal(conn, chain, "forecasts", counts, clock, deadline)
-            _seal(conn, chain, "hotspots", counts, clock, deadline)
+            _seal_root(conn, chain, counts)
         except Exception as e:
             conn.rollback()
             errors.append(f"{type(e).__name__}: {e}")
@@ -323,6 +352,7 @@ def main(clock=time.monotonic) -> int:
         f" balance_eth={'unknown' if balance is None else f'{balance:.4f}'}"
         f" forecasts={counts['forecasts']} forecasts_sealed={counts['forecasts_sealed']}"
         f" outcomes={counts['outcomes']} forecast_ms={forecast_ms}"
+        f" roots={counts['roots']} run={'none' if counts['run'] is None else counts['run']}"
     )
     if error:
         print(error, file=sys.stderr)

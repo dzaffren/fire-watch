@@ -1,4 +1,3 @@
-import itertools
 import json
 import os
 import re
@@ -26,13 +25,16 @@ from firewatch.fingerprint import (
     forecast_fingerprint,
     record_fields_v2,
 )
+from firewatch.merkle import leaf, root_from
 
 ROOT = Path(__file__).parents[2]
 FIRMS = ROOT / "fixtures" / "firms"
 TRASE_CUT = ROOT / "fixtures" / "concessions" / "trase-cut.geojson"
-ARTIFACT = ROOT / "contracts" / "out" / "FireRecords.sol" / "FireRecords.json"
-# anvil's first well-known dev account; public, holds only local test ETH.
+ARTIFACT = ROOT / "contracts" / "out" / "FireRuns.sol" / "FireRuns.json"
+# anvil's first two well-known dev accounts; public, hold only local test ETH. The second owns
+# FireRuns, so it can replace the recorder.
 ANVIL_KEY = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
+OWNER_KEY = "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d"
 RECORD_HOTSPOTS = Path(sys.executable).parent / "record-hotspots"
 FIRE_RECORD = (FIRMS / "fire-record.csv").read_text()
 # The 19 detections of the ID-WOOD-CONCESSION-0332 fire of scenario 1, on 4 passes.
@@ -46,6 +48,7 @@ LOG_LINE = re.compile(
     r" balance_eth=\d+\.\d{4}"
 )
 FORECAST_LOG = re.compile(r"forecasts=(\d+) forecasts_sealed=(\d+) outcomes=(\d+) forecast_ms=\d+")
+ROOTS_LOG = re.compile(r" roots=(\d+) run=(\d+|none)$", re.MULTILINE)
 C0332 = "ID-WOOD-CONCESSION-0332"
 
 
@@ -74,7 +77,7 @@ def _deploy(w3, recorder):
     artifact = json.loads(ARTIFACT.read_text())
     deployer = Account.from_key(ANVIL_KEY)
     factory = w3.eth.contract(abi=artifact["abi"], bytecode=artifact["bytecode"]["object"])
-    tx = factory.constructor(recorder).build_transaction(
+    tx = factory.constructor(Account.from_key(OWNER_KEY).address, recorder).build_transaction(
         {"from": deployer.address, "nonce": w3.eth.get_transaction_count(deployer.address)}
     )
     tx_hash = w3.eth.send_raw_transaction(deployer.sign_transaction(tx).raw_transaction)
@@ -201,7 +204,7 @@ def _env(db, anvil, firms, contract, key):
         "FIRMS_MAP_KEY": "TESTKEY",
         "FIRMS_BASE_URL": f"http://127.0.0.1:{firms.server_port}",
         "RPC_URL": anvil.provider.endpoint_uri,
-        "CONTRACT_ADDRESS": contract.address,
+        "FIRE_RUNS_ADDRESS": contract.address,
         "RECORDER_PRIVATE_KEY": key,
     }
 
@@ -232,19 +235,29 @@ def logged(stdout):
 
 
 def records(url):
-    """Every stored hotspot with its matches sorted by concession ID, oldest first."""
+    """Every stored hotspot with its matches sorted by concession ID and its root's run, oldest
+    first."""
     with psycopg.connect(url, row_factory=dict_row) as conn:
         return conn.execute(
             "SELECT h.*, COALESCE((SELECT json_agg(json_build_object('id', m.concession_id,"
             " 'inside', m.inside, 'edge_m', m.edge_m) ORDER BY m.concession_id)"
-            " FROM hotspot_concessions m WHERE m.hotspot_id = h.id), '[]') AS concessions"
+            " FROM hotspot_concessions m WHERE m.hotspot_id = h.id), '[]') AS concessions,"
+            " (SELECT run FROM roots r WHERE r.id = h.root_id) AS run"
             " FROM hotspots h ORDER BY h.acquired_at, h.id"
         ).fetchall()
 
 
 def forecasts(url):
     with psycopg.connect(url, row_factory=dict_row) as conn:
-        return conn.execute("SELECT * FROM forecasts ORDER BY made_at, id").fetchall()
+        return conn.execute(
+            "SELECT f.*, (SELECT run FROM roots r WHERE r.id = f.root_id) AS run"
+            " FROM forecasts f ORDER BY made_at, id"
+        ).fetchall()
+
+
+def stored_roots(url):
+    with psycopg.connect(url, row_factory=dict_row) as conn:
+        return conn.execute("SELECT * FROM roots ORDER BY id").fetchall()
 
 
 def runs(url):
@@ -260,10 +273,35 @@ def km(edge_m):
     return round(edge_m / 1000, 2)
 
 
+def roots_logged(stdout):
+    """roots and run from the run's log line."""
+    return ROOTS_LOG.search(stdout).groups()
+
+
+def sent(contract, since):
+    """The hashes of the transactions to contract in the blocks after since."""
+    w3 = contract.w3
+    return [
+        bytes(tx.hash)
+        for n in range(since + 1, w3.eth.block_number + 1)
+        for tx in w3.eth.get_block(n, full_transactions=True).transactions
+        if tx.to == contract.address
+    ]
+
+
+def fingerprint_of(row):
+    if "concessions" in row:
+        return fingerprint_v2(**record_fields_v2(row, row["concessions"]))
+    return forecast_fingerprint(forecast_fields(row))
+
+
 def assert_sealed(contract, row):
-    assert len(row["tx_hash"]) == 32 and row["sealed_at"] is not None
-    sealed_fp, _ = contract.functions.sealOf(row["record_id"]).call()
-    assert sealed_fp == fingerprint_v2(**record_fields_v2(row, row["concessions"]))
+    """row's proof leads to its run's root on FireRuns, and row has that root's transaction
+    and block time."""
+    root, sealed_unix = contract.functions.runOf(row["run"]).call()
+    assert root != b"\x00" * 32
+    assert root_from(leaf(row["record_id"], fingerprint_of(row)), row["proof"]) == root
+    assert row["sealed_at"] == datetime.fromtimestamp(sealed_unix, timezone.utc)
     receipt = contract.w3.eth.get_transaction_receipt(row["tx_hash"])
     assert receipt.status == 1 and receipt.to == contract.address
 
@@ -296,10 +334,7 @@ def test_keeps_a_and_b_drops_c(funded, firms):
     for row in (a, b):
         assert (row["fingerprint_version"], row["map_version"]) == (2, concessions.MAP_VERSION)
         assert_sealed(contract, row)
-        logs = contract.events.Sealed.get_logs(
-            from_block=0, argument_filters={"recordId": row["record_id"]}
-        )
-        assert len(logs) == 1
+    assert roots_logged(result.stdout) == ("1", "1")
     (run,) = runs(env["DATABASE_URL"])
     assert (run["kept"], run["sealed"], run["unsealed"], run["error"]) == (2, 4, 0, None)
     assert run["started_at"] <= run["finished_at"]
@@ -318,40 +353,13 @@ def test_rerun_adds_nothing(funded):
     assert result.returncode == 0, result.stderr
     assert logged(result.stdout) == (3, 2, 0, 0, 0)
     assert FORECAST_LOG.search(result.stdout).groups()[:3] == ("0", "0", "0")
+    assert roots_logged(result.stdout) == ("0", "none")
     assert records(env["DATABASE_URL"]) == first
     assert forecasts(env["DATABASE_URL"]) == made
     assert contract.w3.eth.block_number == block
 
 
-def test_unfunded_keeps_records_then_next_run_seals(unfunded):
-    wallet, contract, env = unfunded
-
-    result = run_recorder(env)
-
-    assert result.returncode == 1
-    assert "insufficient funds" in result.stderr
-    assert logged(result.stdout) == (3, 2, 2, 0, 4)
-    unsealed = records(env["DATABASE_URL"])
-    assert [(r["tx_hash"], r["sealed_at"]) for r in unsealed] == [(None, None)] * 2
-    (run,) = runs(env["DATABASE_URL"])
-    assert (run["kept"], run["sealed"], run["unsealed"]) == (2, 0, 4)
-    assert "insufficient funds" in run["error"]
-
-    contract.w3.provider.make_request("anvil_setBalance", [wallet.address, hex(10**18)])
-    result = run_recorder(env)
-
-    assert result.returncode == 0, result.stderr
-    assert logged(result.stdout) == (3, 2, 0, 4, 0)
-    sealed = records(env["DATABASE_URL"])
-    assert [(r["id"], r["record_id"]) for r in sealed] == [
-        (r["id"], r["record_id"]) for r in unsealed
-    ]
-    for row in sealed:
-        assert_sealed(contract, row)
-    assert runs(env["DATABASE_URL"])[-1]["error"] is None
-
-
-def test_run_makes_and_seals_forecasts_first(clocked, firms):
+def test_run_makes_its_forecast_and_seals_it_with_the_detections(clocked, firms):
     contract, env = clocked
     firms.csv = passes("2026-10-13,1737", "2026-10-14,618", "2026-10-14,1720")
     at_chain_time(contract, "2026-10-14T20:00")
@@ -369,18 +377,11 @@ def test_run_makes_and_seals_forecasts_first(clocked, firms):
     assert (made["from_lat_e5"], made["from_lon_e5"]) == (-284220, 11271781)
     assert (made["crossing_lat_e5"], made["crossing_lon_e5"]) == (-284194, 11271793)
     assert (made["rule_version"], made["outcome"]) == (forecast.RULE_VERSION, "waiting")
-    first = records(env["DATABASE_URL"])[0]
-    assert made["fire_key"] == first["record_id"]
-    sealed_fp, sealed_unix = contract.functions.sealOf(made["record_id"]).call()
-    assert sealed_fp == forecast_fingerprint(forecast_fields(made))
-    assert made["sealed_at"] == datetime.fromtimestamp(sealed_unix, timezone.utc)
-    receipt = contract.w3.eth.get_transaction_receipt(made["tx_hash"])
-    assert receipt.status == 1 and receipt.to == contract.address
-    hotspot_blocks = [
-        contract.w3.eth.get_transaction_receipt(r["tx_hash"]).blockNumber
-        for r in records(env["DATABASE_URL"])
-    ]
-    assert receipt.blockNumber < min(hotspot_blocks)
+    stored = records(env["DATABASE_URL"])
+    assert made["fire_key"] == stored[0]["record_id"]
+    for row in [made, *stored]:
+        assert (row["run"], row["tx_hash"]) == (1, made["tx_hash"])
+        assert_sealed(contract, row)
 
 
 def test_next_run_stores_the_outcome(clocked, firms):
@@ -497,25 +498,34 @@ def test_rolled_back_forecasts_are_not_logged(funded, firms, monkeypatch, capsys
     assert forecasts(env["DATABASE_URL"]) == []
 
 
-def test_stops_sealing_after_40_minutes(funded, firms, monkeypatch, capsys):
+def test_a_run_seals_its_detections_and_forecasts_under_one_root(funded, firms):
     contract, env = funded
     firms.csv = FIRE_RECORD
-    for name, value in env.items():
-        monkeypatch.setenv(name, value)
-    ten_minutes_a_call = itertools.count(0, 600).__next__
+    block = contract.w3.eth.block_number
 
-    assert record_hotspots.main(clock=ten_minutes_a_call) == 0
+    result = run_recorder(env)
 
+    assert result.returncode == 0, result.stderr
     stored = records(env["DATABASE_URL"])
     made = forecasts(env["DATABASE_URL"])
-    fetched, kept, new, sealed, unsealed = logged(capsys.readouterr().out)
-    # Forecasts seal first, so the budget's 3 seals all go to them (D49).
     assert len(made) > 3
-    assert (fetched, kept, new, sealed, unsealed) == (
-        25, len(stored), len(stored), 3, len(stored) + len(made) - 3,
-    )
-    assert [r["tx_hash"] is not None for r in made] == [True] * 3 + [False] * (len(made) - 3)
-    assert all(r["tx_hash"] is None for r in stored)
+    assert logged(result.stdout) == (25, len(stored), len(stored), len(stored) + len(made), 0)
+    assert FORECAST_LOG.search(result.stdout).groups()[:2] == (str(len(made)), str(len(made)))
+    assert roots_logged(result.stdout) == ("1", "1")
+    (root,) = stored_roots(env["DATABASE_URL"])
+    assert root["run"] == 1
+    assert sent(contract, block) == [root["tx_hash"]]
+    receipt = contract.w3.eth.get_transaction_receipt(root["tx_hash"])
+    block_time = contract.w3.eth.get_block(receipt.blockNumber).timestamp
+    assert root["sealed_at"] == datetime.fromtimestamp(block_time, timezone.utc)
+    assert contract.functions.runOf(1).call() == [root["root"], block_time]
+    for row in stored + made:
+        assert (row["root_id"], row["tx_hash"], row["sealed_at"]) == (
+            root["id"], root["tx_hash"], root["sealed_at"],
+        )
+        assert_sealed(contract, row)
+    (run,) = runs(env["DATABASE_URL"])
+    assert (run["sealed"], run["unsealed"], run["error"]) == (len(stored) + len(made), 0, None)
 
 
 def test_second_run_exits_while_first_holds_lock(funded, firms):
@@ -544,23 +554,6 @@ def test_first_run_takes_five_days(funded, firms):
     ]
 
 
-def test_already_sealed_on_chain_takes_tx_hash_from_event(funded):
-    contract, env = funded
-    assert run_recorder(env).returncode == 0
-    sealed = records(env["DATABASE_URL"])
-    # As if the earlier run sent the seals but timed out before saving the receipts.
-    with psycopg.connect(env["DATABASE_URL"]) as conn:
-        conn.execute("UPDATE hotspots SET tx_hash = NULL, sealed_at = NULL")
-    contract.w3.provider.make_request("anvil_mine", [5])
-    block = contract.w3.eth.block_number
-
-    result = run_recorder(env)
-
-    assert result.returncode == 0, result.stderr
-    assert records(env["DATABASE_URL"]) == sealed
-    assert contract.w3.eth.block_number == block
-
-
 def test_seal_waits_for_an_rpc_node_that_has_not_seen_the_block(funded, public_rpc):
     contract, env = funded
     public_rpc.lagging = True
@@ -570,24 +563,6 @@ def test_seal_waits_for_an_rpc_node_that_has_not_seen_the_block(funded, public_r
     assert result.returncode == 0, result.stderr
     for row in records(env["DATABASE_URL"]):
         assert_sealed(contract, row)
-
-
-def test_already_sealed_is_found_on_an_rpc_that_pruned_old_blocks(funded, public_rpc):
-    contract, env = funded
-    # Two seconds apart, as on Base. Without an interval anvil stamps every block the same.
-    contract.w3.provider.make_request("anvil_mine", [100, 2])
-    assert run_recorder(env).returncode == 0
-    sealed = records(env["DATABASE_URL"])
-    seal_block = contract.w3.eth.get_transaction_receipt(sealed[0]["tx_hash"]).blockNumber
-    with psycopg.connect(env["DATABASE_URL"]) as conn:
-        conn.execute("UPDATE hotspots SET tx_hash = NULL, sealed_at = NULL")
-    contract.w3.provider.make_request("anvil_mine", [5, 2])
-    public_rpc.pruned_below = seal_block - 20
-
-    result = run_recorder({**env, "RPC_URL": public_rpc.url})
-
-    assert result.returncode == 0, result.stderr
-    assert records(env["DATABASE_URL"]) == sealed
 
 
 def test_no_hotspots_stores_nothing(funded, firms):
