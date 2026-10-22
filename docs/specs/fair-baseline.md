@@ -1,6 +1,6 @@
 # Fair baseline
 
-**Version:** v1 · **Status:** Draft · **Type:** Enhancement · **Project type:** Web UI
+**Version:** v1 · **Status:** Refined · **Type:** Enhancement · **Project type:** Web UI
 
 **Shape doc:** docs/specs/judge-review/shape.md
 **Depends on:** season-backtest
@@ -232,9 +232,149 @@ counts a reader can check against the CSV, and the sentence names the trade-off 
 Stripe's documentation, the reference for D2, it keeps the same order: the answer in the block, every
 count one click away.
 
-## Decisions to record
+## Technical plan
 
-Drafted at pause 1. `/build` appends them to `DECISIONS.md` and flips D51's Status line.
+### Approach
+
+`backtest-2023` gains the two guesses. Both read only what each replayed forecast already holds:
+its newest pass and the time of that pass. The near-edge step takes rule version 1 step 2's distance
+from `forecast.py`, so the two can't drift apart. The totals file and the CSV gain a key and a
+column for each guess. One full run rewrites both committed files, and the page bundles the totals
+as it does now (D59). The recorder, the API, the schema and the chain don't change.
+
+Relies on: D2, D13, D26, D44, D48, D52, D53, D54, D55, D56, D57, D59, D60, D99, D100, D101, D102.
+
+**The near-edge step**, written out in `backtest.py` as the rule is in `forecast.py`:
+
+1. Take the newest pass's distance as rule version 1 step 2 does: that of its detection nearest the
+   edge, 0 when that detection is inside.
+2. At 375 m or less, the fire is forecast to be seen inside 12 hours after the newest pass's first
+   detection. Otherwise the step says no.
+
+**The next-pass guess:** every forecast moment says the fire is seen inside 12 hours after the
+newest pass's first detection.
+
+Both are counted with `_method()`, as rule version 1 and the downwind guess are.
+
+```mermaid
+flowchart TB
+    subgraph cmd["backtest-2023, run by hand"]
+        B[backtest.py] -- "each fire, each run" --> F["forecast.make, outcome"]
+        B -- "newest pass of each forecast" --> N["forecast.nearest: rule step 2"]
+        B -- "paths downwind" --> P["PostGIS: concession shrunk 375 m"]
+        B -- "four methods' times" --> T["_method, forecasts_csv"]
+    end
+    T -- "2023.json, 2023-forecasts.csv" --> X[("fixtures/backtest")]
+    X -- "2023.json bundled at build" --> W["web: ForecastPanel, four rows"]
+```
+
+The replay makes each forecast with the recorder's code, then times it four ways. Only the
+downwind guess needs the database. The other two need only the forecast's newest pass.
+
+```mermaid
+sequenceDiagram
+    participant O as operator
+    participant C as backtest-2023
+    participant D as compose db
+    participant R as repo
+    participant P as page
+    O->>C: uv run backtest-2023
+    C->>D: load the pinned map, MATCH 250,312 rows
+    D-->>C: 42,682 detections near a concession
+    C->>C: each concession, each hourly run: group, settle, make
+    C->>D: downwind paths against each concession shrunk 375 m
+    C->>C: near-edge step and next-pass guess from each newest pass
+    C->>R: 2023.json with four methods, 2023-forecasts.csv with two more columns
+    O->>R: commit, merge to main
+    R->>P: Deploy builds the page with 2023.json inside
+```
+
+The operator runs the replay once and commits its output. No data crosses a new boundary: the
+inputs are season-backtest's pinned files, and the outputs are public files in the repo.
+
+### Changes
+
+| File | What | Why |
+| ---- | ---- | --- |
+| `api/src/firewatch/forecast.py:109` | Split rule step 2 out of `make()` as `nearest(newest)`, which gives the newest pass's detection nearest the edge and its distance. `make()` calls it. The recorder's forecasts don't change | Scenario 1; the near-edge step is rule step 5 alone (D99) |
+| `api/src/firewatch/backtest.py` | `near_edge(made)` and `next_pass(made)` give each forecast's time, or `None` for no. `totals()` and `forecasts_csv()` take the three guesses as a dict, in the order downwind, near-edge, next-pass. `COLUMNS` gains `near_edge_inside_by` and `next_pass_inside_by` after `downwind_inside_by`, so the sort key's indexes stay. `main()` prints `near_edge_warned=` and `next_pass_warned=`. The module's docstring writes both guesses out | Scenarios 1–3, 5 |
+| `api/tests/test_backtest.py` | On the cut: the near-edge step says no to the 0263 and 0264 forecasts, and 12 hours to a 0332 fire within 375 m. The next-pass guess warns of the 0332 arrival 35.4 hours off, and its 0264 warning doesn't come in. The totals test checks both new methods against the CSV and the new print line. On the committed CSV, every downwind and near-edge yes is also a rule version 1 yes | Scenarios 1–4 |
+| `api/tests/test_forecast.py` | A tie and an inside detection through `nearest()` | Scenario 1 |
+| `fixtures/backtest/2023.json`, `2023-forecasts.csv` (generated) | The full run's output. The JSON replaces pause 2's typed-in totals. The CSV grows from 2.4 MB to about 2.9 MB | Scenarios 3, 5; D55 |
+| `web/e2e/season-backtest.spec.ts` | The cut's CSV rows: 0263 near-edge empty, next-pass `2023-09-27T18:05Z`; 0332 next-pass `2023-10-14T17:46Z`; 0264 near-edge empty, next-pass `2023-09-29T06:28Z`. Pause 2 already moved its page checks to the four methods | E2E |
+| `web/src/preview/SeasonBacktestPreview.tsx` | Drop the note that the two guesses' totals come from a scratch rerun | Preview |
+
+Done at pause 2 and kept: `web/src/ForecastPanel.tsx`, `ForecastPanel.test.tsx`, `api.ts`,
+`styles/app.css`.
+
+Reusing: `forecast.make()`, `outcome()`, `STEP_H`, `fires.EDGE_DOUBT_M`, `backtest._method()`,
+`replay()`, `downwind()`, the `cut` and `replayed` fixtures, `row()` and `rows_of()`, and the e2e's
+cut run.
+
+### Earn-it
+
+| Added | Triggered by |
+| ----- | ------------ |
+| `forecast.nearest()` | Scenario 1: the near-edge step must measure the distance as rule step 2 does |
+| `near_edge()`, `next_pass()` | Scenarios 1–3 |
+| Two CSV columns | Scenario 3; D55: anyone can recount each guess |
+| Two keys in `2023.json` | Scenario 4; D59 |
+| The committed-CSV check | Scenario 4: the page says the downwind guess and the near-edge step say yes only where rule version 1 does |
+| `th.method` and the wrapping column heads in `app.css` | Pause 2: the tables fit 360 px, and a method's name keeps to one line on a desktop |
+
+Cut: a list or registry of guesses (three, named in code), a setting for the 12 hours (rule step 5's
+`STEP_H`), a new preview route, a README change (its "Redo the 2023 replay" section still holds).
+
+### Non-functionals
+
+|                      |                                                                               |
+| -------------------- | ----------------------------------------------------------------------------- |
+| **Load**             | One run by hand, as season-backtest's: about 2 minutes. The two guesses add one pass over 20,277 forecasts in Python. The page grows by about 0.2 KB of bundled JSON, with no new request |
+| **Breaks first**     | Nothing at 10× for one year. Each replayed year adds about 2.9 MB of CSV to the repo |
+| **Security surface** | No new route, input or secret. The guesses read only the replay's own forecasts. Stores public data only, with concession IDs and no company names |
+| **Proof it works**   | The command prints `replayed year=2023 detections=42682 forecasts=20277 arrivals=135 rule_warned=123 downwind_warned=20 near_edge_warned=117 next_pass_warned=135 seconds=<n>`. The live fire view shows four rows under a forecast |
+| **Rollout**          | No flag. Run the replay, commit the result, merge to main; Deploy ships the page (D21). Rollback: revert the merge, and the page goes back to two columns |
+
+### Test plan
+
+| Scenario | Test | Command |
+| -------- | ---- | ------- |
+| 1. The near-edge step | `test_backtest.py::test_near_edge_misses_0263`, `::test_near_edge_says_no_to_0264_and_it_stays_out`, `::test_near_edge_says_12_hours_within_375_m`; `test_forecast.py::test_nearest_*`; `season-backtest.spec.ts` | `cd api && uv run pytest tests/test_backtest.py tests/test_forecast.py`; `cd web && pnpm e2e` |
+| 2. The next-pass guess | `test_backtest.py::test_next_pass_warns_of_0332_35_hours_off`, `::test_next_pass_warning_on_0264_did_not_come_in`; `season-backtest.spec.ts` | both |
+| 3. The totals | `test_backtest.py::test_totals_count_every_forecast_in_the_csv`; the full run's print line | `cd api && uv run pytest tests/test_backtest.py` |
+| 4. The panel | `ForecastPanel.test.tsx` "the 2023 replay"; `test_backtest.py::test_committed_guesses_say_yes_only_where_the_rule_does`; `season-backtest.spec.ts` | `cd web && pnpm test && pnpm e2e`; `cd api && uv run pytest tests/test_backtest.py` |
+| 5. Byte for byte | `test_backtest.py::test_two_runs_write_the_same_bytes` | `cd api && uv run pytest tests/test_backtest.py` |
+| The recorder doesn't change | `test_forecast.py`, `test_backtest.py::test_replay_of_fire_origin_matches_the_recorder` | `cd api && uv run pytest tests/test_forecast.py tests/test_backtest.py` |
+| Earlier slices | the full suites | `cd api && uv run pytest`; `cd web && pnpm test && pnpm e2e` |
+
+pytest and the e2e need `docker compose up -d --wait db` and `~/.foundry/bin` on `PATH`. Run one
+API suite at a time.
+
+**E2E:** `web/e2e/season-backtest.spec.ts` "replays a cut of 2023 and shows the committed result on
+the 0332 fire". It runs `backtest-2023` on the cut and checks the 0263, 0332 and 0264 rows,
+with both new columns. It then opens the 0332 fire and sees the four methods' rows and the sentence
+as `fixtures/backtest/2023.json` holds them.
+
+### Chunks
+
+Single chunk. The page work is done, and the rest is one command's change, its tests and one run.
+
+Order within it: `forecast.nearest()` and its tests, then the guesses in `backtest.py` and their
+tests on the cut, then the full run and its commit, then the e2e's CSV checks and the preview note.
+
+### Risks
+
+| Risk | Mitigation |
+| ---- | ---------- |
+| The page shows that the near-edge step's warnings came in slightly more often than rule version 1's: 117 of 3,310 against 123 of 3,874. A buyer may ask why rule version 1 is the forecast | That is the result, and the sentence states it in numbers (D100). forecast-v2 tries a rule that does better (D101) |
+| The full run's totals differ from pause 2's typed-in ones | The run's output is committed whatever it says. The tests and the e2e read the committed file, and the scenarios' numbers are updated to match |
+| A later rerun breaks the page's claim that the downwind guess says yes only where the rule does | A test reads the committed CSV and fails, so the copy changes with the data |
+| The days left: 2026-10-25 is the deadline | A single chunk. The page is done, and the full run takes about 2 minutes with no wind fetch |
+
+### Decisions to record
+
+Drafted at pauses 1 and 2. `/build` appends them to `DECISIONS.md` and flips D51's Status line to
+`superseded by D99`.
 
 ```markdown
 ## D99 · 2026-10-22 · Measure the forecast against the downwind, near-edge and next-pass guesses
@@ -269,6 +409,15 @@ Rejected: setting it here as "no worse on both counts" (no candidate to test it 
 such as CSI here (a fourth row on the panel before anything needs it).
 Source: docs/specs/fair-baseline.md
 Status: active
+
+## D102 · 2026-10-22 · Show two counts for each method in the 2023 block, and the hours off under "How this is worked out"
+
+Why: on a 390 px phone the block's table has 303 px. The arrivals warned of, the warnings that
+didn't come in and the median hours off need 368 px together, and the two counts need 293. The
+hours off differ least: 11.7, 11.7, 12.4 and 11.7.
+Rejected: all three numbers in the block (on a phone the table scrolls sideways in its box).
+Source: docs/specs/fair-baseline.md
+Status: active
 ```
 
 ## Open items
@@ -297,3 +446,5 @@ _Never delete this section or its rows. See references/ledger.md._
 - **CSI**: critical success index: warned arrivals out of all warnings plus missed arrivals.
 - **e2e**: end-to-end: one test that walks the whole slice as a user would.
 - **Bundled**: built into the page's JavaScript, so it loads with the page and needs no request.
+- **Drift check**: a script that fails when UI code uses a colour or size from outside the design
+  system's tokens.
