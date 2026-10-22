@@ -1,5 +1,6 @@
 import itertools
 import logging
+import math
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -53,13 +54,15 @@ def record(
     with psycopg.connect(url) as conn:
         (hotspot_id,) = conn.execute(
             "INSERT INTO hotspots (record_id, source, lat_e5, lon_e5, acquired_at, frp_e2,"
-            " confidence, fingerprint_version, map_version, tx_hash, sealed_at)"
-            " VALUES (%s, 'VIIRS_NOAA20_NRT', %s, %s, %s, %s, 'n', %s, %s, %s, %s) RETURNING id",
+            " confidence, fingerprint_version, map_version, tx_hash, sealed_at, root_id, proof)"
+            " VALUES (%s, 'VIIRS_NOAA20_NRT', %s, %s, %s, %s, 'n', %s, %s, %s, %s, %s, %s)"
+            " RETURNING id",
             (
                 record_id, lat_e5, 10571567 + n if lon_e5 is None else lon_e5,
                 acquired_at, frp_e2, version,
                 MAP_VERSION if version == 2 else None,
                 sealed.get("tx_hash"), sealed.get("sealed_at"),
+                sealed.get("root_id"), sealed.get("proof"),
             ),
         ).fetchone()
         if created_at is not None:
@@ -87,16 +90,27 @@ def forecast(
         conn.execute(
             "INSERT INTO forecasts (record_id, concession_id, fire_key, after_pass_at, made_at,"
             " until_at, inside_by_at, from_lat_e5, from_lon_e5, crossing_lat_e5, crossing_lon_e5,"
-            " rule_version, tx_hash, sealed_at, outcome, outcome_at)"
+            " rule_version, tx_hash, sealed_at, outcome, outcome_at, root_id, proof)"
             " VALUES (%s, %s, %s, %s, %s, %s::timestamptz + interval '48 hours', %s, %s, %s, %s,"
-            " %s, 1, %s, %s, %s, %s)",
+            " %s, 1, %s, %s, %s, %s, %s, %s)",
             (
                 record_id, concession_id, bytes.fromhex(fire_key[2:]), after_pass_at, made_at,
                 made_at, inside_by_at, *points, sealed.get("tx_hash"), sealed.get("sealed_at"),
-                outcome, sealed.get("outcome_at"),
+                outcome, sealed.get("outcome_at"), sealed.get("root_id"), sealed.get("proof"),
             ),
         )
     return "0x" + record_id.hex()
+
+
+def root(url, run=None, tx_hash=None, sealed_at=None):
+    """Stores a run's root, sealed as run or not sent yet; returns its row ID."""
+    with psycopg.connect(url) as conn:
+        (root_id,) = conn.execute(
+            "INSERT INTO roots (root, run, tx_hash, sealed_at) VALUES (%s, %s, %s, %s)"
+            " RETURNING id",
+            (bytes([next(_ids)]) * 32, run, tx_hash, sealed_at),
+        ).fetchone()
+    return root_id
 
 
 def unix(at):
@@ -383,6 +397,8 @@ def test_fire_detections_oldest_first_with_pass(client, db):
             {"id": C0540, "inside": True, "edge_m": 3099},
             {"id": C0377, "inside": False, "edge_m": 900},
         ],
+        "run": None,
+        "proof": None,
         "pass": 1,
     }
 
@@ -422,10 +438,78 @@ def test_fire_lists_its_forecasts_newest_first(client, db):
         "sealed_at": "2026-10-14T20:02:00Z",
         "outcome": "waiting",
         "outcome_unix": None,
+        "run": None,
+        "proof": None,
     }
     assert {k: fire["forecasts"][2][k] for k in ("inside_by_unix", "from", "crossing")} == {
         "inside_by_unix": None, "from": None, "crossing": None,
     }
+
+
+def test_fire_sends_run_and_proof_only_for_a_record_in_a_sealed_root(client, db):
+    tx_hash, sealed_at = b"\xab" * 32, "2026-10-14T20:02:05Z"
+    sealed_root = root(db, run=7, tx_hash=tx_hash, sealed_at=sealed_at)
+    unsent = root(db)
+    in_root = record(
+        db, "2026-10-13T17:37Z", [(C0332, False, 954)], lat_e5=-310000, lon_e5=11281000,
+        root_id=sealed_root, proof=[b"\x11" * 32, b"\x22" * 32], tx_hash=tx_hash,
+        sealed_at=sealed_at,
+    )
+    on_fire_records = record(
+        db, "2026-10-14T06:18Z", [(C0332, False, 731)], lat_e5=-310100, lon_e5=11281100,
+        tx_hash=b"\xcd" * 32, sealed_at="2026-10-14T07:00Z",
+    )
+    in_unsent_root = record(
+        db, "2026-10-14T17:20Z", [(C0332, False, 32)], lat_e5=-310200, lon_e5=11281200,
+        root_id=unsent, proof=[b"\x33" * 32],
+    )
+    forecast_in_root = forecast(
+        db, C0332, in_root, "2026-10-14T17:20Z", "2026-10-14T20:00Z", root_id=sealed_root,
+        proof=[b"\x44" * 32], tx_hash=tx_hash, sealed_at=sealed_at,
+    )
+    forecast_in_unsent_root = forecast(
+        db, C0332, in_root, "2026-10-14T06:18Z", "2026-10-14T09:00Z", root_id=unsent, proof=[],
+    )
+    forecast_on_fire_records = forecast(
+        db, C0332, in_root, "2026-10-13T17:37Z", "2026-10-13T20:00Z",
+        tx_hash=b"\xef" * 32, sealed_at="2026-10-13T20:01Z",
+    )
+    path = f"/api/concessions/{C0332}/fires/{in_root}"
+    as_of = math.ceil(datetime.now(timezone.utc).timestamp())
+
+    fire = client.get(path).json()
+    pack = client.get(path, params={"as_of": as_of}).json()
+
+    for body in (fire, pack):
+        hotspots = {h["record_id"]: h for h in body["hotspots"]}
+        assert {k: hotspots[in_root][k] for k in ("run", "proof", "tx_hash", "sealed_at")} == {
+            "run": 7,
+            "proof": ["0x" + "11" * 32, "0x" + "22" * 32],
+            "tx_hash": "0x" + "ab" * 32,
+            "sealed_at": sealed_at,
+        }
+        for record_id in (on_fire_records, in_unsent_root):
+            assert (hotspots[record_id]["run"], hotspots[record_id]["proof"]) == (None, None)
+    made = {f["record_id"]: f for f in fire["forecasts"]}
+    assert (made[forecast_in_root]["run"], made[forecast_in_root]["proof"]) == (
+        7, ["0x" + "44" * 32],
+    )
+    for record_id in (forecast_in_unsent_root, forecast_on_fire_records):
+        assert (made[record_id]["run"], made[record_id]["proof"]) == (None, None)
+
+
+def test_concession_records_have_no_run_or_proof(client, db):
+    tx_hash, sealed_at = b"\xab" * 32, "2026-10-14T08:00:05Z"
+    sealed_root = root(db, run=3, tx_hash=tx_hash, sealed_at=sealed_at)
+    record(
+        db, "2026-10-14T06:18Z", [(C0377, True, 50)], root_id=sealed_root,
+        proof=[b"\x11" * 32], tx_hash=tx_hash, sealed_at=sealed_at,
+    )
+
+    (hotspot,) = client.get(f"/api/concessions/{C0377}", params=RANGE).json()["hotspots"]
+
+    assert hotspot["tx_hash"] == "0x" + "ab" * 32
+    assert "run" not in hotspot and "proof" not in hotspot
 
 
 def test_fire_lists_forecasts_of_fires_that_joined_it(client, db):

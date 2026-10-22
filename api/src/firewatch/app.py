@@ -60,19 +60,21 @@ WHERE h.fingerprint_version = 2 AND h.acquired_at >= %(start)s AND h.acquired_at
 ORDER BY h.acquired_at DESC, h.frp_e2 DESC, h.lat_e5, h.lon_e5
 """
 FIRE_HOTSPOTS = """
-SELECT h.*,
+SELECT h.*, r.run,
        (SELECT json_agg(json_build_object('id', a.concession_id, 'inside', a.inside,
                                           'edge_m', a.edge_m)
                         ORDER BY a.inside DESC, a.edge_m, a.concession_id)
         FROM hotspot_concessions a WHERE a.hotspot_id = h.id) AS concessions
 FROM hotspots h
+LEFT JOIN roots r ON r.id = h.root_id
 WHERE h.record_id = ANY(%(record_ids)s)
 """
 # Every forecast for the concession made for one of these fire keys, newest first (D41).
 FORECASTS = """
-SELECT * FROM forecasts
-WHERE concession_id = %(id)s AND fire_key = ANY(%(keys)s)
-ORDER BY made_at DESC, id DESC
+SELECT f.*, r.run FROM forecasts f
+LEFT JOIN roots r ON r.id = f.root_id
+WHERE f.concession_id = %(id)s AND f.fire_key = ANY(%(keys)s)
+ORDER BY f.made_at DESC, f.id DESC
 """
 FORECASTS_FROM = "SELECT min(made_at) AS started FROM forecasts"
 # The concession's forecasts, oldest first, but those of fires that joined an older one (D44).
@@ -141,6 +143,14 @@ def _record(row) -> dict:
     }
 
 
+def _proof(row) -> dict:
+    """The record's run and proof once its root is sealed; both null before, and for a record
+    sealed on FireRecords. Only the fire route sends them (D109)."""
+    if row["run"] is None:
+        return {"run": None, "proof": None}
+    return {"run": row["run"], "proof": [_hex(p) for p in row["proof"]]}
+
+
 def _rings(boundary: dict) -> list:
     """A MultiPolygon's rings, holes included, as one list."""
     return [ring for polygon in boundary["coordinates"] for ring in polygon]
@@ -169,6 +179,7 @@ def _forecast(row) -> dict:
         "sealed_at": _iso(row["sealed_at"]),
         "outcome": row["outcome"],
         "outcome_unix": _unix(row["outcome_at"]),
+        **_proof(row),
     }
 
 
@@ -307,7 +318,7 @@ def create_app(allowed_origin: str) -> FastAPI:
             # None while the peat table is empty: no estimate rather than a wrong one.
             **({"damage": damage} if damage else {}),
             "hotspots": [
-                {**_record(by_id[record_id]), "pass": number}
+                {**_record(by_id[record_id]), **_proof(by_id[record_id]), "pass": number}
                 for record_id, number in zip(ids, found.pass_numbers)
             ],
         }
