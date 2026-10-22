@@ -119,9 +119,23 @@ export interface Damage {
   outside_other_ha: number;
 }
 
+/** A fire that was joined to this one when a pass came within 1 km of both (D114). */
+export interface JoinedFire {
+  /** The pass that joined it. */
+  at_unix: number;
+  /** Where the satellite first saw it, read from its own first pass, as a fire's first seen is. */
+  first_seen_unix: number;
+  first_seen: FirstSeen;
+}
+
 /** One fire with every detection in it, oldest first, whatever the chosen dates. */
 export interface FireDetail extends FireSummary {
   hotspots: HotspotRecord[];
+  /** Whole hours to the next pass, when the first pass is one detection and the next pass to see
+   *  the fire came more than 14 hours after it (D112); null otherwise. */
+  first_alone_h?: number | null;
+  /** The fires joined to it as it grew, by when, oldest first. It keeps the oldest's first seen. */
+  joined?: JoinedFire[];
   /** Its damage from the detections stored by `as_of_unix` (D65). */
   damage?: Damage;
   /** When the API answered: a pack made from this view holds the detections stored by then (D33). */
