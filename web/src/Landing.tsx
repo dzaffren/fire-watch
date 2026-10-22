@@ -62,7 +62,8 @@ export function Landing({ caseSource }: { caseSource: CaseSource }) {
               {arrived ? (
                 <p>
                   A fire in ID-WOOD-CONCESSION-0332, Central Kalimantan, on 14 Oct 2026. The satellite first saw it on
-                  12 Oct, outside the concession and 3,100 m from its edge. By 13 Oct it was inside.{" "}
+                  12 Oct as one detection, 3,100 m outside the concession. On 14 Oct it joined a second fire, first seen
+                  the day before on both sides of the edge.{" "}
                   <a className="fw-link" href={EXAMPLE_PACK_HREF}>See its complaint pack</a>
                 </p>
               ) : (

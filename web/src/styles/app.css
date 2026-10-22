@@ -116,6 +116,8 @@ button.fw-link { margin: 0; padding: 0; border: 0; background: none; font: inher
 .fire-reading summary:hover { color: var(--fw-accent-hover); }
 .fire-reading details p { margin: var(--fw-space-2) 0 0; }
 .fire-reading details[open] > :not(summary) { animation: fw-enter var(--fw-dur) var(--fw-ease) both; }
+/* The joined fires' two times stay on one line each; where first seen wraps (D114) */
+.joined td:nth-child(-n + 2) { white-space: nowrap; }
 
 /* The detections guideline's replay timeline, over the top of the map beside the zoom buttons */
 .replay {
@@ -238,6 +240,7 @@ a.fw-btn { text-decoration: none; }
   .app-main { grid-template-columns: minmax(0, 1fr); }
   .rec-col { padding: var(--fw-space-5) var(--fw-space-4); overflow: visible; }
   .forecast .table-box th.method { white-space: normal; }
+  .joined th, .joined td:nth-child(-n + 2) { white-space: normal; }
   .map-col { height: 320px; border-left: 0; border-top: var(--fw-border) solid var(--fw-line); }
 }
 

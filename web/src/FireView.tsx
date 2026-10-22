@@ -1,9 +1,9 @@
 import { Fragment, useEffect, useState, type CSSProperties, type ReactNode } from "react";
-import type { FireDetail, HotspotRecord } from "./api";
+import type { FireDetail, HotspotRecord, JoinedFire } from "./api";
 import { DamagePanel } from "./Damage";
 import type { Dot } from "./FireMap";
 import type { Area } from "./maps";
-import { count, detected, detectedShort, distance, firePower, firstSeenLine, plural } from "./format";
+import { count, detected, detectedShort, distance, firePower, firstSeenLine, firstSeenShort, plural, seenWhere } from "./format";
 import { AlertIcon, ChevronLeftIcon, ExternalIcon, PauseIcon, PlayIcon } from "./icons";
 
 export type FireLoad = { kind: "loading" } | { kind: "error" } | { kind: "ready"; fire: FireDetail };
@@ -51,6 +51,86 @@ export function fireArea(hotspots: HotspotRecord[]): Area {
 export function where(h: HotspotRecord, id: string): string {
   const m = h.concessions.find((c) => c.id === id);
   return m ? `${m.inside ? "Inside" : "Outside"}, ${distance(m.edge_m)}` : "";
+}
+
+/** What weakens where a fire was first seen: one detection with a long gap after it (D112), and
+ *  fires joined to it as it grew (D114). `listed` says where more than one joined fire is listed. */
+export function OriginNotes({ fire, listed }: { fire: FireDetail; listed: string }) {
+  const hours = fire.first_alone_h;
+  const joined = fire.joined ?? [];
+  return (
+    <>
+      {hours != null && (
+        <p className="fw-help">
+          First seen as one detection, then not seen for {plural(hours, "hour", "hours")}. That detection may be a
+          separate fire.
+        </p>
+      )}
+      {joined.length === 1 && (
+        <p className="fw-help">
+          Fire Watch joined two fires here on {detectedShort(joined[0].at_unix)} UTC, when they came within 1 km. First
+          seen above is the older fire's. The other was first seen on {detectedShort(joined[0].first_seen_unix)} UTC,{" "}
+          {seenWhere(joined[0].first_seen)}.
+        </p>
+      )}
+      {joined.length > 1 && (
+        <p className="fw-help">
+          Fire Watch joined {count(joined.length + 1)} fires here, the first time on {detectedShort(joined[0].at_unix)}{" "}
+          UTC, as they came within 1 km. First seen above is the oldest fire's. The {count(joined.length)} others are
+          listed {listed}.
+        </p>
+      )}
+    </>
+  );
+}
+
+/** The fires joined to this one: when, and where the satellite first saw each (D114). */
+export function JoinedTable({ joined, labelledBy }: { joined: JoinedFire[]; labelledBy: string }) {
+  return (
+    <div className="table-box joined">
+      <table className="fw-table" aria-labelledby={labelledBy}>
+        <thead>
+          <tr><th scope="col">Joined (UTC)</th><th scope="col">First seen (UTC)</th><th scope="col">Where first seen</th></tr>
+        </thead>
+        <tbody>
+          {joined.map((j, i) => (
+            <tr key={i}>
+              <td>{detectedShort(j.at_unix)}</td>
+              <td>{detectedShort(j.first_seen_unix)}</td>
+              <td>{firstSeenShort(j.first_seen)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+/** How where a fire was first seen is worked out, and what that can't allow for (D25, D26, D115). */
+export function OriginMethod() {
+  return (
+    <>
+      <p className="fw-help">
+        A detection joins a fire when it is within 1 km and 48 hours of one already in it. The first pass is the
+        earliest satellite pass that saw the fire. A side is named only when every detection on that pass is more than
+        375 m from the edge, half the widest VIIRS pixel; nearer than that, the fire could be on either side.
+      </p>
+      <p className="fw-help">
+        A fire that comes within 1 km of another is joined to it, so one fire here can be several that the satellite
+        first saw apart. First seen is the oldest one's.
+      </p>
+      <p className="fw-help">
+        A detection's position can be off as well. Straight below the satellite, NOAA-20 places almost every detection
+        within 400 m of the fire, and most within 200 m (Blonski and others, 2023, doi 10.1117/1.JRS.17.034506). The
+        375 m margin doesn't allow for this. Concession edges come from Trase's map, which gives no accuracy for its
+        lines.
+      </p>
+      <p className="fw-help">
+        NOAA-20 passes about twice a day and cloud can hide a fire, so it may burn for hours before it is first seen.
+        Each detection is sealed, so anyone can redo this from the chain and NASA FIRMS's public archive.
+      </p>
+    </>
+  );
 }
 
 interface Props {
@@ -148,13 +228,16 @@ function Reading({ id, fire, packHref }: { id: string; fire: FireDetail; packHre
   const showInside = fire.inside_from_unix !== null && (reading === "outside" || unclear);
   const showOutside = fire.outside_from_unix !== null && (reading === "inside" || unclear);
   const hours = fire.recorded_before_h;
+  const joined = fire.joined ?? [];
+  const weak = fire.first_alone_h != null || joined.length > 0;
 
   return (
     <article className="fw-panel fire-reading enter" aria-labelledby="h-fire">
       <h2 id="h-fire">{firstSeenLine(fire.first_seen)}</h2>
-      {(unclear || fire.never_spread || hours !== null) && (
+      {(unclear || weak || fire.never_spread || hours !== null) && (
         <div className="fire-notes">
           {unclear && <p className="fw-help">The satellite record can't say which side this fire started on.</p>}
+          <OriginNotes fire={fire} listed="below" />
           {fire.never_spread && (
             <p className="fw-help">
               Seen on {count(fire.passes)} passes without spreading. This can be a fixed heat source, such as a mill, or
@@ -191,17 +274,15 @@ function Reading({ id, fire, packHref }: { id: string; fire: FireDetail; packHre
         <dt>Passes</dt>
         <dd>{count(fire.passes)}, with {plural(fire.detections, "detection", "detections")}</dd>
       </dl>
+      {joined.length > 1 && (
+        <details>
+          <summary id="h-joined">The {count(joined.length)} fires joined to this one</summary>
+          <JoinedTable joined={joined} labelledBy="h-joined" />
+        </details>
+      )}
       <details>
         <summary>How this is worked out</summary>
-        <p className="fw-help">
-          A detection joins a fire when it is within 1 km and 48 hours of one already in it. The first pass is the
-          earliest satellite pass that saw the fire. A side is named only when every detection on that pass is more
-          than 375 m from the edge, half the widest VIIRS pixel; nearer than that, the fire could be on either side.
-        </p>
-        <p className="fw-help">
-          NOAA-20 passes about twice a day and cloud can hide a fire, so it may burn for hours before it is first
-          seen. Each detection is sealed, so anyone can redo this from the chain and NASA FIRMS's public archive.
-        </p>
+        <OriginMethod />
       </details>
       {packHref && (
         <div className="pack-make">

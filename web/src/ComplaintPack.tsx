@@ -4,7 +4,7 @@ import type { HotspotRecord, PackDetail, PackRef } from "./api";
 import type { Seal } from "./chain";
 import { DamageSection } from "./Damage";
 import { FireMap } from "./FireMap";
-import { fireArea, fireDots, passTimes, Replay, where } from "./FireView";
+import { fireArea, fireDots, JoinedTable, OriginMethod, OriginNotes, passTimes, Replay, where } from "./FireView";
 import { count, detected, detectedShort, distance, firstSeenLine, location, plural, shortHash } from "./format";
 import { AlertIcon, ExternalIcon, OkIcon } from "./icons";
 import { checkSeal, checkTitle, Chip, overall, RecordPanel, type Check, type SealCheck } from "./RecordPanel";
@@ -299,17 +299,7 @@ export function ComplaintPack({ source, packRef, initialOpen = null }: Props) {
 
               <section className="pack-section enter" aria-labelledby="h-basis">
                 <h2 id="h-basis">Basis</h2>
-                <p className="fw-help">
-                  A detection joins a fire when it is within 1 km and 48 hours of one already in it. The first pass is
-                  the earliest satellite pass that saw the fire. A side is named only when every detection on that pass
-                  is more than 375 m from the edge, half the widest VIIRS pixel; nearer than that, the fire could be on
-                  either side.
-                </p>
-                <p className="fw-help">
-                  NOAA-20 passes about twice a day and cloud can hide a fire, so it may burn for hours before it is
-                  first seen. Each detection is sealed, so anyone can redo this from the chain and NASA FIRMS's public
-                  archive.
-                </p>
+                <OriginMethod />
                 <dl className="fw-kv">
                   <dt>Fire rule</dt>
                   <dd>
@@ -323,6 +313,13 @@ export function ComplaintPack({ source, packRef, initialOpen = null }: Props) {
                     {count(pack.passes)}, with {plural(pack.detections, "detection", "detections")}
                   </dd>
                 </dl>
+
+                {(pack.joined ?? []).length > 1 && (
+                  <>
+                    <h3 id="h-joined">The {count(pack.joined!.length)} fires joined to this one</h3>
+                    <JoinedTable joined={pack.joined!} labelledBy="h-joined" />
+                  </>
+                )}
 
                 <h3 id="h-passes">Spread, pass by pass</h3>
                 <div className="table-box">
@@ -438,10 +435,12 @@ function Caveats({ pack }: { pack: PackDetail }) {
   const { reading } = pack.first_seen;
   const unclear = reading === "edge" || reading === "both";
   const hours = pack.recorded_before_h;
-  if (!unclear && !pack.never_spread && hours === null) return null;
+  const weak = pack.first_alone_h != null || (pack.joined ?? []).length > 0;
+  if (!unclear && !weak && !pack.never_spread && hours === null) return null;
   return (
     <div className="fire-notes pack-caveats">
       {unclear && <p className="fw-help">The satellite record can't say which side this fire started on.</p>}
+      <OriginNotes fire={pack} listed="under Basis" />
       {pack.never_spread && (
         <p className="fw-help">
           Seen on {count(pack.passes)} passes without spreading. This can be a fixed heat source, such as a mill, or

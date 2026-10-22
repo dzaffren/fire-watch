@@ -66,14 +66,15 @@ export function duration(seconds: number): string {
   return h ? `${unit(Math.floor(minutes / 1440), "day")} ${unit(h, "hour")}` : unit(Math.floor(minutes / 1440), "day");
 }
 
-/** The fire view's headline: where the fire's first pass saw it against this concession (D26). */
-export function firstSeenLine(f: FirstSeen): string {
-  if (f.reading === "both") return "First seen on both sides of the edge";
-  if (f.reading === "edge") {
-    return `First seen ${distance(f.edge_m)} ${f.inside ? "inside" : "outside"} the edge, within one satellite pixel of it`;
-  }
-  return `First seen ${f.reading}, ${distance(f.edge_m)} from the edge`;
+/** "outside, 950 m from the edge": where a first pass saw a fire against this concession (D26). */
+export function seenWhere(f: FirstSeen): string {
+  if (f.reading === "both") return "on both sides of the edge";
+  if (f.reading === "edge") return `${distance(f.edge_m)} ${f.inside ? "inside" : "outside"} the edge, within one satellite pixel of it`;
+  return `${f.reading}, ${distance(f.edge_m)} from the edge`;
 }
+
+/** The fire view's headline: where the fire's first pass saw it against this concession (D26). */
+export const firstSeenLine = (f: FirstSeen) => `First seen ${seenWhere(f)}`;
 
 /** The fires table's short form: "Outside, 950 m", or "Too close to tell". */
 export function firstSeenShort(f: FirstSeen): string {

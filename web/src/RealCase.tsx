@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { HotspotRecord, PackDetail } from "./api";
 import { FireMap, type Dot } from "./FireMap";
 import { fireArea, fireDots, passTimes } from "./FireView";
-import { count, detected, detectedShort, location, plural } from "./format";
+import { count, detected, detectedShort, location, plural, seenWhere } from "./format";
 import { checkTitle, Chip, overall, type Check } from "./RecordPanel";
 
 /** Where the case gets its fire; the preview passes fixtures, the landing the committed copy and the chain. */
@@ -98,7 +98,9 @@ export function RealCase({ source, packHref }: { source: CaseSource; packHref: s
 
   const id = pack.concession_id;
   const inPass = (p: number) => pack.hotspots.filter((h) => (h.pass ?? 1) === p);
-  const firstInside = times.findIndex((_, i) => inPass(i + 1).some((h) => insideOf(h, id))) + 1;
+  // The pass a time falls in: the last pass that began by then.
+  const passOf = (unix: number) => times.filter((t) => t <= unix).length;
+  const joined = pack.joined ?? [];
   const insideAll = pack.hotspots.filter((h) => insideOf(h, id)).length;
   const wide = step.kind === "fire" || step.kind === "claim";
 
@@ -129,16 +131,21 @@ export function RealCase({ source, packHref }: { source: CaseSource; packHref: s
       case "pass": {
         const hs = inPass(s.pass);
         const inside = hs.filter((h) => insideOf(h, id)).length;
+        const seenNow = joined.filter((j) => passOf(j.first_seen_unix) === s.pass);
+        const joinedNow = joined.some((j) => passOf(j.at_unix) === s.pass);
         if (s.pass === 1) {
           const edge = hs[0].concessions.find((m) => m.id === id);
+          const alone = pack!.first_alone_h;
           return (
             <>
               <h3>Where it was first seen</h3>
               <p>
-                The satellite first saw it on {detectedShort(pack!.first_seen_unix)} UTC,{" "}
-                {pack!.first_seen.inside ? "inside" : "outside"} the concession
-                {edge ? ` and ${count(edge.edge_m)} m from its edge` : ""}. On this point the record agrees with the
-                company. Scroll on to see what came next, one satellite pass at a time.
+                The satellite first saw it on {detectedShort(pack!.first_seen_unix)} UTC
+                {alone != null && " as one detection"}, {pack!.first_seen.inside ? "inside" : "outside"} the concession
+                {edge ? ` and ${count(edge.edge_m)} m from its edge` : ""}.
+                {alone != null &&
+                  ` It didn't see the fire again for ${plural(alone, "hour", "hours")}, so that detection may be a separate fire.`}{" "}
+                Scroll on to see what came next, one satellite pass at a time.
               </p>
             </>
           );
@@ -154,7 +161,9 @@ export function RealCase({ source, packHref }: { source: CaseSource; packHref: s
               {inside === 0
                 ? `${plural(hs.length, "detection", "detections")}, all outside.`
                 : `${plural(hs.length, "detection", "detections")}, ${count(inside)} inside the concession.`}
-              {s.pass === firstInside && " The fire has crossed the edge."}
+              {seenNow.length > 0 &&
+                ` These include ${seenNow.length === 1 ? "another fire" : `${count(seenNow.length)} other fires`}, first seen on this pass more than 1 km from the first${seenNow.length === 1 ? `, ${seenWhere(seenNow[0].first_seen)}` : ""}.`}
+              {joinedNow && " On this pass the fires came within 1 km of each other, so Fire Watch counts them as one."}
               {s.pass === times.length &&
                 ` In all, ${count(insideAll)} of the ${count(pack!.detections)} detections were inside.`}
             </p>
