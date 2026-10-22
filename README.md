@@ -24,6 +24,7 @@ for watchdog investigators who file grievances over fires on plantation land.
 - The landing walks a judge through one real fire, from the company's claim to a seal check in their own browser, then says how to use the tool.
 - Play in a fire's replay holds each satellite pass for 1.5 s, not 0.6 s, so the spread can be followed pass by pass.
 - Every screen takes colour from a deeper Peatland palette: the maps, the page ground and panels, and two bands on the landing.
+- Each detection's seal time comes from the chain, the page reads the chain even when the API says a record is unsealed, and six lines of copy claim no more than the chain or the data show.
 
 ## Docs
 
