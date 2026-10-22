@@ -41,3 +41,5 @@
 - Give stacked `fw-kv` links a tall box on a phone; their tap overlays cover each other — [stacked-kv-links-tall-box](stacked-kv-links-tall-box.md)
 - A Playwright click on a locator that matches nothing waits out the whole test — [e2e-click-on-no-match-hangs](e2e-click-on-no-match-hangs.md)
 - Resume a chunk agent at its turn limit with SendMessage — [resume-chunk-at-turn-limit](resume-chunk-at-turn-limit.md)
+- Click `Fires in <id>` before opening a second fire in an e2e; the fire view hides the table — [fire-view-hides-fires-table](fire-view-hides-fires-table.md)
+- Prove each test for pause 2 code with a mutant; it passes the first time it runs — [pause-2-code-needs-mutants](pause-2-code-needs-mutants.md)
