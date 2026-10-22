@@ -98,6 +98,7 @@ flowchart LR
 - **Merkle root** — one hash that stands for a whole list. A change to any item changes it, and a
   short proof shows that one item is in the list.
 - **Run** — one hourly start of the recorder job.
+- **Backfill** — the recorder's first run, which took the 5 days of detections that FIRMS offers.
 - **Baseline** — the simplest guess that a forecast must beat to be worth showing.
 - **False-alarm rate** — the share of "yes" forecasts whose fire never came in.
 - **VIIRS** — the satellite instrument behind FIRMS's 375 m detections.
