@@ -1,12 +1,13 @@
 import { zeroHash } from "viem";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { apiSource, concession, concessions, pack, packRef, packSource, type Forecast, type HotspotRecord } from "./api";
-import { sealOf, sealsWithTime } from "./chain";
+import { checkReads, type Seal } from "./chain";
 
-vi.mock("./chain", () => ({ sealOf: vi.fn(), sealsWithTime: vi.fn() }));
+vi.mock("./chain", () => ({ checkReads: vi.fn() }));
 
 const MAP = "Trase pulpwood concessions 2023–2024, v2026-02-20";
 const A_FP = "0x86a47945c682c15fb86471df99c10a3fe1d8fc4ba7f39f87e70b46703b85f051";
+const RUN_ROOT = "0x5e11c4070cf64b7a13a2533fbf4ab6c17cfa8065e0446c079070a2cbd0a5a71d" as const;
 
 const hotspotA: HotspotRecord = {
   record_id: `0x${"ab".repeat(32)}`,
@@ -39,6 +40,8 @@ const forecast: Forecast = {
   rule_version: 1,
   tx_hash: `0x${"12".repeat(32)}`,
   sealed_at: "2026-10-14T20:02:00Z",
+  run: null,
+  proof: null,
   outcome: "waiting",
   outcome_unix: null,
 };
@@ -97,9 +100,18 @@ describe("apiSource", () => {
   });
 
   it("reads the record's seal and its time from the chain", async () => {
-    vi.mocked(sealOf).mockResolvedValue({ fingerprint: A_FP, sealedAt: 1791968700n });
-    await expect(apiSource.sealOf(hotspotA)).resolves.toEqual({ fingerprint: A_FP, sealedAt: 1791968700 });
-    expect(sealOf).toHaveBeenCalledWith(hotspotA.record_id);
+    const seal: Seal = { contract: "FireRecords", fingerprint: A_FP, sealedAt: 1791968700 };
+    vi.mocked(checkReads).mockClear().mockResolvedValue([seal]);
+    await expect(apiSource.sealOf(hotspotA)).resolves.toEqual(seal);
+    expect(checkReads).toHaveBeenCalledWith([hotspotA]);
+  });
+
+  it("reads a record in a run's root from its run", async () => {
+    const inRun = { ...hotspotA, run: 412, proof: [RUN_ROOT] };
+    const seal: Seal = { contract: "FireRuns", run: 412, root: RUN_ROOT, sealedAt: 1792828992 };
+    vi.mocked(checkReads).mockClear().mockResolvedValue([seal]);
+    await expect(apiSource.sealOf(inRun)).resolves.toEqual(seal);
+    expect(checkReads).toHaveBeenCalledWith([inRun]);
   });
 
   it("fingerprints a forecast with version 3", () => {
@@ -107,17 +119,15 @@ describe("apiSource", () => {
   });
 
   it("reads every forecast's seal and its time in one chain read", async () => {
-    const other = { ...forecast, record_id: `0x${"ef".repeat(32)}` as const };
-    vi.mocked(sealsWithTime).mockResolvedValue([
-      { fingerprint: FORECAST_FP, sealedAt: 1792008120n },
-      { fingerprint: zeroHash, sealedAt: 0n },
-    ]);
-    await expect(apiSource.forecastSeals!([forecast, other])).resolves.toEqual([
-      { fingerprint: FORECAST_FP, sealedAt: 1792008120 },
-      { fingerprint: zeroHash, sealedAt: 0 },
-    ]);
-    expect(sealsWithTime).toHaveBeenCalledTimes(1);
-    expect(sealsWithTime).toHaveBeenCalledWith([forecast.record_id, other.record_id]);
+    const other = { ...forecast, record_id: `0x${"ef".repeat(32)}` as const, run: 412, proof: [RUN_ROOT] };
+    const seals: Seal[] = [
+      { contract: "FireRecords", fingerprint: FORECAST_FP, sealedAt: 1792008120 },
+      { contract: "FireRuns", run: 412, root: zeroHash, sealedAt: 0 },
+    ];
+    vi.mocked(checkReads).mockClear().mockResolvedValue(seals);
+    await expect(apiSource.forecastSeals!([forecast, other])).resolves.toEqual(seals);
+    expect(checkReads).toHaveBeenCalledTimes(1);
+    expect(checkReads).toHaveBeenCalledWith([forecast, other]);
   });
 });
 
@@ -166,16 +176,14 @@ describe("pack", () => {
 
 describe("packSource", () => {
   it("reads every record's seal and its time in one chain read", async () => {
-    const hotspotB = { ...hotspotA, record_id: `0x${"cd".repeat(32)}` as const };
-    vi.mocked(sealsWithTime).mockClear().mockResolvedValue([
-      { fingerprint: A_FP, sealedAt: 1791968700n },
-      { fingerprint: zeroHash, sealedAt: 0n },
-    ]);
-    await expect(packSource.sealsOf([hotspotA, hotspotB])).resolves.toEqual([
-      { fingerprint: A_FP, sealedAt: 1791968700 },
-      { fingerprint: zeroHash, sealedAt: 0 },
-    ]);
-    expect(sealsWithTime).toHaveBeenCalledTimes(1);
-    expect(sealsWithTime).toHaveBeenCalledWith([hotspotA.record_id, hotspotB.record_id]);
+    const hotspotB = { ...hotspotA, record_id: `0x${"cd".repeat(32)}` as const, run: 412, proof: [RUN_ROOT] };
+    const seals: Seal[] = [
+      { contract: "FireRecords", fingerprint: A_FP, sealedAt: 1791968700 },
+      { contract: "FireRuns", run: 412, root: RUN_ROOT, sealedAt: 1792828992 },
+    ];
+    vi.mocked(checkReads).mockClear().mockResolvedValue(seals);
+    await expect(packSource.sealsOf([hotspotA, hotspotB])).resolves.toEqual(seals);
+    expect(checkReads).toHaveBeenCalledTimes(1);
+    expect(checkReads).toHaveBeenCalledWith([hotspotA, hotspotB]);
   });
 });

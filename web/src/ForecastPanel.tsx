@@ -2,7 +2,7 @@ import type { Hex } from "viem";
 import type { Backtest, BacktestTotals, FireDetail, Forecast } from "./api";
 import { count, detected, detectedShort, duration, gap, location, plural, shortHash } from "./format";
 import { ExternalIcon } from "./icons";
-import { Chip, type Check } from "./RecordPanel";
+import { Chip, SealRows, type Check, type SealCheck } from "./RecordPanel";
 
 const RULE_URL = "https://github.com/dzaffren/fire-watch/blob/main/api/src/firewatch/forecast.py";
 const BACKTEST_CSV_URL = "https://github.com/dzaffren/fire-watch/blob/main/fixtures/backtest/2023-forecasts.csv";
@@ -107,11 +107,8 @@ function BacktestCounts({ b }: { b: Backtest }) {
   );
 }
 
-/** A forecast's chain check, with the seal's time by Base Sepolia's clock once it is read. */
-export interface ForecastCheck {
-  check: Check;
-  sealedAt: number | null;
-}
+/** A forecast's chain check, with the seal's time by Base Sepolia's clock and where it is sealed once it is read. */
+export type ForecastCheck = SealCheck;
 
 /** "Forecast to be seen inside by about 15 Oct 18:00 UTC", or that it isn't (D39). */
 export const forecastLine = (f: Forecast) =>
@@ -197,7 +194,7 @@ export function ForecastPanel({ fire, checks, fingerprints, picked, now, backtes
 
   const f = forecasts[picked] ?? forecasts[0];
   const at = forecasts.indexOf(f);
-  const state = checks[at] ?? { check: { state: "checking" }, sealedAt: null };
+  const state = checks[at] ?? { check: { state: "checking" }, sealedAt: null, sealedIn: null };
   const fp = fingerprints[at];
   const seal = sealLine(f, state);
   const replayed = backtest && backtest.rule_version === f.rule_version ? backtest : null;
@@ -234,19 +231,7 @@ export function ForecastPanel({ fire, checks, fingerprints, picked, now, backtes
               <dd className="fw-mono">{location(f.crossing.lat_e5, f.crossing.lon_e5)}</dd>
             </>
           )}
-          {state.check.state === "mismatch" ? (
-            <>
-              <dt>Sealed fingerprint</dt>
-              <dd className="fw-mono">{shortHash(state.check.sealed.slice(2), 10, 6)}</dd>
-              <dt>Fingerprint now</dt>
-              <dd className="fw-mono">{fp && shortHash(fp.slice(2), 10, 6)}</dd>
-            </>
-          ) : (
-            <>
-              <dt>Fingerprint</dt>
-              <dd className="fw-mono">{fp && shortHash(fp.slice(2), 10, 6)}</dd>
-            </>
-          )}
+          <SealRows fingerprint={fp} check={state.check} sealedIn={state.sealedIn} />
           <dt>Transaction</dt>
           <dd>
             {f.tx_hash ? (
@@ -274,7 +259,7 @@ export function ForecastPanel({ fire, checks, fingerprints, picked, now, backtes
             half the widest VIIRS pixel.
           </p>
           <p className="fw-help">
-            Each forecast is sealed in the run that makes it, or a later run if that one runs out of time. Every one
+            Each forecast is sealed in the run that makes it, or a later run if that one fails to seal. Every one
             stays listed here, right or wrong. Only passes after its seal count. A forecast whose fire joins another
             fire first is not checked.
           </p>

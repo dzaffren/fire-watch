@@ -1,8 +1,10 @@
 import type { ReactNode } from "react";
 import { zeroHash, type Hex } from "viem";
 import type { HotspotRecord } from "./api";
+import type { Seal } from "./chain";
 import { confidence, count, detected, firePower, gap, location, plural, satellite, shortHash, whereFromEdge } from "./format";
 import { AlertIcon, BadIcon, CheckingIcon, ExternalIcon, OkIcon, PendingIcon } from "./icons";
+import { leaf, rootFrom } from "./merkle";
 
 export type Check =
   | { state: "pending" }
@@ -42,6 +44,41 @@ const STATUS: Record<Exclude<Check["state"], "error">, { chip: string; icon: Rea
 export const checkOf = (sealed: Hex, fingerprint: Hex): Check =>
   sealed === zeroHash ? { state: "pending" } : sealed === fingerprint ? { state: "matches" } : { state: "mismatch", sealed };
 
+/** Where a record is sealed: in a seal of its own on FireRecords, or under its run's root on FireRuns. */
+export type SealedIn = { contract: "FireRecords" } | { contract: "FireRuns"; run: number };
+
+/** A record's check, with its seal's time by the chain's clock and where it is sealed; both null
+ *  until the chain answers with a seal (D97). */
+export interface SealCheck {
+  check: Check;
+  sealedAt: number | null;
+  sealedIn: SealedIn | null;
+}
+
+/** A detection or a forecast; the API sends a proof only for one in a sealed run's root. */
+interface Sealable {
+  record_id: Hex;
+  run?: number | null;
+  proof?: readonly Hex[] | null;
+}
+
+/** The root that a record's fingerprint and its proof lead to (D108). */
+const runRootOf = (record: Sealable, fingerprint: Hex) => rootFrom(leaf(record.record_id, fingerprint), record.proof ?? []);
+
+const NOT_YET: SealCheck = { check: { state: "pending" }, sealedAt: null, sealedIn: null };
+
+/** One record's check from its seal: on FireRecords its own fingerprint, on FireRuns the root its
+ *  fingerprint and proof lead to, must equal what the chain holds. A zero is not on the chain yet. */
+export function checkSeal(seal: Seal, record: Sealable, fingerprint: Hex): SealCheck {
+  if (seal.contract === "FireRecords") {
+    const check = checkOf(seal.fingerprint, fingerprint);
+    return check.state === "pending" ? NOT_YET : { check, sealedAt: seal.sealedAt, sealedIn: { contract: "FireRecords" } };
+  }
+  if (seal.root === zeroHash) return NOT_YET;
+  const check: Check = runRootOf(record, fingerprint) === seal.root ? { state: "matches" } : { state: "mismatch", sealed: seal.root };
+  return { check, sealedAt: seal.sealedAt, sealedIn: { contract: "FireRuns", run: seal.run } };
+}
+
 /** The headline count: how many of the pack's detections match their seals. */
 export function checkTitle(checks: Check[]): string {
   const n = checks.length;
@@ -77,16 +114,46 @@ export function Chip({ check }: { check: Check }) {
 
 const shortFingerprint = (fp: Hex) => shortHash(fp.slice(2), 10, 6);
 
+const sealedInLine = (s: SealedIn) => (s.contract === "FireRecords" ? "FireRecords, in a seal of its own" : `FireRuns, run ${s.run}'s root`);
+
+/** A record's fingerprint rows, both on a mismatch, then where it is sealed once the chain answers. */
+export function SealRows({ fingerprint, check, sealedIn }: { fingerprint?: Hex; check: Check; sealedIn: SealedIn | null }) {
+  return (
+    <>
+      {check.state === "mismatch" ? (
+        <>
+          <dt>Sealed fingerprint</dt>
+          <dd className="fw-mono">{shortFingerprint(check.sealed)}</dd>
+          <dt>Fingerprint now</dt>
+          <dd className="fw-mono">{fingerprint && shortFingerprint(fingerprint)}</dd>
+        </>
+      ) : (
+        <>
+          <dt>Fingerprint</dt>
+          <dd className="fw-mono">{fingerprint && shortFingerprint(fingerprint)}</dd>
+        </>
+      )}
+      {sealedIn && (
+        <>
+          <dt>Sealed in</dt>
+          <dd>{sealedInLine(sealedIn)}</dd>
+        </>
+      )}
+    </>
+  );
+}
+
 interface Props {
   record: HotspotRecord;
   fingerprint: Hex;
   check: Check;
   /** Unix seconds by the chain's clock; null until the chain answers with a seal (D97). */
   sealedAt: number | null;
+  sealedIn: SealedIn | null;
   onCheckAgain: () => void;
 }
 
-export function RecordPanel({ record, fingerprint, check, sealedAt, onCheckAgain }: Props) {
+export function RecordPanel({ record, fingerprint, check, sealedAt, sealedIn, onCheckAgain }: Props) {
   const status = check.state === "error" ? null : STATUS[check.state];
   const tx = record.tx_hash;
 
@@ -142,19 +209,7 @@ export function RecordPanel({ record, fingerprint, check, sealedAt, onCheckAgain
         </dd>
         <dt>Boundaries</dt>
         <dd>{record.map_version}</dd>
-        {check.state === "mismatch" ? (
-          <>
-            <dt>Sealed fingerprint</dt>
-            <dd className="fw-mono">{shortFingerprint(check.sealed)}</dd>
-            <dt>Fingerprint now</dt>
-            <dd className="fw-mono">{shortFingerprint(fingerprint)}</dd>
-          </>
-        ) : (
-          <>
-            <dt>Fingerprint</dt>
-            <dd className="fw-mono">{shortFingerprint(fingerprint)}</dd>
-          </>
-        )}
+        <SealRows fingerprint={fingerprint} check={check} sealedIn={sealedIn} />
         <dt>Transaction</dt>
         <dd>
           {tx ? (
@@ -178,6 +233,13 @@ export function RecordPanel({ record, fingerprint, check, sealedAt, onCheckAgain
         <pre>{JSON.stringify(record, null, 2)}</pre>
         <p className="fw-help">
           Fingerprint of this record: <span className="fw-mono">{fingerprint.slice(2)}</span>
+          {record.run != null && (
+            <>
+              . Run {record.run}'s root, worked out from it and the{" "}
+              {plural(record.proof?.length ?? 0, "proof hash", "proof hashes")} above:{" "}
+              <span className="fw-mono">{runRootOf(record, fingerprint).slice(2)}</span>
+            </>
+          )}
         </p>
       </details>
     </article>

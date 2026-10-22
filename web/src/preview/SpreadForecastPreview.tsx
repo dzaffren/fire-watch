@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { keccak256, toHex, zeroHash, type Hex } from "viem";
 import type { FireDetail, Forecast, HotspotRecord, Point, Ring } from "../api";
+import type { Seal } from "../chain";
 import { forecastFingerprint } from "../fingerprint";
 import { FireRecordPage, type FireRecordSource, type View } from "../FireRecordPage";
 import { passTimes } from "../FireView";
@@ -118,6 +119,8 @@ function forecast(fire: FireRef, m: Made, forKey: Hex = fire.key): Forecast {
     rule_version: 1,
     tx_hash: keccak256(record_id),
     sealed_at: iso(made + SEAL_AFTER_S),
+    run: null,
+    proof: null,
     outcome: m.outcome,
     outcome_unix: m.outcomeAt ?? null,
   };
@@ -216,10 +219,10 @@ export function makeSource(state: State): FireRecordSource {
       if (state === "checking") return never();
       await wait(WAIT_MS * 2);
       if (state === "chainError") throw new Error("preview: chain unreachable");
-      return forecasts.map((f) =>
+      return forecasts.map((f): Seal =>
         f.tx_hash
-          ? { fingerprint: sealed.get(f.record_id) ?? zeroHash, sealedAt: Date.parse(f.sealed_at!) / 1000 }
-          : { fingerprint: zeroHash, sealedAt: 0 },
+          ? { contract: "FireRecords", fingerprint: sealed.get(f.record_id) ?? zeroHash, sealedAt: Date.parse(f.sealed_at!) / 1000 }
+          : { contract: "FireRecords", fingerprint: zeroHash, sealedAt: 0 },
       );
     },
     forecastFingerprint,

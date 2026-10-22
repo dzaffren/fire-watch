@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { zeroHash, type Hex } from "viem";
+import type { Hex } from "viem";
 import type { Backtest, ConcessionDetail, ConcessionListing, FireDetail, Forecast, HotspotRecord } from "./api";
+import type { Seal } from "./chain";
 import { ConcessionList, type ListLoad } from "./ConcessionList";
 import { ConcessionView, type DetailLoad } from "./ConcessionView";
 import { DateRange, daysBefore } from "./DateRange";
@@ -9,7 +10,7 @@ import { ForecastPanel, type ForecastCheck } from "./ForecastPanel";
 import { fireArea, fireDots, FireView, passTimes, Replay, type FireLoad } from "./FireView";
 import { count, detectedShort, location } from "./format";
 import { ChevronLeftIcon, ExternalIcon } from "./icons";
-import { checkOf, LoadErrorPanel, LoadingPanel, RecordPanel, type Check } from "./RecordPanel";
+import { checkSeal, LoadErrorPanel, LoadingPanel, RecordPanel, type SealCheck } from "./RecordPanel";
 
 /** Where the page gets its data; the preview passes fixtures, the app passes the API and the chain. */
 export interface FireRecordSource {
@@ -18,11 +19,11 @@ export interface FireRecordSource {
   fire(id: string, key: Hex): Promise<FireDetail>;
   /** The link of a complaint pack holding this fire as the view shows it. */
   packHref(id: string, fire: FireDetail): string;
-  /** The record's sealed fingerprint and seal time; zeros for one not sealed yet. */
-  sealOf(record: HotspotRecord): Promise<{ fingerprint: Hex; sealedAt: number }>;
+  /** The record's seal on FireRecords, or its run's root on FireRuns; zeros for one not sealed yet. */
+  sealOf(record: HotspotRecord): Promise<Seal>;
   fingerprint(record: HotspotRecord): Hex;
-  /** Each forecast's sealed fingerprint and seal time, in order, in one read; zero for one not sealed yet. */
-  forecastSeals?(forecasts: Forecast[]): Promise<{ fingerprint: Hex; sealedAt: number }[]>;
+  /** Each forecast's seal, in order, in one read; zeros for one not sealed yet. */
+  forecastSeals?(forecasts: Forecast[]): Promise<Seal[]>;
   forecastFingerprint?(forecast: Forecast): Hex;
   /** The 2023 replay of the forecast rule, shown in the forecast panel (D54). */
   backtest?: Backtest;
@@ -59,14 +60,14 @@ export function FireRecordPage({ source, today, initialView, initialDates, now =
   const [mapVersion, setMapVersion] = useState("");
   const [detail, setDetail] = useState<DetailLoad>({ kind: "loading" });
   const [detailAttempt, setDetailAttempt] = useState(0);
-  const [seal, setSeal] = useState<{ check: Check; sealedAt: number | null }>({ check: { state: "checking" }, sealedAt: null });
+  const [seal, setSeal] = useState<SealCheck>({ check: { state: "checking" }, sealedAt: null, sealedIn: null });
   const [checkAttempt, setCheckAttempt] = useState(0);
   const [fire, setFire] = useState<FireLoad>({ kind: "loading" });
   const [fireAttempt, setFireAttempt] = useState(0);
   // The replay's pass; null shows every pass.
   const [replayAt, setReplayAt] = useState<number | null>(null);
   const [forecastPick, setForecastPick] = useState(0);
-  const [forecastSeals, setForecastSeals] = useState<{ fire: FireDetail; seals: { fingerprint: Hex; sealedAt: number }[] | null } | null>(null);
+  const [forecastSeals, setForecastSeals] = useState<{ fire: FireDetail; seals: Seal[] | null } | null>(null);
   const [forecastAttempt, setForecastAttempt] = useState(0);
   const openId = view.kind === "list" ? null : view.id;
   const fireKey = view.kind === "fire" || view.kind === "hotspot" ? view.key : null;
@@ -152,12 +153,9 @@ export function FireRecordPage({ source, today, initialView, initialDates, now =
   const forecastChecks = useMemo((): ForecastCheck[] => {
     const read = forecastSeals?.fire === openFire ? forecastSeals : undefined;
     return forecasts.map((f, i) => {
-      if (!read) return { check: { state: f.tx_hash ? "checking" : "pending" }, sealedAt: null };
-      if (!read.seals) return { check: { state: "error" }, sealedAt: null };
-      const { fingerprint, sealedAt } = read.seals[i];
-      if (fingerprint === zeroHash) return { check: { state: "pending" }, sealedAt: null };
-      if (fingerprint !== forecastFps[i]) return { check: { state: "mismatch", sealed: fingerprint }, sealedAt };
-      return { check: { state: "matches" }, sealedAt };
+      if (!read) return { check: { state: f.tx_hash ? "checking" : "pending" }, sealedAt: null, sealedIn: null };
+      if (!read.seals) return { check: { state: "error" }, sealedAt: null, sealedIn: null };
+      return checkSeal(read.seals[i], f, forecastFps[i]);
     });
   }, [forecasts, forecastSeals, openFire, forecastFps]);
 
@@ -170,10 +168,10 @@ export function FireRecordPage({ source, today, initialView, initialDates, now =
   useEffect(() => {
     if (!record || !fp) return;
     let live = true;
-    setSeal({ check: { state: "checking" }, sealedAt: null });
+    setSeal({ check: { state: "checking" }, sealedAt: null, sealedIn: null });
     source.sealOf(record).then(
-      ({ fingerprint, sealedAt }) => live && setSeal({ check: checkOf(fingerprint, fp), sealedAt: sealedAt || null }),
-      () => live && setSeal({ check: { state: "error" }, sealedAt: null }),
+      (s) => live && setSeal(checkSeal(s, record, fp)),
+      () => live && setSeal({ check: { state: "error" }, sealedAt: null, sealedIn: null }),
     );
     return () => {
       live = false;
@@ -300,6 +298,7 @@ export function FireRecordPage({ source, today, initialView, initialDates, now =
                     fingerprint={fp}
                     check={seal.check}
                     sealedAt={seal.sealedAt}
+                    sealedIn={seal.sealedIn}
                     onCheckAgain={() => setCheckAttempt((n) => n + 1)}
                   />
                 ) : fire.kind === "error" ? (

@@ -1,6 +1,6 @@
 import type { Hex } from "viem";
 import backtest2023 from "../../fixtures/backtest/2023.json";
-import { sealOf, sealsWithTime } from "./chain";
+import { checkReads } from "./chain";
 import { fingerprint, forecastFingerprint, type ForecastFields, type MatchedDetection } from "./fingerprint";
 import type { PackSource } from "./ComplaintPack";
 import type { FireRecordSource } from "./FireRecordPage";
@@ -16,6 +16,10 @@ export interface HotspotRecord extends MatchedDetection {
   fire_key?: Hex;
   /** Its satellite pass within the fire, from 1, in a fire's own detections. */
   pass?: number;
+  /** Its run on FireRuns and its proof under the run's root, in a fire's own detections; null together
+   *  for one sealed on FireRecords or in a root not sealed yet (D109). */
+  run?: number | null;
+  proof?: Hex[] | null;
 }
 
 /** One ring of a concession's boundary as [longitude, latitude] pairs: an outer edge or a hole. */
@@ -69,7 +73,11 @@ export interface Forecast extends ForecastFields {
   record_id: Hex;
   tx_hash: Hex | null;
   sealed_at: string | null;
-  outcome: "waiting" | "seen_inside" | "not_seen_inside" | "joined" | "seen_before_seal";
+  /** Its run on FireRuns and its proof under the run's root; null together for one sealed on
+   *  FireRecords or in a root not sealed yet. */
+  run: number | null;
+  proof: Hex[] | null;
+  outcome:"waiting" | "seen_inside" | "not_seen_inside" | "joined" | "seen_before_seal";
   /** The pass that saw the fire inside; null for a forecast that joined another fire or wasn't seen inside. */
   outcome_unix: number | null;
 }
@@ -189,13 +197,9 @@ export const apiSource: FireRecordSource = {
   concession,
   fire,
   packHref,
-  sealOf: async (record) => {
-    const { fingerprint, sealedAt } = await sealOf(record.record_id);
-    return { fingerprint, sealedAt: Number(sealedAt) };
-  },
+  sealOf: async (record) => (await checkReads([record]))[0],
   fingerprint,
-  forecastSeals: async (forecasts) =>
-    (await sealsWithTime(forecasts.map((f) => f.record_id))).map((s) => ({ fingerprint: s.fingerprint, sealedAt: Number(s.sealedAt) })),
+  forecastSeals: checkReads,
   forecastFingerprint,
   // Changes only when the replay is redone and committed, so it is bundled (D59).
   backtest: backtest2023,
@@ -204,7 +208,6 @@ export const apiSource: FireRecordSource = {
 export const packSource: PackSource = {
   pack,
   contract: import.meta.env.VITE_CONTRACT_ADDRESS,
-  sealsOf: async (records) =>
-    (await sealsWithTime(records.map((r) => r.record_id))).map((s) => ({ fingerprint: s.fingerprint, sealedAt: Number(s.sealedAt) })),
+  sealsOf: checkReads,
   fingerprint,
 };
