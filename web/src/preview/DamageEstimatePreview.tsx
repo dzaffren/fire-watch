@@ -4,7 +4,7 @@ import trase from "../../../fixtures/concessions/trase-cut.geojson?raw";
 import type { ConcessionDetail, Damage, FireDetail, FireSummary, PackRef, Ring } from "../api";
 import { ComplaintPack, type PackSource } from "../ComplaintPack";
 import { FireRecordPage, type FireRecordSource, type View } from "../FireRecordPage";
-import { enrich, fingerprintOf, FIRES, fireHotspots, fixture, param, syncPreview, THEMES, wait, WAIT_MS, type Theme } from "./fixture";
+import { chainSeal, enrich, fingerprintOf, FIRES, fireHotspots, fixture, param, syncPreview, THEMES, wait, WAIT_MS, type Theme } from "./fixture";
 import { AS_OF, makeSource as forecastSource } from "./SpreadForecastPreview";
 import "./preview.css";
 
@@ -127,7 +127,7 @@ function packSource(): PackSource {
     contract: CONTRACT,
     async sealsOf(records) {
       await wait(WAIT_MS * 2);
-      return records.map(fingerprintOf);
+      return records.map(chainSeal);
     },
     fingerprint: fingerprintOf,
   };

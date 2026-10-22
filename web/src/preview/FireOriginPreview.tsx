@@ -3,6 +3,7 @@ import type { Hex } from "viem";
 import type { HotspotRecord } from "../api";
 import { FireRecordPage, type FireRecordSource, type View } from "../FireRecordPage";
 import {
+  chainSeal,
   enrich,
   fingerprintOf,
   FIRES,
@@ -107,7 +108,7 @@ function makeSource(state: State): FireRecordSource {
       if (state === "checking") return never();
       await wait(WAIT_MS * 2);
       if (state === "chainError") throw new Error("preview: chain unreachable");
-      return fingerprintOf(originals.get(record.record_id) ?? record);
+      return chainSeal(originals.get(record.record_id) ?? record);
     },
     fingerprint: fingerprintOf,
   };

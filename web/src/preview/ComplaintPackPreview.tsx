@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { zeroHash, type Hex } from "viem";
+import type { Hex } from "viem";
 import type { HotspotRecord, PackRef } from "../api";
 import { ComplaintPack, type PackSource } from "../ComplaintPack";
-import { enrich, fingerprintOf, FIRES, fireHotspots, fixture, never, param, syncPreview, THEMES, wait, WAIT_MS, type Theme } from "./fixture";
+import { chainSeal, enrich, fingerprintOf, FIRES, fireHotspots, fixture, never, param, syncPreview, THEMES, wait, WAIT_MS, type Theme } from "./fixture";
 import "./preview.css";
 
 // Packs made from the fire-origin fixture's real fires, as of 2026-10-17 09:00 UTC. Seals and
@@ -76,7 +76,7 @@ function makeSource(state: State): PackSource {
       if (state === "checking") return never();
       await wait(WAIT_MS * 2);
       if (state === "chainError") throw new Error("preview: chain unreachable");
-      return records.map((r) => (r.tx_hash ? fingerprintOf(originals.get(r.record_id) ?? r) : zeroHash));
+      return records.map((r) => chainSeal(originals.get(r.record_id) ?? r));
     },
     fingerprint: fingerprintOf,
   };

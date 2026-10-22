@@ -8,6 +8,8 @@ const A_FP = "0x86a47945c682c15fb86471df99c10a3fe1d8fc4ba7f39f87e70b46703b85f051
 const B_FP = "0x5ac17c85b7568f7dc2f85a77b55418ca98bc0b32122e3eb4e1a226bd4dd2b3c9";
 const B_EDITED_FP = "0xaea5b4e67c112b9e21b79692df111a59ebfdc9fbd290d51e4287110112bcfe5c";
 const TX = "0xa640d742935c462c6260e88d431b895f58cb0a0837eb57ecc207cb5242591401";
+// 2026-10-14 09:05 UTC by the chain's clock, 2 h 47 min after hotspot A was detected.
+const SEALED_AT = 1791968700;
 
 const hotspotA: HotspotRecord = {
   record_id: `0x${"ab".repeat(32)}`,
@@ -43,7 +45,9 @@ function row(name: string) {
 
 describe("RecordPanel", () => {
   it("shows hotspot A's record and its match", () => {
-    render(<RecordPanel record={hotspotA} fingerprint={A_FP} check={{ state: "matches" }} onCheckAgain={() => {}} />);
+    render(
+      <RecordPanel record={hotspotA} fingerprint={A_FP} check={{ state: "matches" }} sealedAt={SEALED_AT} onCheckAgain={() => {}} />,
+    );
 
     expect(screen.getByRole("heading", { name: "Hotspot record" })).toBeInTheDocument();
     expect(screen.getByText("Matches the chain")).toBeInTheDocument();
@@ -67,7 +71,9 @@ describe("RecordPanel", () => {
   });
 
   it("lists every concession within 5 km, with the one-pixel note near an edge", () => {
-    render(<RecordPanel record={hotspotB} fingerprint={B_FP} check={{ state: "matches" }} onCheckAgain={() => {}} />);
+    render(
+      <RecordPanel record={hotspotB} fingerprint={B_FP} check={{ state: "matches" }} sealedAt={SEALED_AT} onCheckAgain={() => {}} />,
+    );
 
     expect(screen.queryByText("Concession", { selector: "dt" })).toBeNull();
     const items = within(row("Concessions")).getAllByRole("listitem");
@@ -80,7 +86,13 @@ describe("RecordPanel", () => {
   it("shows both fingerprints when the record changed after sealing", () => {
     const edited = { ...hotspotB, concessions: [{ ...hotspotB.concessions[0], inside: true }, hotspotB.concessions[1]] };
     render(
-      <RecordPanel record={edited} fingerprint={B_EDITED_FP} check={{ state: "mismatch", sealed: B_FP }} onCheckAgain={() => {}} />,
+      <RecordPanel
+        record={edited}
+        fingerprint={B_EDITED_FP}
+        check={{ state: "mismatch", sealed: B_FP }}
+        sealedAt={SEALED_AT}
+        onCheckAgain={() => {}}
+      />,
     );
 
     expect(screen.getByText("Does not match the chain")).toBeInTheDocument();
@@ -90,6 +102,17 @@ describe("RecordPanel", () => {
     expect(row("Sealed fingerprint")).toHaveTextContent("5ac17c85b7…d2b3c9");
     expect(row("Fingerprint now")).toHaveTextContent("aea5b4e67c…bcfe5c");
     expect(screen.queryByText("Fingerprint", { selector: "dt" })).toBeNull();
+    expect(row("Sealed")).toHaveTextContent("2026-10-14 09:05 UTC2 h 47 min after detection");
+  });
+
+  it("takes the Sealed time from the chain, not the API's sealed_at", () => {
+    // The API says 17 Oct 00:00; the chain sealed it 16 Oct 02:37:38.
+    const record = { ...hotspotA, sealed_at: "2026-10-17T00:00:00Z" };
+    render(
+      <RecordPanel record={record} fingerprint={A_FP} check={{ state: "matches" }} sealedAt={1792118258} onCheckAgain={() => {}} />,
+    );
+
+    expect(row("Sealed")).toHaveTextContent("2026-10-16 02:37 UTC1 d 20 h after detection");
   });
 
   it("Not on chain yet", () => {
@@ -98,6 +121,7 @@ describe("RecordPanel", () => {
         record={{ ...hotspotA, tx_hash: null, sealed_at: null }}
         fingerprint={A_FP}
         check={{ state: "pending" }}
+        sealedAt={null}
         onCheckAgain={() => {}}
       />,
     );
@@ -112,23 +136,27 @@ describe("RecordPanel", () => {
   });
 
   it("Checking", () => {
-    render(<RecordPanel record={hotspotA} fingerprint={A_FP} check={{ state: "checking" }} onCheckAgain={() => {}} />);
+    render(<RecordPanel record={hotspotA} fingerprint={A_FP} check={{ state: "checking" }} sealedAt={null} onCheckAgain={() => {}} />);
 
     expect(screen.getByText("Checking")).toBeInTheDocument();
     expect(screen.getByText("Comparing the stored record with the chain.")).toBeInTheDocument();
+    expect(screen.queryByText("Sealed", { selector: "dt" })).toBeNull();
   });
 
   it("offers Check again when the chain can't be reached", () => {
     const again = vi.fn();
-    render(<RecordPanel record={hotspotA} fingerprint={A_FP} check={{ state: "error" }} onCheckAgain={again} />);
+    render(<RecordPanel record={hotspotA} fingerprint={A_FP} check={{ state: "error" }} sealedAt={null} onCheckAgain={again} />);
 
     expect(screen.getByText("Couldn't reach Base Sepolia to check this record.")).toBeInTheDocument();
+    expect(screen.queryByText("Sealed", { selector: "dt" })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Check again" }));
     expect(again).toHaveBeenCalledOnce();
   });
 
   it("opens the raw record with the full fingerprint", () => {
-    render(<RecordPanel record={hotspotA} fingerprint={A_FP} check={{ state: "matches" }} onCheckAgain={() => {}} />);
+    render(
+      <RecordPanel record={hotspotA} fingerprint={A_FP} check={{ state: "matches" }} sealedAt={SEALED_AT} onCheckAgain={() => {}} />,
+    );
 
     const raw = screen.getByText("Show the raw record").closest("details") as HTMLElement;
     expect(within(raw).getByText(/"lon_e5": 10571567/)).toBeInTheDocument();

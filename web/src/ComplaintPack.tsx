@@ -13,8 +13,8 @@ export interface PackSource {
   pack(ref: PackRef): Promise<PackDetail | null>;
   /** FireRecords on Base Sepolia, which the reader's browser reads each seal from. */
   contract: Hex;
-  /** Each record's sealed fingerprint, in order, in one read; zero for one not sealed yet. */
-  sealsOf(records: HotspotRecord[]): Promise<Hex[]>;
+  /** Each record's sealed fingerprint and seal time, in order, in one read; zeros for one not sealed yet. */
+  sealsOf(records: HotspotRecord[]): Promise<{ fingerprint: Hex; sealedAt: number }[]>;
   fingerprint(record: HotspotRecord): Hex;
 }
 
@@ -53,7 +53,7 @@ export function ComplaintPack({ source, packRef, initialOpen = null }: Props) {
   const [load, setLoad] = useState<PackLoad>(packRef ? { kind: "loading" } : { kind: "missing" });
   const [attempt, setAttempt] = useState(0);
   const [slow, setSlow] = useState(false);
-  const [checked, setChecked] = useState<{ pack: PackDetail; checks: Check[] } | null>(null);
+  const [checked, setChecked] = useState<{ pack: PackDetail; checks: Check[]; sealedAt: (number | null)[] } | null>(null);
   const [checkAttempt, setCheckAttempt] = useState(0);
   const [open, setOpen] = useState<number | null>(initialOpen);
   const [replayAt, setReplayAt] = useState<number | null>(null);
@@ -92,15 +92,17 @@ export function ComplaintPack({ source, packRef, initialOpen = null }: Props) {
     if (!pack) return;
     let live = true;
     const all = (check: Check) => pack.hotspots.map(() => check);
-    setChecked({ pack, checks: all({ state: "checking" }) });
+    const none = pack.hotspots.map(() => null);
+    setChecked({ pack, checks: all({ state: "checking" }), sealedAt: none });
     source.sealsOf(pack.hotspots).then(
       (seals) =>
         live &&
         setChecked({
           pack,
-          checks: seals.map((sealed, i) => checkOf(sealed, fps[i])),
+          checks: seals.map((s, i) => checkOf(s.fingerprint, fps[i])),
+          sealedAt: seals.map((s) => s.sealedAt || null),
         }),
-      () => live && setChecked({ pack, checks: all({ state: "error" }) }),
+      () => live && setChecked({ pack, checks: all({ state: "error" }), sealedAt: none }),
     );
     return () => {
       live = false;
@@ -374,6 +376,7 @@ export function ComplaintPack({ source, packRef, initialOpen = null }: Props) {
                                     record={h}
                                     fingerprint={fps[i]}
                                     check={checks[i] ?? { state: "checking" }}
+                                    sealedAt={checked?.pack === pack ? checked.sealedAt[i] : null}
                                     onCheckAgain={() => setCheckAttempt((n) => n + 1)}
                                   />
                                 </td>

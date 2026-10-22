@@ -4,7 +4,7 @@ import type { FireDetail, Forecast, HotspotRecord, Point, Ring } from "../api";
 import { forecastFingerprint } from "../fingerprint";
 import { FireRecordPage, type FireRecordSource, type View } from "../FireRecordPage";
 import { passTimes } from "../FireView";
-import { enrich, fingerprintOf, FIRES, fireHotspots, fixture, iso, never, param, syncPreview, THEMES, wait, WAIT_MS, type Theme } from "./fixture";
+import { chainSeal, enrich, fingerprintOf, FIRES, fireHotspots, fixture, iso, never, param, syncPreview, THEMES, wait, WAIT_MS, type Theme } from "./fixture";
 import "./preview.css";
 
 // Forecasts made up over the fire-origin fixture's real fires, as if the recorder had forecast
@@ -209,7 +209,7 @@ export function makeSource(state: State): FireRecordSource {
     packHref: (id, f) => `/?${new URLSearchParams({ preview: "complaint-pack", state: "matches", pack: id, fire: f.key })}`,
     async sealOf(record) {
       await wait(WAIT_MS * 2);
-      return fingerprintOf(record);
+      return chainSeal(record);
     },
     fingerprint: fingerprintOf,
     async forecastSeals(forecasts) {
