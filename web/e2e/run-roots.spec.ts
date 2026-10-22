@@ -71,17 +71,17 @@ test.beforeEach(async ({ context }) => {
 });
 
 test("each run sealed its records under one root in one transaction, from the key FireRuns held then", async () => {
-  const roots = await sql<{ run: string; tx_hash: Hex; records: string; transactions: string }>(
-    "SELECT r.run, '0x' || encode(r.tx_hash, 'hex') AS tx_hash," +
-      " (SELECT count(*) FROM hotspots h WHERE h.root_id = r.id) + (SELECT count(*) FROM forecasts f WHERE f.root_id = r.id) AS records," +
-      " (SELECT count(DISTINCT t) FROM (SELECT tx_hash AS t FROM hotspots WHERE root_id = r.id" +
-      "  UNION ALL SELECT tx_hash FROM forecasts WHERE root_id = r.id) AS x WHERE t = r.tx_hash) AS transactions" +
-      " FROM roots r ORDER BY r.run",
+  // Each root's records, and how many of them carry a transaction other than the root's, unsent included.
+  const roots = await sql<{ run: string; tx_hash: Hex; records: string; elsewhere: string }>(
+    "SELECT r.run, '0x' || encode(r.tx_hash, 'hex') AS tx_hash, count(x.tx) AS records," +
+      " count(*) FILTER (WHERE x.tx IS DISTINCT FROM r.tx_hash) AS elsewhere" +
+      " FROM roots r JOIN (SELECT root_id, tx_hash AS tx FROM hotspots UNION ALL SELECT root_id, tx_hash FROM forecasts) AS x" +
+      " ON x.root_id = r.id GROUP BY r.id ORDER BY r.run",
   );
   expect(roots.map((r) => Number(r.run))).toEqual([1, 2, 3, 4]);
   for (const r of roots) {
     expect(Number(r.records)).toBeGreaterThan(0);
-    expect(Number(r.transactions)).toBe(1);
+    expect(Number(r.elsewhere)).toBe(0);
   }
 
   const chain = createPublicClient({ transport: http(RPC_URL) });
