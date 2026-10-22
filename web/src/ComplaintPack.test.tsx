@@ -8,6 +8,7 @@ import { fingerprint } from "./fingerprint";
 import { shortHash } from "./format";
 import { leaf, rootFrom } from "./merkle";
 import { enrich, FIRES, fireHotspots, fixture, inRun } from "./preview/fixture";
+import { AS_PACKED, LIVE_JOINED } from "./preview/OriginConfidencePreview";
 
 vi.mock("./FireMap", () => ({ FireMap: vi.fn(() => null) }));
 
@@ -335,6 +336,86 @@ describe("ComplaintPack", () => {
 
     const title = await screen.findByRole("heading", { level: 1 });
     expect(within(title.closest("header")!).getByText(NEVER_SPREAD)).toBeInTheDocument();
+  });
+
+  it("puts the one-detection and joined notes on top with the other caveats", async () => {
+    // 0332's fire cut at 17 Oct 09:00 UTC: one detection on 12 Oct 05:16, then 25 hours; one join on 14 Oct.
+    render(<ComplaintPack source={sourceOf({ ...packOf(FIRES.largest), ...AS_PACKED })} packRef={refOf(FIRES.largest)} />);
+
+    const title = await screen.findByRole("heading", { level: 1, name: "First seen outside, 3.1 km from the edge" });
+    const head = title.closest("header")!;
+    expect([...head.querySelectorAll("h1, p")].map((e) => e.textContent)).toEqual([
+      "Complaint pack, as of 2026-10-17 09:00 UTC",
+      "First seen outside, 3.1 km from the edge",
+      "ID-WOOD-CONCESSION-0332, Kalimantan Tengah",
+      "First seen as one detection, then not seen for 25 hours. That detection may be a separate fire.",
+      "Fire Watch joined another fire to this one on 14 Oct 17:20 UTC, when they came within 1 km. First seen above is the older of the two. The other was first seen on 13 Oct 06:37 UTC, on both sides of the edge.",
+      "Fire Watch's records begin 1 hour before this fire was first seen, so it may have been burning earlier.",
+    ]);
+    expect(screen.queryByText(/fires joined to this one$/)).toBeNull();
+  });
+
+  it("gives a weak first sighting its note when it is the pack's only caveat", async () => {
+    // 0356's fire has no other caveat; here its next pass came 36 hours after one detection.
+    render(<ComplaintPack source={sourceOf({ ...packOf(FIRES.inside), first_alone_h: 36 })} packRef={refOf(FIRES.inside)} />);
+
+    const title = await screen.findByRole("heading", { level: 1 });
+    expect(
+      within(title.closest("header")!).getByText(
+        "First seen as one detection, then not seen for 36 hours. That detection may be a separate fire.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("lists the fires joined to this one under Basis, in full so it prints", async () => {
+    render(
+      <ComplaintPack
+        source={sourceOf({ ...packOf(FIRES.largest), ...AS_PACKED, joined: LIVE_JOINED })}
+        packRef={refOf(FIRES.largest)}
+      />,
+    );
+
+    const title = await screen.findByRole("heading", { level: 1 });
+    expect(
+      within(title.closest("header")!).getByText(
+        "Fire Watch joined 7 other fires to this one, the first time on 14 Oct 17:20 UTC, as they came within 1 km. First seen above is the oldest of them. They are listed under Basis.",
+      ),
+    ).toBeInTheDocument();
+    const basis = screen.getByRole("region", { name: "Basis" });
+    expect(within(basis).getByRole("heading", { level: 3, name: "The 7 fires joined to this one" })).toBeInTheDocument();
+    const table = within(basis).getByRole("table", { name: "The 7 fires joined to this one" });
+    expect(table.closest("details")).toBeNull();
+    const [head, ...rows] = within(table).getAllByRole("row");
+    expect([...head.children].map((c) => c.textContent)).toEqual(["Joined (UTC)", "First seen (UTC)", "Where first seen"]);
+    expect(rows.map((r) => [...r.children].map((c) => c.textContent))).toEqual([
+      ["14 Oct 17:20", "13 Oct 06:37", "Both sides of the edge"],
+      ["17 Oct 18:04", "17 Oct 05:23", "Outside, 2.6 km"],
+      ["18 Oct 06:44", "17 Oct 18:04", "Outside, 4.5 km"],
+      ["18 Oct 17:45", "16 Oct 18:21", "Both sides of the edge"],
+      ["18 Oct 17:45", "16 Oct 18:21", "Both sides of the edge"],
+      ["22 Oct 05:27", "18 Oct 17:45", "Outside, 1.3 km"],
+      ["22 Oct 05:27", "21 Oct 18:30", "Outside, 630 m"],
+    ]);
+  });
+
+  it("names joins, position error and the edges' source under Basis, and the rule's version", async () => {
+    render(<ComplaintPack source={sourceOf({ ...packOf(FIRES.inside), rule_version: 2 })} packRef={refOf(FIRES.inside)} />);
+
+    await screen.findByRole("heading", { level: 1, name: "First seen inside, 410 m from the edge" });
+    expect(document.querySelector(".pack-caveats")).toBeNull();
+    const basis = screen.getByRole("region", { name: "Basis" });
+    expect(
+      within(basis).getByText(
+        "A fire that comes within 1 km of another is joined to it, so one fire here can be several that the satellite first saw apart. First seen is the oldest one's.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(basis).getByText(
+        "A detection's position can be off as well. Straight below the satellite, NOAA-20 places almost every detection within 400 m of the fire, and most within 200 m (Blonski and others, 2023, doi 10.1117/1.JRS.17.034506). The 375 m margin doesn't allow for this. Concession edges come from Trase's map, which gives no accuracy for its lines.",
+      ),
+    ).toBeInTheDocument();
+    expect(within(basis).getByRole("link", { name: "Version 2, in full" })).toHaveAttribute("href", RULE_URL);
+    expect(within(basis).queryByText(/fires joined to this one$/)).toBeNull();
   });
 
   it("holds the damage estimate with its working in full", async () => {
