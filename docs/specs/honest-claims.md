@@ -242,7 +242,7 @@ After this slice, the API supplies the record and the chain supplies everything 
 | `web/src/api.ts:200` | `packSource.sealsOf` reads `sealsWithTime` and returns `{ fingerprint, sealedAt }[]` | Scenario 1 |
 | `web/src/FireRecordPage.tsx:21` | `FireRecordSource.sealOf` takes the new return type | Scenario 1 |
 | `web/src/FireRecordPage.tsx:170` | The read no longer waits for `tx_hash`. The check comes from `checkOf`, and the page keeps `sealedAt` beside it | Scenarios 1, 2 |
-| `web/src/FireRecordPage.tsx:300` | `check={check}`, without the `tx_hash` test, and the new `sealedAt` prop | Scenario 2 |
+| `web/src/FireRecordPage.tsx:300` | `RecordPanel` takes the check and the seal time from the chain read, without the `tx_hash` test | Scenario 2 |
 | `web/src/RecordPanel.tsx:80`, `:113` | A `sealedAt: number \| null` prop. The "Sealed" row shows only when it is set: `detected(sealedAt)` and `gap(record.acquired_unix, ISO of sealedAt)` | Scenarios 1, 3 |
 | `web/src/ComplaintPack.tsx:17`, `:96`, `:373` | `PackSource.sealsOf` takes the new type. The pack keeps each record's time beside its check and passes it to `RecordPanel` | Scenario 1 |
 | `web/src/ComplaintPack.tsx:216`, `:393`, `:442` | Copy, as the Interface table says | Scenarios 4, 5 |
