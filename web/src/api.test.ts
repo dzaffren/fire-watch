@@ -1,9 +1,9 @@
 import { zeroHash } from "viem";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { apiSource, concession, concessions, pack, packRef, packSource, type Forecast, type HotspotRecord } from "./api";
-import { sealOf, sealsOf, sealsWithTime } from "./chain";
+import { sealOf, sealsWithTime } from "./chain";
 
-vi.mock("./chain", () => ({ sealOf: vi.fn(), sealsOf: vi.fn(), sealsWithTime: vi.fn() }));
+vi.mock("./chain", () => ({ sealOf: vi.fn(), sealsWithTime: vi.fn() }));
 
 const MAP = "Trase pulpwood concessions 2023–2024, v2026-02-20";
 const A_FP = "0x86a47945c682c15fb86471df99c10a3fe1d8fc4ba7f39f87e70b46703b85f051";
@@ -96,9 +96,9 @@ describe("apiSource", () => {
     expect(apiSource.fingerprint(hotspotA)).toBe(A_FP);
   });
 
-  it("reads the record's seal from the chain", async () => {
+  it("reads the record's seal and its time from the chain", async () => {
     vi.mocked(sealOf).mockResolvedValue({ fingerprint: A_FP, sealedAt: 1791968700n });
-    await expect(apiSource.sealOf(hotspotA)).resolves.toBe(A_FP);
+    await expect(apiSource.sealOf(hotspotA)).resolves.toEqual({ fingerprint: A_FP, sealedAt: 1791968700 });
     expect(sealOf).toHaveBeenCalledWith(hotspotA.record_id);
   });
 
@@ -165,11 +165,17 @@ describe("pack", () => {
 });
 
 describe("packSource", () => {
-  it("reads every record's seal in one chain read", async () => {
+  it("reads every record's seal and its time in one chain read", async () => {
     const hotspotB = { ...hotspotA, record_id: `0x${"cd".repeat(32)}` as const };
-    vi.mocked(sealsOf).mockResolvedValue([A_FP, A_FP]);
-    await expect(packSource.sealsOf([hotspotA, hotspotB])).resolves.toEqual([A_FP, A_FP]);
-    expect(sealsOf).toHaveBeenCalledTimes(1);
-    expect(sealsOf).toHaveBeenCalledWith([hotspotA.record_id, hotspotB.record_id]);
+    vi.mocked(sealsWithTime).mockClear().mockResolvedValue([
+      { fingerprint: A_FP, sealedAt: 1791968700n },
+      { fingerprint: zeroHash, sealedAt: 0n },
+    ]);
+    await expect(packSource.sealsOf([hotspotA, hotspotB])).resolves.toEqual([
+      { fingerprint: A_FP, sealedAt: 1791968700 },
+      { fingerprint: zeroHash, sealedAt: 0 },
+    ]);
+    expect(sealsWithTime).toHaveBeenCalledTimes(1);
+    expect(sealsWithTime).toHaveBeenCalledWith([hotspotA.record_id, hotspotB.record_id]);
   });
 });

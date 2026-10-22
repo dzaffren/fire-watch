@@ -81,10 +81,12 @@ interface Props {
   record: HotspotRecord;
   fingerprint: Hex;
   check: Check;
+  /** Unix seconds by the chain's clock; null until the chain answers with a seal (D97). */
+  sealedAt: number | null;
   onCheckAgain: () => void;
 }
 
-export function RecordPanel({ record, fingerprint, check, onCheckAgain }: Props) {
+export function RecordPanel({ record, fingerprint, check, sealedAt, onCheckAgain }: Props) {
   const status = check.state === "error" ? null : STATUS[check.state];
   const tx = record.tx_hash;
 
@@ -110,12 +112,12 @@ export function RecordPanel({ record, fingerprint, check, onCheckAgain }: Props)
       <dl className="fw-kv">
         <dt>Detected</dt>
         <dd>{detected(record.acquired_unix)}</dd>
-        {record.sealed_at && (
+        {sealedAt !== null && (
           <>
             <dt>Sealed</dt>
             <dd>
-              {detected(Date.parse(record.sealed_at) / 1000)}
-              <span className="sub">{gap(record.acquired_unix, record.sealed_at)} after detection</span>
+              {detected(sealedAt)}
+              <span className="sub">{gap(record.acquired_unix, new Date(sealedAt * 1000).toISOString())} after detection</span>
             </dd>
           </>
         )}

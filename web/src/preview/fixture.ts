@@ -1,4 +1,4 @@
-import { keccak256, toHex, type Hex } from "viem";
+import { keccak256, toHex, zeroHash, type Hex } from "viem";
 import type { ConcessionSummary, FireSummary, HotspotRecord, Ring } from "../api";
 import raw from "./fire-origin.fixture.json";
 
@@ -45,6 +45,12 @@ export const never = () => new Promise<never>(() => {});
 
 export const fingerprintOf = (r: HotspotRecord): Hex =>
   keccak256(toHex(JSON.stringify([r.source, r.lat_e5, r.lon_e5, r.acquired_unix, r.frp_e2, r.confidence, r.concessions, r.map_version])));
+
+/** A record's seal as the fake chain holds it: its fingerprint and seal time, zeros while it waits. */
+export const chainSeal = (sealed: HotspotRecord) =>
+  sealed.sealed_at
+    ? { fingerprint: fingerprintOf(sealed), sealedAt: Date.parse(sealed.sealed_at) / 1000 }
+    : { fingerprint: zeroHash, sealedAt: 0 };
 
 export function enrich(h: FixtureHotspot, unsealed: boolean): HotspotRecord {
   const record_id = keccak256(toHex(`${h.lat_e5},${h.lon_e5},${h.acquired_unix}`));

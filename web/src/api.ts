@@ -1,6 +1,6 @@
 import type { Hex } from "viem";
 import backtest2023 from "../../fixtures/backtest/2023.json";
-import { sealOf, sealsOf, sealsWithTime } from "./chain";
+import { sealOf, sealsWithTime } from "./chain";
 import { fingerprint, forecastFingerprint, type ForecastFields, type MatchedDetection } from "./fingerprint";
 import type { PackSource } from "./ComplaintPack";
 import type { FireRecordSource } from "./FireRecordPage";
@@ -185,7 +185,10 @@ export const apiSource: FireRecordSource = {
   concession,
   fire,
   packHref,
-  sealOf: async (record) => (await sealOf(record.record_id)).fingerprint,
+  sealOf: async (record) => {
+    const { fingerprint, sealedAt } = await sealOf(record.record_id);
+    return { fingerprint, sealedAt: Number(sealedAt) };
+  },
   fingerprint,
   forecastSeals: async (forecasts) =>
     (await sealsWithTime(forecasts.map((f) => f.record_id))).map((s) => ({ fingerprint: s.fingerprint, sealedAt: Number(s.sealedAt) })),
@@ -197,6 +200,7 @@ export const apiSource: FireRecordSource = {
 export const packSource: PackSource = {
   pack,
   contract: import.meta.env.VITE_CONTRACT_ADDRESS,
-  sealsOf: (records) => sealsOf(records.map((r) => r.record_id)),
+  sealsOf: async (records) =>
+    (await sealsWithTime(records.map((r) => r.record_id))).map((s) => ({ fingerprint: s.fingerprint, sealedAt: Number(s.sealedAt) })),
   fingerprint,
 };

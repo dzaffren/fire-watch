@@ -37,10 +37,15 @@ function packOf({ id, key }: Fire, waiting: (h: HotspotRecord) => boolean = () =
   };
 }
 
-/** FireRecords as Multicall3 reads it: each record's fingerprint as sealed, zero while it waits. */
+/** FireRecords as Multicall3 reads it: each record's fingerprint and time as sealed, zeros while it waits. */
 const chainOf = (pack: PackDetail) =>
   vi.fn(async (records: HotspotRecord[]) => {
-    const sealed = new Map(pack.hotspots.map((h) => [h.record_id, h.tx_hash ? fingerprint(h) : zeroHash]));
+    const sealed = new Map(
+      pack.hotspots.map((h) => [
+        h.record_id,
+        h.tx_hash ? { fingerprint: fingerprint(h), sealedAt: Date.parse(h.sealed_at!) / 1000 } : { fingerprint: zeroHash, sealedAt: 0 },
+      ]),
+    );
     return records.map((r) => sealed.get(r.record_id)!);
   });
 
@@ -152,6 +157,22 @@ describe("ComplaintPack", () => {
     expect(kv("Fire power")).toBe("1.45 MW");
   });
 
+  it("takes a detection's Sealed time from the chain, not the API's sealed_at", async () => {
+    const pack = packOf(FIRES.outside);
+    const chain = chainOf(pack);
+    const first = pack.hotspots[0].record_id;
+    // The API says 17 Oct 00:00; the chain sealed the first detection 16 Oct 02:37:38.
+    chain.mockImplementation(async (records) =>
+      records.map((r) => ({ fingerprint: fingerprint(r), sealedAt: r.record_id === first ? 1792118258 : Date.parse(r.sealed_at!) / 1000 })),
+    );
+    const served = { ...pack, hotspots: pack.hotspots.map((h, i) => (i === 0 ? { ...h, sealed_at: "2026-10-17T00:00:00Z" } : h)) };
+    render(<ComplaintPack source={sourceOf(served, chain)} packRef={refOf(FIRES.outside)} />);
+
+    expect(await screen.findByRole("heading", { name: "19 of 19 detections match the chain" })).toBeInTheDocument();
+    fireEvent.click(within(detectionRows()[0]).getByRole("button"));
+    expect(kv("Sealed")).toBe("2026-10-16 02:37 UTC2 d 9 h after detection");
+  });
+
   it("too close to tell", async () => {
     render(<ComplaintPack source={sourceOf(packOf(FIRES.edge))} packRef={refOf(FIRES.edge)} />);
 
@@ -225,7 +246,7 @@ describe("ComplaintPack", () => {
     };
     const watch = new MutationObserver(keep);
     watch.observe(document.body, { childList: true, subtree: true, characterData: true, characterDataOldValue: true });
-    render(<ComplaintPack source={sourceOf(packOf(FIRES.outside), vi.fn(() => new Promise<Hex[]>(() => {})))} packRef={refOf(FIRES.outside)} />);
+    render(<ComplaintPack source={sourceOf(packOf(FIRES.outside), vi.fn(() => new Promise<never>(() => {})))} packRef={refOf(FIRES.outside)} />);
 
     expect(await screen.findByRole("heading", { name: "Checking 19 detections against the chain" })).toBeInTheDocument();
     expect(detectionRows().filter((r) => within(r).queryByText("Checking"))).toHaveLength(19);

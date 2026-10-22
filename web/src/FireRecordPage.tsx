@@ -9,7 +9,7 @@ import { ForecastPanel, type ForecastCheck } from "./ForecastPanel";
 import { fireArea, fireDots, FireView, passTimes, Replay, type FireLoad } from "./FireView";
 import { count, detectedShort, location } from "./format";
 import { ChevronLeftIcon, ExternalIcon } from "./icons";
-import { LoadErrorPanel, LoadingPanel, RecordPanel, type Check } from "./RecordPanel";
+import { checkOf, LoadErrorPanel, LoadingPanel, RecordPanel, type Check } from "./RecordPanel";
 
 /** Where the page gets its data; the preview passes fixtures, the app passes the API and the chain. */
 export interface FireRecordSource {
@@ -18,7 +18,8 @@ export interface FireRecordSource {
   fire(id: string, key: Hex): Promise<FireDetail>;
   /** The link of a complaint pack holding this fire as the view shows it. */
   packHref(id: string, fire: FireDetail): string;
-  sealOf(record: HotspotRecord): Promise<Hex>;
+  /** The record's sealed fingerprint and seal time; zeros for one not sealed yet. */
+  sealOf(record: HotspotRecord): Promise<{ fingerprint: Hex; sealedAt: number }>;
   fingerprint(record: HotspotRecord): Hex;
   /** Each forecast's sealed fingerprint and seal time, in order, in one read; zero for one not sealed yet. */
   forecastSeals?(forecasts: Forecast[]): Promise<{ fingerprint: Hex; sealedAt: number }[]>;
@@ -58,7 +59,7 @@ export function FireRecordPage({ source, today, initialView, initialDates, now =
   const [mapVersion, setMapVersion] = useState("");
   const [detail, setDetail] = useState<DetailLoad>({ kind: "loading" });
   const [detailAttempt, setDetailAttempt] = useState(0);
-  const [check, setCheck] = useState<Check>({ state: "checking" });
+  const [seal, setSeal] = useState<{ check: Check; sealedAt: number | null }>({ check: { state: "checking" }, sealedAt: null });
   const [checkAttempt, setCheckAttempt] = useState(0);
   const [fire, setFire] = useState<FireLoad>({ kind: "loading" });
   const [fireAttempt, setFireAttempt] = useState(0);
@@ -169,10 +170,10 @@ export function FireRecordPage({ source, today, initialView, initialDates, now =
   useEffect(() => {
     if (!record?.tx_hash || !fp) return;
     let live = true;
-    setCheck({ state: "checking" });
+    setSeal({ check: { state: "checking" }, sealedAt: null });
     source.sealOf(record).then(
-      (sealed) => live && setCheck(sealed === fp ? { state: "matches" } : { state: "mismatch", sealed }),
-      () => live && setCheck({ state: "error" }),
+      ({ fingerprint, sealedAt }) => live && setSeal({ check: checkOf(fingerprint, fp), sealedAt: sealedAt || null }),
+      () => live && setSeal({ check: { state: "error" }, sealedAt: null }),
     );
     return () => {
       live = false;
@@ -297,7 +298,8 @@ export function FireRecordPage({ source, today, initialView, initialDates, now =
                   <RecordPanel
                     record={record}
                     fingerprint={fp}
-                    check={record.tx_hash ? check : { state: "pending" }}
+                    check={record.tx_hash ? seal.check : { state: "pending" }}
+                    sealedAt={record.tx_hash ? seal.sealedAt : null}
                     onCheckAgain={() => setCheckAttempt((n) => n + 1)}
                   />
                 ) : fire.kind === "error" ? (

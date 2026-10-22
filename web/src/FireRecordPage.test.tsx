@@ -88,7 +88,11 @@ function fixtureSource(edit: (r: HotspotRecord) => HotspotRecord = (r) => r): Fi
       as_of_unix: 1792227600,
     })),
     packHref: vi.fn((id: string, f: { key: Hex; as_of_unix: number }) => `/?pack=${id}&fire=${f.key}&as_of=${f.as_of_unix}`),
-    sealOf: vi.fn(async (r: HotspotRecord) => fingerprint(sealed.get(r.record_id)!)),
+    // FireRecords holds each record as first stored, sealed 2 h 47 min after detection by the chain's clock.
+    sealOf: vi.fn(async (r: HotspotRecord) => {
+      const original = sealed.get(r.record_id)!;
+      return { fingerprint: fingerprint(original), sealedAt: Date.parse(original.sealed_at!) / 1000 };
+    }),
     fingerprint,
   };
 }
@@ -364,6 +368,38 @@ describe("FireRecordPage", () => {
 
     expect(await screen.findByText("Matches the chain")).toBeInTheDocument();
     expect(kv("Fire power")).toHaveTextContent("2.76 MW");
+  });
+
+  it("takes a detection's Sealed time from the chain, not the API's sealed_at", async () => {
+    // The API says 17 Oct 00:00; the chain sealed it 16 Oct 02:37:38.
+    const source = fixtureSource((r) => ({ ...r, sealed_at: "2026-10-17T00:00:00Z" }));
+    vi.mocked(source.sealOf).mockImplementation(async (r) => ({ fingerprint: fingerprint(r), sealedAt: 1792118258 }));
+    await openFire(source);
+
+    fireEvent.click(within(firstRow()).getByRole("button"));
+
+    const panel = screen.getByRole("article", { name: "Hotspot record" });
+    expect(within(panel).queryByText("Sealed", { selector: "dt" })).toBeNull();
+    expect(await within(panel).findByText("Matches the chain")).toBeInTheDocument();
+    expect(kv("Sealed")).toHaveTextContent("2026-10-16 02:37 UTC2 d 9 h after detection");
+  });
+
+  it("offers Check again with no Sealed row when the chain can't be reached, and checks again", async () => {
+    const source = fixtureSource();
+    vi.mocked(source.sealOf).mockRejectedValueOnce(new Error("Base Sepolia unreachable"));
+    await openFire(source);
+
+    fireEvent.click(within(firstRow()).getByRole("button"));
+
+    const panel = screen.getByRole("article", { name: "Hotspot record" });
+    expect(await within(panel).findByText("Couldn't reach Base Sepolia to check this record.")).toBeInTheDocument();
+    expect(within(panel).queryByText("Sealed", { selector: "dt" })).toBeNull();
+
+    fireEvent.click(within(panel).getByRole("button", { name: "Check again" }));
+
+    expect(await within(panel).findByText("Matches the chain")).toBeInTheDocument();
+    expect(kv("Sealed")).toHaveTextContent("2026-10-13 20:24 UTC2 h 47 min after detection");
+    expect(source.sealOf).toHaveBeenCalledTimes(2);
   });
 
   it("says Does not match the chain when a detection's stored match was edited after sealing", async () => {
