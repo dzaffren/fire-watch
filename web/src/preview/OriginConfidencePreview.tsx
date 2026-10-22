@@ -22,7 +22,7 @@ export const AS_PACKED: Pick<FireDetail, "first_alone_h" | "joined"> = {
   joined: [{ at_unix: at("2026-10-14T17:20"), first_seen_unix: at("2026-10-13T06:37"), first_seen: { reading: "both", inside: false, edge_m: 2 } }],
 };
 
-// The same fire on 22 Oct 05:27 UTC: 869 detections on 19 passes, 8 fires joined.
+// The same fire on 22 Oct 05:27 UTC: 869 detections on 19 passes, 7 fires joined to it.
 export const LIVE_JOINED: JoinedFire[] = [
   ["2026-10-14T17:20", "2026-10-13T06:37", "both", false, 2],
   ["2026-10-17T18:04", "2026-10-17T05:23", "outside", false, 2576],
@@ -39,10 +39,10 @@ export const LIVE_JOINED: JoinedFire[] = [
 
 const STATES = {
   fire: "1–2. 0332's fire as its pack stands: one detection first, one join",
-  fireLive: "2. The same notes for 22 Oct's 8 joined fires (detections as of 17 Oct)",
+  fireLive: "2. The same notes for the 7 fires joined to it by 22 Oct (detections as of 17 Oct)",
   firm: "3. 0356's fire: one detection, seen again 11 h later, no note",
   pack: "4. 0332's pack: both notes on top",
-  packLive: "4. The pack with 22 Oct's 8 joined fires, listed under Basis",
+  packLive: "4. The pack with the 7 fires joined by 22 Oct, listed under Basis",
   landing: "5. The landing tells 0332's fire as the record shows it",
 } as const;
 type State = keyof typeof STATES;
