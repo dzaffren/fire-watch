@@ -1,6 +1,6 @@
 # Origin confidence
 
-**Version:** v1 · **Status:** Refined · **Type:** Enhancement · **Project type:** Web UI
+**Version:** v1 · **Status:** Built · **Type:** Enhancement · **Project type:** Web UI
 
 **Shape doc:** docs/specs/judge-review/shape.md
 **Depends on:** fire-origin, complaint-pack, newcomer-walkthrough
@@ -404,6 +404,10 @@ Recorded as D111 to D118.
 | O9 | The e2e's records hold real weak first sightings in 0540 but no joined fire. How does the e2e walk the join? | question | spec p3 | user | Resolved | 2026-10-22: the e2e walks 0540's weak and firm fires and a pack through the API, and the join through the landing's committed copy. `test_app.py` proves the joined list from the API with 0332's real detections (D118) |
 | O10 | The fire rule gains steps 9 and 10. Bump `fires.RULE_VERSION`? | question | spec p3 | user | Resolved | 2026-10-22: yes, to 2. Readings don't change, and the rule text says so (D117) |
 | O11 | A fire listed as joined can be two that joined each other first. Pause 2's "Fire Watch joined 8 fires here" can undercount the fires first seen apart: the live 0332 fire began as 10 | flag | spec p3 | user | Resolved | 2026-10-22: the notes count fires joined to this one: "joined another fire to this one", "joined 7 other fires to this one". Scenario 2 and the Interface copy changed to match |
+| O12 | `fires.joined()` needs `_components()`'s grid and pair test, and the plan said to reuse them without saying how | flag | build | user | Decided alone | Chose: split `_components()` into `_root()` and `_link()`, which add one detection to the grid and join it to those already there; `_components()` and `joined()` both call `_link()`. Every reading and the full API suite are unchanged. Other: leave `_components()` as it was and give `joined()` its own loop. Undo: restore `_components()` from f727f52 and copy the loop into `joined()`. 2026-10-22 |
+| O13 | The plan gave a join "the pass's time" and its first seen "from its own first pass", without saying which detection's time | flag | build | user | Decided alone | Chose: both times are the first detection of that pass across the whole fire, the time the fire view and the walkthrough show for each pass. Other: the joined group's own first detection, at most 30 minutes later. Undo: in `joined()`, use the group's first detection's `acquired_at`. 2026-10-22 |
+| O14 | The plan said "oldest join first" but not how to order two fires joined on one pass | flag | build | user | Decided alone | Chose: oldest group first, by each group's first detection. Other: nearest to the first detection first. Undo: sort `apart` in `joined()` by the other key. 2026-10-22 |
+| O15 | `FireView.test.tsx` and `ComplaintPack.test.tsx` need 0332's one-join and 7-join data, which the preview already holds | flag | build | user | Decided alone | Chose: export `AS_PACKED` and `LIVE_JOINED` from `web/src/preview/OriginConfidencePreview.tsx` and import them in both tests. Other: copy the rows into each test file. Undo: paste the rows into the two tests and drop the two `export` keywords. 2026-10-22 |
 
 _Never delete this section or its rows. See references/ledger.md._
 
