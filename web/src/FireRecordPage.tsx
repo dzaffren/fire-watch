@@ -168,7 +168,7 @@ export function FireRecordPage({ source, today, initialView, initialDates, now =
     view.kind === "fire" && picked?.from && picked.crossing && at >= passOf(picked) ? { from: picked.from, to: picked.crossing } : null;
 
   useEffect(() => {
-    if (!record?.tx_hash || !fp) return;
+    if (!record || !fp) return;
     let live = true;
     setSeal({ check: { state: "checking" }, sealedAt: null });
     source.sealOf(record).then(
@@ -298,8 +298,8 @@ export function FireRecordPage({ source, today, initialView, initialDates, now =
                   <RecordPanel
                     record={record}
                     fingerprint={fp}
-                    check={record.tx_hash ? seal.check : { state: "pending" }}
-                    sealedAt={record.tx_hash ? seal.sealedAt : null}
+                    check={seal.check}
+                    sealedAt={seal.sealedAt}
                     onCheckAgain={() => setCheckAttempt((n) => n + 1)}
                   />
                 ) : fire.kind === "error" ? (
