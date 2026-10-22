@@ -243,7 +243,8 @@ describe("FireRecordPage", () => {
     expect(
       screen.getByText("No hotspots on or near a pulpwood concession between 2026-10-01 and 2026-10-07."),
     ).toBeInTheDocument();
-    expect(screen.getByText("Recording started 2026-10-12.")).toBeInTheDocument();
+    expect(screen.getByText("Detections from 2026-10-12.")).toBeInTheDocument();
+    expect(screen.queryByText(/Recording started/)).toBeNull();
   });
 
   it("offers Try again when the list couldn't load, and loads on retry", async () => {
@@ -308,7 +309,7 @@ describe("FireRecordPage", () => {
     expect(kv("First seen")).toHaveTextContent("2026-10-13 17:37 UTC");
     expect(kv("Seen inside from")).toHaveTextContent("2026-10-15 18:43 UTC");
     expect(
-      screen.getByText("Recording had started 38 hours before this fire was first seen, so it may have been burning earlier."),
+      screen.getByText("Fire Watch's records begin 38 hours before this fire was first seen, so it may have been burning earlier."),
     ).toBeInTheDocument();
     expect(screen.getByText("19 detections, oldest first. Pick one to check it against the chain.")).toBeInTheDocument();
     expect(map().dots).toHaveLength(19);

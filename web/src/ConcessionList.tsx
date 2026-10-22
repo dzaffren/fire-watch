@@ -61,7 +61,7 @@ export function ConcessionList({ load, slow, from, to, onOpen, onRetry }: Props)
         <CalendarIcon />
         <h3>No hotspots in these dates</h3>
         <p className="fw-help">No hotspots on or near a pulpwood concession between {from} and {to}.</p>
-        {load.recording_started && <p className="fw-help">Recording started {load.recording_started}.</p>}
+        {load.recording_started && <p className="fw-help">Detections from {load.recording_started}.</p>}
       </div>
     );
   }
