@@ -2,7 +2,7 @@ import { fileURLToPath } from "node:url";
 import { expect, test, type Page } from "@playwright/test";
 import pg from "pg";
 import { createPublicClient, http, parseAbi, type Hex } from "viem";
-import { CONTRACT_ADDRESS, E2E_DATABASE_URL, RPC_URL, WEB_URL } from "./env";
+import { CONTRACT_ADDRESS, E2E_DATABASE_URL, FIRE_RUNS_ADDRESS, RPC_URL, WEB_URL } from "./env";
 
 declare global {
   interface Window {
@@ -24,11 +24,27 @@ async function sql<Row>(text: string): Promise<Row[]> {
   }
 }
 
-/** A record's seal time by anvil's clock, as the record panel writes it: "2026-10-13 20:00 UTC". */
+/** A record's seal time by anvil's clock, as the record panel writes it: "2026-10-13 20:00 UTC". Its run's
+ * root on FireRuns for a record in one, else its own seal on FireRecords. */
 async function chainSealedAt(recordId: Hex): Promise<string> {
+  const [{ run }] = await sql<{ run: string | null }>(
+    `SELECT r.run FROM hotspots h LEFT JOIN roots r ON r.id = h.root_id WHERE h.record_id = decode('${recordId.slice(2)}', 'hex')`,
+  );
   const client = createPublicClient({ transport: http(RPC_URL) });
-  const abi = parseAbi(["function sealOf(bytes32 recordId) view returns (bytes32 fingerprint, uint64 sealedAt)"]);
-  const [, sealedAt] = await client.readContract({ address: CONTRACT_ADDRESS, abi, functionName: "sealOf", args: [recordId] });
+  const [, sealedAt] =
+    run === null
+      ? await client.readContract({
+          address: CONTRACT_ADDRESS,
+          abi: parseAbi(["function sealOf(bytes32 recordId) view returns (bytes32 fingerprint, uint64 sealedAt)"]),
+          functionName: "sealOf",
+          args: [recordId],
+        })
+      : await client.readContract({
+          address: FIRE_RUNS_ADDRESS,
+          abi: parseAbi(["function runOf(uint256 run) view returns (bytes32 root, uint64 sealedAt)"]),
+          functionName: "runOf",
+          args: [BigInt(run)],
+        });
   expect(sealedAt).toBeGreaterThan(0n);
   return `${new Date(Number(sealedAt) * 1000).toISOString().slice(0, 16).replace("T", " ")} UTC`;
 }
