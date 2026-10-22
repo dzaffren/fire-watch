@@ -35,7 +35,7 @@ that holds the forecast's key detection. The first of these that holds decides i
 5. Otherwise it is still waiting.
 """
 
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from math import floor
@@ -86,7 +86,7 @@ def advance_rate(passes: list[list[fires.Detection]]) -> float | None:
     return advance / ((newest[0].acquired_at - before[0].acquired_at) / timedelta(hours=1))
 
 
-def nearest(newest: list[fires.Detection]) -> tuple[fires.Detection, int]:
+def nearest(newest: Sequence[fires.Detection]) -> tuple[fires.Detection, int]:
     """Rule step 2: the newest pass's detection nearest the edge, and its distance."""
     found = min(newest, key=lambda d: 0 if d.inside else d.edge_m)
     return found, 0 if found.inside else found.edge_m

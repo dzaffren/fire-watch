@@ -1,6 +1,6 @@
 """backtest-2023: replay 2023 as the hourly recorder would have run it, with forecast rule version
-1 and the downwind guess at every forecast moment, and write the totals and every forecast
-(D51–D60).
+1 and the guesses below at every forecast moment, and write the totals and every forecast
+(D52–D60, D99).
 
 Usage: backtest-2023 [--firms <path>] [--map <path>] [--wind <path>] [--fetch-wind] [--out <dir>]
 
@@ -20,11 +20,11 @@ The replay, so anyone can redo it:
    settles at that time, with the fires as they stood.
 5. For each fire with a detection stored in this run and not yet seen inside, make one forecast
    by rule version 1, and skip a pass already forecast after, as the recorder does.
-6. At the same moment, make the downwind guess, below.
+6. At the same moment, make each guess, below.
 7. A forecast whose 48 hours and 6 more end after 2023 is listed as "ends after 2023" and not
    counted (D56).
 
-The downwind guess (D51, D60):
+The downwind guess (D60, D99):
 
 1. Only a fire with an advance rate over 0, as in rule version 1 step 3, gets a guess.
    Otherwise the guess says no.
@@ -35,6 +35,13 @@ The downwind guess (D51, D60):
    which is the first point inside the concession shrunk by 375 m.
 4. When that is 48 hours or fewer, the guess is the newest pass's first detection plus those
    hours, rounded as rule version 1 step 4 rounds them. Otherwise it says no.
+
+The near-edge step, rule version 1 step 5 alone (D99):
+
+1. Take the newest pass's distance as rule version 1 step 2 does: that of its detection nearest
+   the edge, 0 when that detection is inside.
+2. At 375 m or less, the fire is forecast to be seen inside 12 hours after the newest pass's first
+   detection. Otherwise the step says no.
 """
 
 import argparse
@@ -75,7 +82,8 @@ WIND_TRIES = 3
 TIME = "%Y-%m-%dT%H:%MZ"
 COLUMNS = [
     "concession_id", "fire_first_seen_at", "fire_latitude", "fire_longitude", "after_pass_at",
-    "made_at", "rule_inside_by", "downwind_inside_by", "outcome", "seen_inside_at",
+    "made_at", "rule_inside_by", "downwind_inside_by", "near_edge_inside_by", "outcome",
+    "seen_inside_at",
 ]
 WIND_COLUMNS = ["latitude", "longitude", "hour", "speed_ms", "from_deg"]
 
@@ -346,6 +354,15 @@ def downwind(conn, made: list[Replayed], wind: dict) -> list[datetime | None]:
     ]
 
 
+def near_edge(made: list[Replayed]) -> list[datetime | None]:
+    """The near-edge step's inside-by time for each forecast, or None where it says no."""
+    return [
+        r.forecast.after_pass_at + timedelta(hours=forecast.STEP_H)
+        if forecast.nearest(r.newest)[1] <= fires.EDGE_DOUBT_M else None
+        for r in made
+    ]
+
+
 def outcome_of(r: Replayed) -> str:
     if r.forecast.until_at + forecast.SETTLE > YEAR_END:
         return "ends_after_2023"
@@ -366,7 +383,7 @@ def _method(made: list[Replayed], outcomes: list[str], said: list[datetime | Non
     return {**counts, "median_hours_off": round(statistics.median(off), 1) if off else None}
 
 
-def totals(made: list[Replayed], guesses: list[datetime | None]) -> dict:
+def totals(made: list[Replayed], guesses: dict[str, list[datetime | None]]) -> dict:
     outcomes = [outcome_of(r) for r in made]
     return {
         "rule_version": forecast.RULE_VERSION,
@@ -375,7 +392,7 @@ def totals(made: list[Replayed], guesses: list[datetime | None]) -> dict:
         "seen_before_made": outcomes.count("seen_before_made"),
         "ends_after_2023": outcomes.count("ends_after_2023"),
         "rule": _method(made, outcomes, [r.forecast.inside_by_at for r in made]),
-        "downwind": _method(made, outcomes, guesses),
+        **{name: _method(made, outcomes, said) for name, said in guesses.items()},
     }
 
 
@@ -383,15 +400,15 @@ def _at(at: datetime | None) -> str:
     return "" if at is None else f"{at:{TIME}}"
 
 
-def forecasts_csv(made: list[Replayed], guesses: list[datetime | None]) -> str:
+def forecasts_csv(made: list[Replayed], guesses: dict[str, list[datetime | None]]) -> str:
     rows = []
-    for r, guess in zip(made, guesses):
+    for r, *said in zip(made, *guesses.values()):
         outcome = outcome_of(r)
         rows.append(
             [
                 r.forecast.concession_id, _at(r.first.acquired_at), f"{r.first.lat_e5 / 1e5:.5f}",
                 f"{r.first.lon_e5 / 1e5:.5f}", _at(r.forecast.after_pass_at),
-                _at(r.forecast.made_at), _at(r.forecast.inside_by_at), _at(guess), outcome,
+                _at(r.forecast.made_at), _at(r.forecast.inside_by_at), *map(_at, said), outcome,
                 _at(r.outcome_at) if outcome in ("seen_inside", "seen_before_made") else "",
             ]
         )
@@ -444,7 +461,7 @@ def main(argv: list[str] | None = None, client: httpx.Client | None = None) -> i
                 file=sys.stderr,
             )
             return 1
-        guesses = downwind(conn, made, wind)
+        guesses = {"downwind": downwind(conn, made, wind), "near_edge": near_edge(made)}
 
     result = totals(made, guesses)
     args.out.mkdir(parents=True, exist_ok=True)
