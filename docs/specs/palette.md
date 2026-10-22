@@ -299,6 +299,12 @@ Single chunk.
 
 Recorded as D94, D95, D96.
 
+## Review
+
+2026-10-22 · 3 raw findings, 1 survived, 1 fixed.
+
+- quality · `web/src/palette.test.ts:72` · check print's white grounds through `rgba()`, not hex literals, so the drift check passes · `6a768c7`
+
 ## Open items
 
 | ID | What | Type | Raised at | Owner | Status | Answer |
