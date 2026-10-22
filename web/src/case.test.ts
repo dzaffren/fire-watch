@@ -32,6 +32,12 @@ it("reads the committed copy of the example fire's pack, as the landing's case t
   expect(pack.hotspots).toHaveLength(283);
   expect(pack.first_seen).toEqual({ reading: "outside", inside: false, edge_m: 3100 });
   expect(detectedShort(pack.inside_from_unix!)).toBe("13 Oct 06:37");
+  // One detection, then 25 hours; a second fire, first seen on both sides 2 m from the edge, joined on pass 5 (D111).
+  expect(pack.first_alone_h).toBe(25);
+  expect(pack.joined!.map((j) => [detectedShort(j.at_unix), detectedShort(j.first_seen_unix), j.first_seen])).toEqual([
+    ["14 Oct 17:20", "13 Oct 06:37", { reading: "both", inside: false, edge_m: 2 }],
+  ]);
+  expect(pack.rule_version).toBe(2);
 
   const times = passTimes(pack.hotspots);
   expect(times.map(detectedShort)).toEqual([
