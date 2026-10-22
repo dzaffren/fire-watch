@@ -86,6 +86,12 @@ def advance_rate(passes: list[list[fires.Detection]]) -> float | None:
     return advance / ((newest[0].acquired_at - before[0].acquired_at) / timedelta(hours=1))
 
 
+def nearest(newest: list[fires.Detection]) -> tuple[fires.Detection, int]:
+    """Rule step 2: the newest pass's detection nearest the edge, and its distance."""
+    found = min(newest, key=lambda d: 0 if d.inside else d.edge_m)
+    return found, 0 if found.inside else found.edge_m
+
+
 def _lead_h(passes: list[list[fires.Detection]], distance: int) -> int | None:
     rate = advance_rate(passes)
     if rate is not None and rate > 0:
@@ -106,14 +112,13 @@ def make(
     if fire.inside_from is not None:
         return None
     passes = passes_of(fire)
-    nearest = min(passes[-1], key=lambda d: 0 if d.inside else d.edge_m)
-    distance = 0 if nearest.inside else nearest.edge_m
+    closest, distance = nearest(passes[-1])
     after_pass_at = passes[-1][0].acquired_at
     lead_h = _lead_h(passes, distance)
     if lead_h is None:
         start = end = (None, None)
     else:
-        start = (nearest.lat_e5, nearest.lon_e5)
+        start = (closest.lat_e5, closest.lon_e5)
         end = crossing(*start)
     return Forecast(
         concession_id=concession_id,
