@@ -100,7 +100,7 @@ Rejected: open sealing (anyone could seal a record ID first with a wrong fingerp
 a true record read "Does not match"), a record ID worked out from the hotspot's values (an
 edited row would point at no seal and read wrongly instead of "Does not match").
 Source: docs/specs/walking-skeleton.md
-Status: active
+Status: superseded by D107
 
 ## D10 · 2026-10-13 · psycopg and plain SQL migration files, no ORM
 
@@ -213,7 +213,7 @@ Rejected: a new contract with a batch seal (a redeploy splits seals across two c
 gas we don't need), sending every transaction before waiting for receipts (faster, but the public
 RPC's lagging nodes make nonce gaps and repeat sends likely).
 Source: docs/specs/fire-record.md
-Status: active
+Status: superseded by D103
 
 ## D20 · 2026-10-16 · Watch the recorder from a scheduled GitHub workflow
 
@@ -536,7 +536,7 @@ Rejected: a forecast job of its own (a second job holding the wallet key), the A
 key, D21), sealing detections first (a forecast could wait behind the backlog), a new contract (a
 redeploy, D19), hashing JSON (D17).
 Source: docs/specs/spread-forecast.md
-Status: active
+Status: superseded by D105
 
 ## D50 · 2026-10-19 · Store each forecast's outcome when a run decides it, by the chain's clock
 
@@ -1056,4 +1056,102 @@ didn't come in and the median hours off need 368 px together, and the two counts
 hours off differ least: 11.7, 11.7, 12.4 and 11.7.
 Rejected: all three numbers in the block (on a phone the table scrolls sideways in its box).
 Source: docs/specs/fair-baseline.md
+Status: active
+
+## D103 · 2026-10-22 · Seal one Merkle root per run on a new contract whose recorder can be replaced
+
+Why: one transaction per record capped a run at 40 minutes (D19). On 22 Oct 2026 the 08:00 UTC run
+sealed 688 of its 1,297 records and left 609 for the next hour. FireRecords' recorder is immutable,
+so a leaked key can't be taken back. One root per run seals any number of records in one
+transaction, and gives complete-packs a sealed list for each run. Old seals stay on FireRecords,
+and the page reads both contracts.
+Rejected: one seal per record on FireRecords, as D19 chose (a busy pass waits an hour for its
+seals, and the recorder key can't be replaced).
+Supersedes: D19
+Source: docs/specs/run-roots.md
+Status: active
+
+## D104 · 2026-10-22 · A separate owner key, kept off Azure, can replace the recorder
+
+Why: a leaked recorder key must be replaceable without a new contract. The owner key stays in an
+encrypted Foundry keystore on the operator's machine, never in `.env`, Azure or the job, so a leak
+of the job's key doesn't take it too. The owner key deploys FireRuns and can then do nothing but
+replace the recorder.
+Rejected: a Safe multisig with 2 of 3 keys (one operator holds all three today, so it adds steps
+but no second person), the owner key in `.env` (it would sit beside the recorder key).
+Source: docs/specs/run-roots.md
+Status: active
+
+## D105 · 2026-10-22 · Make forecasts first in each run, as fingerprint version 3, and seal them in the run's root
+
+Why: only the recorder seals, and a forecast's seal time is its evidence. The run makes its
+forecasts before anything is sealed, and one root seals them with the run's detections in one
+transaction, from the key the owner can replace (D104). Version 3 ABI-encodes the concession, fire
+key, pass, made, until and forecast times, the two points and the rule version as whole numbers,
+so Python and TypeScript produce identical bytes (D17). FireRecords' fixed key then seals nothing
+new.
+Rejected: forecasts keeping their own seals on FireRecords (553 transactions on 21 Oct 2026 from a
+key that can't be replaced), a forecast job of its own (a second job holding the wallet key), the
+API (read-only, no key, D21), hashing JSON (D17).
+Supersedes: D49
+Source: docs/specs/run-roots.md
+Status: active
+
+## D106 · 2026-10-22 · A record the API sends without its proof reads "Not on chain yet" until complete-packs
+
+Why: the chain holds one root per run, so only a proof places a record under it, and the API sends
+the proof. A record without one reads "Not on chain yet", never "Matches". complete-packs checks
+each run's full list, which shows a missing record. A pack already says that Fire Watch's server
+chose its records (D98). The seal time still comes from the chain alone (D97).
+Rejected: "Should be sealed by now" for a record older than the newest root (an unsealed record's
+time is also the API's word, so it adds a clock without closing the gap).
+Source: docs/specs/run-roots.md
+Status: active
+
+## D107 · 2026-10-22 · Only FireRuns' recorder key seals, once per root, and each record keeps its random record ID
+
+Why: a root must come from the recorder and never change. FireRuns numbers each root in order and
+refuses a root it already holds. Each row keeps its random 32-byte record ID, which goes into its
+leaf with its fingerprint, so no two records share a leaf. FireRecords still holds the seals made
+before the switch, one per record ID, from its fixed recorder.
+Rejected: open sealing (anyone could add roots, and complete-packs couldn't tell the recorder's
+runs from anyone else's).
+Supersedes: D9
+Source: docs/specs/run-roots.md
+Status: active
+
+## D108 · 2026-10-22 · Hash each leaf twice, sort the leaves, and hash each pair in sorted order
+
+Why: Python builds the tree and TypeScript checks it, so the format must give identical bytes in
+both (D17). A leaf is keccak256 of keccak256 of the ABI-encoded record ID and fingerprint. The
+second hash stops a leaf from passing for an inner node. Sorted leaves let complete-packs rebuild a
+root from a run's list in any order. A pair hashed in sorted order needs no left or right flag, as
+OpenZeppelin's MerkleProof checks it. An odd node at the end of a level goes up unchanged.
+Rejected: OpenZeppelin's merkle-tree package (a new JavaScript dependency, and the recorder is
+Python), leaves in stored order (complete-packs would need that order to rebuild the root), one
+hash per leaf (a 64-byte leaf could pass for an inner node).
+Source: docs/specs/run-roots.md
+Status: active
+
+## D109 · 2026-10-22 · Store each record's proof in Neon, and send proofs only in the fire route
+
+Why: the page needs a record's proof to check it, and the fire route serves the tool's record
+panel and the pack. A simulation of 0332's 283-detection pack with proofs gave about 100 KB
+gzipped, against 30 KB today (2026-10-22). Proofs from one run share their upper hashes, which gzip
+shrinks. The concession route opens no record, so it carries no proof.
+Rejected: working out the proofs on each request (the API would read a whole run's records for each
+fire), a proof route per record (one more request for each opened record, and hundreds for a pack).
+Source: docs/specs/run-roots.md
+Status: active
+
+## D110 · 2026-10-22 · Store a root and its proofs before sending it, and finish a stored root before making a new one
+
+Why: a root sealed with no stored list can never be explained, and complete-packs needs each run's
+list. A run first asks FireRuns about each stored root with no run number. It fills in one that is
+sealed and sends again one that isn't, and FireRuns refuses a root twice. A send that the node
+refuses, such as from an empty wallet, drops its root at once, so the next run seals those records
+in its own root.
+Rejected: sending first and storing after (a crash between them leaves a sealed root with no stored
+list), dropping a stored root whose transaction may still land (it could land later with no list).
+Source: docs/specs/run-roots.md
 Status: active
