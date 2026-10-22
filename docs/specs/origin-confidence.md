@@ -389,6 +389,10 @@ e2e on A and B.
 
 Recorded as D111 to D118.
 
+## Review
+
+2026-10-23 · 2 raw findings, 0 survived. Clean.
+
 ## Open items
 
 | ID | What | Type | Raised at | Owner | Status | Answer |
