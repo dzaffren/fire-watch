@@ -266,7 +266,7 @@ Status: active
 | O2 | The recorder job still seals on FireRecords: Neon had no root on 23 Oct 2026 at 01:27 UTC. Until the switch, no pack has a run to check | flag | spec p1 | user | Resolved | 2026-10-23: the operator switches the job now, before `/build`, by the README's "Turning on run roots", steps 3 to 6 |
 | O3 | FireRecords' seals have no list on the chain, and the public RPC reads 200 blocks of logs at a time. What does a pack say about detections sealed before run roots? | question | spec p1 | user | Resolved | 2026-10-23: check the runs only, and say plainly that the older detections can't be checked. FIRMS's archive shows whether one is missing (D120) |
 | O4 | The check needs every record of each run in the window: 2.0 MB gzipped for a week. Does it run when the pack opens, or when the reader asks? | question | spec p1 | user | Resolved | 2026-10-23: when the pack opens, after the seal checks, so a print always carries the result (D121) |
-| O5 | Which motion tier the new panel uses | question | spec p2 | user | Open | — |
+| O5 | Which motion tier the new panel uses | question | spec p2 | user | Resolved | 2026-10-23: tier 1. The panel enters with the pack's existing `enter`, and nothing else moves |
 
 _Never delete this section or its rows. See references/ledger.md._
 
