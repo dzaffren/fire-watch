@@ -737,6 +737,24 @@ describe("ComplaintPack", () => {
       expect(source.sealsOf).toHaveBeenCalledTimes(1);
     });
 
+    it("keeps a keyboard user's focus in the panel when Check again is pressed", async () => {
+      const { source } = withRuns(async () => WHOLE);
+      vi.mocked(source.leftOut!).mockRejectedValueOnce(new Error("runs unreachable"));
+      render(<ComplaintPack source={source} packRef={refOf(FIRES.outside)} />);
+
+      const failed = await panel("Couldn't check runs 407 to 412 for a detection left out");
+      const again = within(failed).getByRole("button", { name: "Check again" });
+      again.focus();
+      fireEvent.click(again);
+      expect(again).not.toBeInTheDocument();
+      expect(document.activeElement).toBe(screen.getByRole("heading", { name: "Checking runs 407 to 412 for a detection left out" }));
+
+      // Still focusable once the result is in, so the browser doesn't drop focus to the page.
+      await panel("No detection of this fire is left out of runs 407 to 412");
+      expect(document.activeElement).toBe(screen.getByRole("heading", { name: "No detection of this fire is left out of runs 407 to 412" }));
+      expect(document.activeElement).toHaveAttribute("tabindex", "-1");
+    });
+
     it("says detections sealed before run 1 each have a seal of their own on FireRecords", async () => {
       const check = { ...WHOLE, first: { run: 1, sealedAt: RUN_1_AT }, last: { run: 2, sealedAt: RUN_2_AT }, beforeRuns: true };
       const { source } = withRuns(async () => check, { first: 1, last: 2 });
