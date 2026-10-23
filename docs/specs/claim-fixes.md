@@ -78,7 +78,7 @@ Scenario: The pack says what it holds without claiming it is complete
 Scenario: The landing says why it matters before the example
   Given the landing at the site's address
   When a judge reads the top of the page
-  Then the heading says "When a company says the fire started outside its land, show where
+  Then the heading says "When a company says a fire spread in from outside its land, show where
     satellites first saw it."
   And the paragraph under it says "Fire Watch is built for the watchdog groups that report
     plantation fires to the companies that buy from the plantation. It shows where satellites first
@@ -128,12 +128,60 @@ September 2026).
 - Naming cloud, canopy and smouldering peat where the first sighting shows, leading the CO₂ estimate
   with a range, and review hole 5's one-pixel headline: origin-and-range, a later slice (O2).
 
+## Interface
+
+Four sentences change in the real components, and one heading. Nothing is added, moved or
+restyled.
+
+```mermaid
+flowchart LR
+    L["Landing.tsx: h1 and landing-lede"] -- "Walk through a real case" --> R["RealCase.tsx: the fire step"]
+    L -- "globe before the flight" --> G["Landing.tsx: figcaption"]
+    R -- "See its complaint pack" --> P["ComplaintPack.tsx: pack-foot"]
+```
+
+The reader meets the new heading and paragraph first, the globe caption beside them, the real
+case's first stop below, and the pack footer last.
+
+| Where | Was | Now |
+| ----- | --- | --- |
+| Landing heading | Show where satellites first saw a plantation fire, on records anyone can check. | When a company says a fire spread in from outside its land, show where satellites first saw it. |
+| Landing paragraph | Watchdog groups use Fire Watch to report a fire on plantation land to the companies that buy from it. It shows where satellites first saw the fire and how it spread, and the buyer checks every record in their own browser. | Fire Watch is built for the watchdog groups that report plantation fires to the companies that buy from the plantation. It shows where satellites first saw a fire and how it spread, on records the buyer checks in their own browser. |
+| Globe caption, before the flight | Every dot is a fire the NOAA-20 satellite saw on 14 Oct 2026: 62,489 worldwide, … | Every dot is one detection by the NOAA-20 satellite on 14 Oct 2026: 62,489 worldwide, … |
+| Real case, first stop | …the NOAA-20 satellite saw this fire 283 times near ID-WOOD-CONCESSION-0332… | …the NOAA-20 satellite saw this fire on 8 passes, 283 detections in all, near ID-WOOD-CONCESSION-0332… |
+| Pack footer | This pack holds every detection of this fire that Fire Watch had stored by 2026-10-17 09:00 UTC. … | This pack holds this fire as Fire Watch had stored it by 2026-10-17 09:00 UTC. … |
+
+The real case counts passes with `times.length`, as its "Pass 2 of 8" stops do. The heading avoids
+"fire started", so the honest-claims guard in `Landing.test.tsx` stays as it is (O3).
+
+**Motion tier:** none new. The globe keeps tier 3 (D3) and the real case tier 1 (D89).
+
+**Components used:** the landing's `h1` and `landing-lede`, the globe's `figcaption`, the real
+case's step, and the pack's `pack-foot` with `fw-help`. There is no new component, no new token and
+no CSS change.
+
+**Design system:** Fire Watch, `docs/design/design-system/` (D2).
+
+**Preview:** real components in `web/src`, after `cd web && pnpm dev`:
+`http://localhost:5173/?preview=landing-page`, `?preview=newcomer-walkthrough` and
+`?preview=complaint-pack`. The drift check passed over the 3 files changed. `tsc -b` is clean, all
+326 web unit tests pass, and the landing and complaint pack e2e tests pass, 7 of 7. Each changed
+test failed on the old copy first. At 390 px and 360 px the landing and the real case don't scroll
+sideways. The pack preview does, by 43 px and 73 px, but the cause is the preview's own State
+`<select>`, not the pack.
+
+**Craft checks:** a one-line prompt would write "Track plantation fires with blockchain-verified
+satellite data". This heading names the answer a company gives, from the first shape's O3, and the
+one thing the tool shows against it. Next to Stripe's documentation, the reference for D2, it says
+what the reader can do in plain words, with no selling.
+
 ## Open items
 
 | ID | What | Type | Raised at | Owner | Status | Answer |
 | -- | ---- | ---- | --------- | ----- | ------ | ------ |
 | O1 | Does the landing's heading change to lead with the company's answer, or does it stay "Show where satellites first saw a plantation fire, on records anyone can check." with only the paragraph changed? | question | spec p1 | user | Resolved | 2026-10-23: the new heading, "When a company says the fire started outside its land, show where satellites first saw it." A judge reads the reason first |
 | O2 | Do the reader's other two points go in this slice: name cloud, canopy and smouldering peat where the first sighting shows, and lead the CO₂ estimate with a range? Review hole 5 goes with them: the headline "First seen outside, 3.1 km" rests on one nominal-confidence pixel | question | spec p1 | user | Resolved | 2026-10-23: a later slice, origin-and-range. This slice keeps to copy that is wrong today. The CO₂ range needs IPCC's emission-factor intervals checked first, and the headline touches D111's example |
+| O3 | The approved heading says "the fire started outside its land". honest-claims fails the landing on any "fire started" (`web/src/Landing.test.tsx:34`), so the page never claims where a fire started (D26). The heading only quotes the company | question | spec p2 | user | Resolved | 2026-10-23: reword to "When a company says a fire spread in from outside its land, show where satellites first saw it." The same dispute, in the first shape's words, and the honest-claims guard stays as it is |
 
 _Never delete this section or its rows. See references/ledger.md._
 
