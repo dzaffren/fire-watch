@@ -1,12 +1,12 @@
 # Damage check
 
-**Version:** v1 · **Status:** Refined · **Type:** Enhancement · **Project type:** Web UI
+**Version:** v1 · **Status:** Built · **Type:** Enhancement · **Project type:** Web UI
 
 **Shape doc:** docs/specs/judge-review/shape.md
 **Depends on:** damage-estimate, season-backtest
 
 The damage estimate scales its ground by the share that NASA's MODIS mapped as burned in 2023:
-61.1% on peat and 41.6% on other ground. It comes now because a company can call the unchecked
+61.8% on peat and 42.2% on other ground. It comes now because a company can call the unchecked
 375 m squares too high, and the O1 spike shows they are.
 
 ## Problem
@@ -49,6 +49,12 @@ The share grows with the size of the joined ground. Each row is a piece of conne
 MODIS's 500 m pixels miss small burns. A lone square's 6.4% is therefore partly MODIS's blind spot
 and partly ground that did not burn. The spike cannot separate the two.
 
+At `/build`, `damage-check-2023` measured the same squares: 456,345 ha, with 31,915 ha of peat and
+25,536 ha of other ground in large patches. It found 68,826 ha burned, 15.1%. That is 61.8% of the
+large patches' peat and 42.2% of their other ground. A raster count of the same patches, at an
+eighth of a MODIS pixel, gave 15.06% of all ground and 53.06% of the large patches. The spike's
+burned figures were about 1.5% low, and the page takes the command's (O11).
+
 ## Slice test
 
 | Check                         | Result |
@@ -73,7 +79,7 @@ flowchart LR
     R[("2023 replay: 42,682 detections near concessions")] -- "joined 375 m squares, peat or not" --> K[damage-check-2023]
     M[("MODIS MCD64A1 2023, sha256 pinned")] -- "500 m pixels burned in 2023" --> K
     K -- "peat and other shares, pieces over 20 squares" --> S[("committed 2023 check")]
-    S -- "61.1% and 41.6%, with their totals" --> E[damage estimate]
+    S -- "61.8% and 42.2%, with their totals" --> E[damage estimate]
     I((investigator)) -- "opens a fire" --> E
     E -- "pixels, likely burned, CO2 and cost, and the 2023 check" --> V[fire view]
     V -- "Make complaint pack" --> P[pack, with the same]
@@ -88,7 +94,7 @@ How each number is made now:
 | Number | Peat ground | Other ground |
 | ------ | ----------- | ------------ |
 | Ground in its pixels | The joined squares, as today (D63) | The same |
-| Likely burned | The squares' peat × 61.1% | The squares' other ground × 41.6% |
+| Likely burned | The squares' peat × 61.8% | The squares' other ground × 42.2% |
 | CO₂ | Likely burned peat × 600.6 t per ha, likely 289.2 to 911.9 | Likely burned other ground × 66.7 t per ha |
 | Cost | All likely burned ground × US$6,192 per ha | The same |
 
@@ -101,44 +107,44 @@ Scenario: The fire view scales a peat fire's ground by the 2023 shares
     outside on other ground
   When the investigator opens the fire
   Then its damage estimate reads "Ground in its pixels: About 210 ha"
-  And "Likely burned: About 130 ha", with "36 ha of it inside the concession."
-  And "CO₂ released: About 75,000 t", with "Likely 36,000 to 110,000 t. 22,000 t of it inside
+  And "Likely burned: About 130 ha", with "37 ha of it inside the concession."
+  And "CO₂ released: About 76,000 t", with "Likely 37,000 to 110,000 t. 22,000 t of it inside
     the concession."
-  And "Cost: About US$790,000", with "US$220,000 of it inside the concession."
+  And "Cost: About US$800,000", with "US$230,000 of it inside the concession."
 
 Scenario: A fire off peat scales by the other-ground share
   Given hotspot B of fire-record scenario 1, 2026-10-14 06:18 UTC, 370 m outside
     ID-WOOD-CONCESSION-0377, whose square is 14.06 ha with no peat
   When the investigator opens its fire from ID-WOOD-CONCESSION-0377
   Then its damage estimate reads "Ground in its pixels: About 14 ha" and "Likely burned: About
-    5.8 ha"
-  And "CO₂ released: About 390 t", with no range
-  And "Cost: About US$36,000"
+    5.9 ha"
+  And "CO₂ released: About 400 t", with no range
+  And "Cost: About US$37,000"
 
 Scenario: "How this is worked out" gives the 2023 check
   Given the 0332 fire from scenario 1
   When the investigator opens "How this is worked out"
-  Then it says that MODIS mapped 61.1% of the peat and 41.6% of the other ground as burned, in
-    2023's 57,450 ha of joined squares in pieces of more than 20 squares near concessions
-  And it says that MODIS mapped 14.8% of all 456,345 ha, because its 500 m pixels miss small
+  Then it says that MODIS mapped 61.8% of the peat and 42.2% of the other ground as burned, in
+    2023's 57,451 ha of joined squares in pieces of more than 20 squares near concessions
+  And it says that MODIS mapped 15.1% of all 456,345 ha, because its 500 m pixels miss small
     burns, so a small fire may have burned less than its share
   And it links MODIS MCD64A1 Collection 6.1 and the command that redoes the check
 
 Scenario: The pack carries the same figures and the check in full
   Given the pack for the 0332 fire made at 2026-10-17 09:00 UTC, as in complaint-pack scenario 1
   When anyone opens the pack
-  Then its damage estimate reads "About 210 ha", "About 130 ha" and "About 75,000 t"
+  Then its damage estimate reads "About 210 ha", "About 130 ha" and "About 76,000 t"
   And the 2023 check from scenario 3 is shown in full, so a printed pack carries it
 
 Scenario: Anyone can redo the 2023 check
   Given the pinned 2023 FIRMS file, the Trase map v2026-02-20, the WRI peat cut and the 12
     pinned MODIS burn-date files of 2023
   When an operator runs damage-check-2023
-  Then it writes the committed 2023 check byte for byte, with 61.1% on peat and 41.6% on other
+  Then it writes the committed 2023 check byte for byte, with 61.8% on peat and 42.2% on other
     ground
 ```
 
-The figures come from the spike's shares and the parts that the damage estimate's tests use. The
+The figures come from the command's shares and the parts that the damage estimate's tests use. The
 page rounds each to two significant figures, as today.
 
 ## Scope
@@ -148,7 +154,7 @@ page rounds each to two significant figures, as today.
 - One comparison over 2023's detections within 5 km of a concession, as the 2023 replay takes
   them (D52, D57): their joined 375 m squares against MODIS MCD64A1's 2023 burned pixels.
 - MODIS MCD64A1 Collection 6.1, the tiles over Indonesia, each pinned by sha256.
-- Two fixed 2023 shares applied to every fire: 61.1% for peat and 41.6% for other ground. Each is
+- Two fixed 2023 shares applied to every fire: 61.8% for peat and 42.2% for other ground. Each is
   the part MODIS mapped burned in 2023's pieces of more than 20 joined squares (O8). MODIS arrives
   months late, so a live fire can't be checked against its own burned pixels.
 - "Ground in its pixels" stays as the ceiling. "Likely burned" is new, and the CO₂ and the cost
@@ -187,20 +193,20 @@ and is always shown in the pack.
 
 | Part | What shows |
 | ---- | ---------- |
-| Figures, a key-value list | "Ground in its pixels": "About 210 ha". "Likely burned": "About 130 ha". "CO₂ released": "About 75,000 t". "Cost": "About US$790,000" |
+| Figures, a key-value list | "Ground in its pixels": "About 210 ha". "Likely burned": "About 130 ha". "CO₂ released": "About 76,000 t". "Cost": "About US$800,000" |
 | Under "Ground in its pixels" | "59 ha of it inside the concession.", as today |
-| Under "Likely burned" (new) | "At NASA's 2023 shares: 61% of peat, 42% of other ground. 36 ha of it inside the concession." The inside part shows only for a fire on both sides of the edge |
+| Under "Likely burned" (new) | "At NASA's 2023 shares: 62% of peat, 42% of other ground. 37 ha of it inside the concession." The inside part shows only for a fire on both sides of the edge |
 | Under the CO₂ and the cost | As today, worked out from the likely burned ground |
 | Under the figures | "An estimate, not a measurement. A detection means fire somewhere in its 375 m pixel, not that the whole pixel burned." |
 | The method paragraph | As today, plus "The ground that likely burned is each part at the share NASA found burned in 2023, below." |
-| The 2023 check (new) | The lead "In 2023, NASA's MODIS burned-area map checked the squares of every detection within 5 km of a concession:", then a table. Rows "Peat, in large patches", "Other ground, in large patches" and "All ground". Columns "Ground in its pixels" and "Found burned": 31,915 ha and 61.1%, 25,535 ha and 41.6%, 456,345 ha and 14.8% |
+| The 2023 check (new) | The lead "In 2023, NASA's MODIS burned-area map checked the squares of every detection within 5 km of a concession:", then a table. Rows "Peat, in large patches", "Other ground, in large patches" and "All ground". Columns "Ground in its pixels" and "Found burned": 31,915 ha and 61.8%, 25,536 ha and 42.2%, 456,345 ha and 15.1% |
 | Under the check | "A large patch is more than 20 squares that touch. MODIS's 500 m pixels miss small burns, so the shares come from large patches, which it can see. A small fire may have burned less than these shares." |
-| Factors | A new first row, "Likely burned": "61.1% of the peat and 41.6% of the other ground in its pixels." Then the CO₂ and cost rows, as today |
+| Factors | A new first row, "Likely burned": "61.8% of the peat and 42.2% of the other ground in its pixels." Then the CO₂ and cost rows, as today |
 | The closing line | "… Its detections are sealed, and the maps, the 2023 check and the factors are pinned, so anyone can redo it." |
 | Links (two new, seven in all) | "NASA MODIS Burned Area, MCD64A1 Collection 6.1" and "The 2023 check, its files and their sha256" |
 
-The large-patch hectares, 31,915 and 25,535, are sums of the spike's rounded rows. `damage-check-2023`
-gives the exact figures at `/build`, and the page takes them from its output.
+The large-patch hectares, 31,915 and 25,536, and the shares are `damage-check-2023`'s output at
+`/build`. The page takes them from that output.
 
 | State | What shows |
 | ----- | ---------- |
@@ -295,8 +301,9 @@ accepts only the 12 pinned files. Only the small output reaches git and the page
 3. Join the squares. A patch is one connected piece of the join. A large patch holds more than 20
    squares, counted by their centres.
 4. Burned ground is every MODIS pixel with a 2023 burn date in any of the 12 monthly files.
-5. For the large patches and for all ground, measure the area, its peat, its burned part and its
-   burned peat, on the WGS 84 ellipsoid. Round each to whole hectares.
+5. For the large patches, measure the area, its peat, its burned part and its burned peat. For all
+   ground, measure the area and its burned part. Areas are on the WGS 84 ellipsoid. Round each to
+   whole hectares.
 6. Each share is the burned part over the area, rounded to three places. Peat and other ground
    use the large patches. All ground uses every patch.
 
@@ -307,14 +314,14 @@ The output, `fixtures/damage/2023-check.json`:
   "year": 2023,
   "detections": 42682,
   "large_patch_squares": 21,
-  "peat": { "ha": 31915, "burned_ha": 19500, "share": 0.611 },
-  "other": { "ha": 25535, "burned_ha": 10622, "share": 0.416 },
-  "all": { "ha": 456345, "burned_ha": 67688, "share": 0.148 }
+  "peat": { "ha": 31915, "burned_ha": 19722, "share": 0.618 },
+  "other": { "ha": 25536, "burned_ha": 10781, "share": 0.422 },
+  "all": { "ha": 456345, "burned_ha": 68826, "share": 0.151 }
 }
 ```
 
-The values above are the spike's. The `burned_ha` for peat and other ground are worked out from
-its rounded shares. The command writes the exact figures.
+The values above are the command's, run twice on the compose db on 2026-10-23 with the same bytes.
+The file itself has one field to a line.
 
 The 12 pinned files, all `MCD64monthly.A2023<day>.Win19.061.burndate.tif`:
 
@@ -342,13 +349,15 @@ detections' bounds.
 | File | What changes | Why |
 | ---- | ------------ | --- |
 | `api/src/firewatch/damage_check.py` (new) | The check in the docstring. `MODIS_FILES`, the 12 names with their sha256. `CHECK`, the query. `burned(dir, bounds)` reads each file over the detections' bounds with rasterio, joins the months with burn date > 0, and turns the pixels into polygons in raster order. `main()`: `--modis <dir>` (required), `--firms <path>`, `--map <path>`, `--out <dir>`, as `backtest-2023` has them | Scenarios 3, 5 |
+| `api/src/firewatch/peat.py:82` | `POINT` and `SQUARE`, the square's SQL, named once for `DAMAGE` and `CHECK` (O12) | Scenario 5 |
 | `api/pyproject.toml:17` | The script `damage-check-2023`. No new dependency: rasterio is in the `cut` and `dev` groups | Scenario 5 |
 | `fixtures/damage/2023-check.json` (new) | The command's output, run on the compose db | Scenarios 1–5 |
 | `api/tests/test_damage_check.py` (new) | Runs on `fixtures/backtest/2023-cut.csv`, `trase-cut.geojson` and `peat-cut.geojson.gz`, with a GeoTIFF that the test writes. Checks the hectares and shares for known burned pixels, the same bytes twice, and a refusal for a changed or missing file | Scenario 5 |
 | `web/src/Damage.tsx:16` | `CHECK_2023` comes from the bundled JSON, not from typed numbers | Scenarios 1–4 |
+| `web/vite.config.ts:13` | The dev server may read `fixtures/damage` (O13) | Scenarios 1–4 |
 | `web/src/Damage.test.tsx` | The new figures for the 0332, B and 0540 fires, the "Likely burned" row, the check table, its paragraph and the two new links | Scenarios 1–3 |
 | `web/src/ComplaintPack.test.tsx` | The pack's damage section, with the new figures and the check in full | Scenario 4 |
-| `web/e2e/damage-estimate.spec.ts:15` | Reads "About 130 ha", "About 75,000 t" and the "Peat, in large patches" row with 61.1%, in the fire view and the pack. The tap check at `:60` already covers every `.damage` link, so it covers the two new ones | All |
+| `web/e2e/damage-estimate.spec.ts:15` | Reads "About 130 ha", "About 76,000 t" and the "Peat, in large patches" row with 61.8%, in the fire view and the pack. The tap check at `:60` already covers every `.damage` link, so it covers the two new ones | All |
 | `README.md:78`, `docs/ARCHITECTURE.md:54`, `CHANGELOG.md` | How to redo the check, with the fetch line. The component row and an edge in the diagram. One changelog line | Operators |
 
 Reusing: `concessions.download()` for the FIRMS file, `backtest.hotspots()` and
@@ -374,10 +383,10 @@ mkdir -p ~/modis-2023 && cd ~/modis-2023 && for d in 001 032 060 091 121 152 182
 
 |                      |                                                                               |
 | -------------------- | ----------------------------------------------------------------------------- |
-| **Load**             | The page bundles about 300 more bytes. There is no new request, and the API is unchanged. The command runs once, in about 2 minutes on the compose db: the spike took 57 s for the match, 4 s for MODIS and 9 s for the areas |
+| **Load**             | The page bundles about 300 more bytes. There is no new request, and the API is unchanged. The command runs once, in 64 s on the compose db, measured at `/build` |
 | **Breaks first**     | The page: nothing new. The command, at 10 times the detections: the join, which took 5.8 s. Expect about a minute |
 | **Security surface** | No new route and no secret. UMD publishes its SFTP login. The command accepts only files that match their pinned sha256. It writes to `DATABASE_URL`: it loads the same concession map and peat cut that are already there, and uses temporary tables for the rest. The README points it at the compose db |
-| **Proof it works**   | The command prints `checked year=2023 detections=42682 squares_ha=456345 burned_ha=67688 peat_share=0.611 other_share=0.416 seconds=…`. On the live site, the 0332 fire reads "Likely burned: About 130 ha", and the e2e reads it on every push |
+| **Proof it works**   | The command prints `checked year=2023 detections=42682 squares_ha=456345 burned_ha=68826 peat_share=0.618 other_share=0.422 seconds=64`. On the live site, the 0332 fire reads "Likely burned: About 130 ha", and the e2e reads it on every push |
 | **Rollout**          | No flag. The merge deploys the page (D21). There is no API deploy and no migration. Rollback: revert the merge |
 
 ### Test plan
@@ -394,8 +403,8 @@ Pause 2 already wrote the page code, so each new or changed web test is first ru
 copy of the code, to see it fail.
 
 **E2E:** `web/e2e/damage-estimate.spec.ts`. It opens the ID-WOOD-CONCESSION-0332 fire from
-`fire-origin.csv`, reads "About 130 ha" and "About 75,000 t". It opens "How this is worked out" and
-reads the "Peat, in large patches" row with 61.1%. It makes a complaint pack and reads the same.
+`fire-origin.csv`, reads "About 130 ha" and "About 76,000 t". It opens "How this is worked out" and
+reads the "Peat, in large patches" row with 61.8%. It makes a complaint pack and reads the same.
 `cd web && pnpm e2e damage-estimate`.
 
 Run one API suite at a time, because every worktree shares `firewatch_test`.
@@ -433,6 +442,11 @@ Recorded as D126, D127, D128, D129, D130, D131.
 | O8 | The share follows fire size more than peat. A lone square: 6.4%. Joined ground of more than 20 squares: 52.5%, 61.1% on peat and 41.6% on other ground. MODIS's 500 m pixels miss small burns, so a small fire's low share is partly MODIS's blind spot. Which share scales the estimate? | question | spike | user | Resolved | 2026-10-23: the shares of 2023's pieces of more than 20 joined squares, 61.1% on peat and 41.6% on other ground, for every fire. The page says a small fire may have burned less |
 | O9 | How the command gets the 12 MODIS files, which UMD serves only over SFTP | question | spec p3 | user | Resolved | 2026-10-23: the operator fetches them with one curl line, and the command checks each file's pinned sha256 (D130) |
 | O10 | Whether the check is its own command or a flag on backtest-2023 | question | spec p3 | user | Resolved | 2026-10-23: its own command, damage-check-2023 (D131) |
+| O11 | Scenario 1 said "Likely burned: About 130 ha", with "36 ha of it inside the concession." and "CO₂ released: About 75,000 t", with "Likely 36,000 to 110,000 t. 22,000 t of it inside the concession." and "Cost: About US$790,000", with "US$220,000 of it inside the concession." Scenario 2 said "About 5.8 ha", "About 390 t" and "About US$36,000". Scenario 3 said 61.1%, 41.6%, 57,450 ha and 14.8%. Scenario 4 said "About 75,000 t". Scenario 5 said 61.1% and 41.6%. All came from the spike's shares | flag | build | user | Decided alone | Chose: the command's measured shares, 61.8% on peat, 42.2% on other ground and 15.1% of all ground, and each scenario's figures worked out from them; a raster count of the same patches agrees, at 15.06% and 53.06%. Other: keep the spike's 61.1% and 41.6% typed into the page. Undo: put the spike's three shares in `fixtures/damage/2023-check.json`, and put back the old scenario text. 2026-10-23 |
+| O12 | The plan reuses "the square from `peat.DAMAGE`", but that square was written inside the query | flag | build | user | Decided alone | Chose: name the square's SQL once in `peat.py` as `POINT` and `SQUARE`, used by `DAMAGE` and by `damage_check.CHECK`; `test_peat.py` and `test_app.py` pass unchanged. Other: a second copy of the square in `damage_check.py`. Undo: inline `SQUARE` back into `DAMAGE` and copy it into `CHECK`. 2026-10-23 |
+| O13 | `pnpm dev` refuses a JSON file outside the folders `vite.config.ts` lets it read, and the plan named no change there | flag | build | user | Decided alone | Chose: add `../fixtures/damage` to `server.fs.allow`, beside `../fixtures/backtest`. Other: copy the JSON into `web/src`. Undo: drop the line, and import a copy from `web/src`. 2026-10-23 |
+| O14 | The check's step 5 said to measure the peat of all ground too, but the planned JSON has no field for it | flag | build | user | Decided alone | Chose: measure peat for the large patches only, and say so in step 5. Other: add the peat of all ground to the JSON, which the page does not read. Undo: add `peat_ha` to `"all"` in `measure()` and `CHECK`, and rerun the command. 2026-10-23 |
+| O15 | D126's Why says MODIS mapped 14.8% of the squares, and D127's title and Why give 61.1% and 41.6%. Those are the spike's figures; the command measured 15.1%, 61.8% and 42.2% | flag | build | user | Decided alone | Chose: leave D126 and D127 as approved; the choices still hold and only the spike's figures in them are off. Other: a new entry that supersedes D127 with the command's figures. Undo: append that entry and flip D127's Status. 2026-10-23 |
 
 _Never delete this section or its rows. See references/ledger.md._
 
