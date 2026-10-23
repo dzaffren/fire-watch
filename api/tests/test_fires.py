@@ -20,7 +20,7 @@ ROOT = Path(__file__).parents[2]
 SCENARIOS = json.loads((ROOT / "fixtures" / "fires" / "scenarios.json").read_text())
 # The landing's example fire as its pack stands at 17 Oct 2026 09:00 UTC: 283 detections.
 PACK_0332 = json.loads((ROOT / "web" / "public" / "case" / "pack-0332.json").read_text())
-# Real fire-origin.csv pairs on both sides of 1 km and 48 hours; leftOut.test.ts reads them too.
+# Real VIIRS pairs from the preview fixture on both sides of 1 km and 48 hours; leftOut.test.ts reads them too.
 JOIN_VECTORS = json.loads((ROOT / "fixtures" / "join-vectors.json").read_text())
 STARTED = datetime.fromisoformat(SCENARIOS["recording_started"])
 T0 = datetime(2026, 10, 13, 6, 0, tzinfo=timezone.utc)
