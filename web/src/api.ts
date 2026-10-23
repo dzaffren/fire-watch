@@ -160,6 +160,9 @@ export interface PackDetail extends FireDetail {
   boundary: Ring[];
   map_version: string;
   rule_version: number;
+  /** The FireRuns runs in its window, from 48 hours before it was first seen to the cut; null when
+   *  every record in the window was sealed before run roots (D120). */
+  runs?: { first: number; last: number } | null;
 }
 
 export interface ConcessionDetail extends ConcessionSummary {

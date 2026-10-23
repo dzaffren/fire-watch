@@ -1,13 +1,33 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
-import type { Hex } from "viem";
+import { zeroHash, type Hex } from "viem";
 import type { HotspotRecord, PackDetail, PackRef } from "./api";
 import type { Seal } from "./chain";
 import { DamageSection } from "./Damage";
 import { FireMap } from "./FireMap";
 import { fireArea, fireDots, JoinedTable, OriginMethod, OriginNotes, passTimes, Replay, where } from "./FireView";
 import { count, detected, detectedShort, distance, firstSeenLine, location, plural, shortHash } from "./format";
-import { AlertIcon, ExternalIcon, OkIcon } from "./icons";
+import { AlertIcon, BadIcon, ExternalIcon, OkIcon } from "./icons";
 import { checkSeal, checkTitle, Chip, overall, RecordPanel, type Check, type SealCheck } from "./RecordPanel";
+
+/** A run's root on FireRuns: its number, and its seal time by the chain's clock. */
+export interface RunSeal {
+  run: number;
+  sealedAt: number;
+}
+
+/** What the reader's browser found in every record of each FireRuns run in the pack's window (D119). */
+export interface LeftOutCheck {
+  first: RunSeal;
+  last: RunSeal;
+  /** Every record in the runs, detections and forecasts. */
+  records: number;
+  /** The window starts before FireRuns' first run, so older detections each have a seal of their own (D120). */
+  beforeRuns: boolean;
+  /** Detections the fire rule joins to this fire that the pack lacks, oldest first. */
+  missing: HotspotRecord[];
+  /** Runs whose records don't rebuild their root on FireRuns. */
+  unmatched: number[];
+}
 
 /** Where the pack gets its data; the preview passes fixtures, the app passes the API and the chain. */
 export interface PackSource {
@@ -18,7 +38,11 @@ export interface PackSource {
   /** Each record's seal on FireRecords or its run's root on FireRuns, in order, in one read; zeros for one not sealed yet. */
   sealsOf(records: HotspotRecord[]): Promise<Seal[]>;
   fingerprint(record: HotspotRecord): Hex;
+  /** Every record of each run in the pack's window, checked against FireRuns; asked only for a pack with runs. */
+  leftOut?(pack: PackDetail): Promise<LeftOutCheck>;
 }
+
+type LeftOutState = LeftOutCheck | "checking" | "error";
 
 type PackLoad = { kind: "loading" } | { kind: "error" } | { kind: "missing" } | { kind: "ready"; pack: PackDetail };
 
@@ -57,6 +81,8 @@ export function ComplaintPack({ source, packRef, initialOpen = null }: Props) {
   const [slow, setSlow] = useState(false);
   const [checked, setChecked] = useState<{ pack: PackDetail; seals: SealCheck[] } | null>(null);
   const [checkAttempt, setCheckAttempt] = useState(0);
+  const [leftOut, setLeftOut] = useState<{ pack: PackDetail; state: LeftOutState } | null>(null);
+  const [leftOutAttempt, setLeftOutAttempt] = useState(0);
   const [open, setOpen] = useState<number | null>(initialOpen);
   const [replayAt, setReplayAt] = useState<number | null>(null);
   const [copied, setCopied] = useState<"no" | "yes" | "failed">("no");
@@ -104,6 +130,21 @@ export function ComplaintPack({ source, packRef, initialOpen = null }: Props) {
       live = false;
     };
   }, [source, pack, fps, checkAttempt]);
+
+  // After the seal checks, so the two reads don't share the RPC's rate limit (D121).
+  const sealsDone = !!pack && checked?.pack === pack && !checks.some((c) => c.state === "checking");
+  useEffect(() => {
+    if (!pack?.runs || !sealsDone || !source.leftOut) return;
+    let live = true;
+    setLeftOut({ pack, state: "checking" });
+    source.leftOut(pack).then(
+      (check) => live && setLeftOut({ pack, state: check }),
+      () => live && setLeftOut({ pack, state: "error" }),
+    );
+    return () => {
+      live = false;
+    };
+  }, [source, pack, sealsDone, leftOutAttempt]);
 
   // A printed pack is a document: light, whatever the screen's theme.
   useEffect(() => {
@@ -217,8 +258,8 @@ export function ComplaintPack({ source, packRef, initialOpen = null }: Props) {
                 <p className="fw-help rec-note">
                   Your browser worked out each detection's fingerprint and checked it on Base Sepolia, a test network.
                   An older detection has a seal of its own on FireRecords. A newer one is under its recorder run's root
-                  on FireRuns. Fire Watch's server chose which records to send. NASA FIRMS's public archive shows
-                  whether one is missing.
+                  on FireRuns. Fire Watch's server chose which records to send.{" "}
+                  {pack.runs ? "The check below shows whether it left one out." : "NASA FIRMS's public archive shows whether one is missing."}
                 </p>
                 {checks.some((c) => c.state === "mismatch") && (
                   <p className="fw-help rec-note">
@@ -258,6 +299,15 @@ export function ComplaintPack({ source, packRef, initialOpen = null }: Props) {
                   ))}
                 </dl>
               </section>
+
+              {pack.runs && (
+                <LeftOutPanel
+                  pack={pack}
+                  runs={pack.runs}
+                  state={leftOut?.pack === pack ? leftOut.state : "checking"}
+                  onCheckAgain={() => setLeftOutAttempt((n) => n + 1)}
+                />
+              )}
 
               <section className="pack-section enter" aria-labelledby="h-site">
                 <h2 id="h-site">Site</h2>
@@ -454,6 +504,128 @@ function Caveats({ pack }: { pack: PackDetail }) {
         </p>
       )}
     </div>
+  );
+}
+
+const runSpan = (first: number, last: number) => (first === last ? `run ${first}` : `runs ${first} to ${last}`);
+const runList = (runs: number[]) => (runs.length === 1 ? `run ${runs[0]}` : `runs ${runs.slice(0, -1).join(", ")} and ${runs[runs.length - 1]}`);
+
+/** Whether the server left a detection of this fire out of the pack, from every record of each run in its window. */
+function LeftOutPanel({ pack, runs, state, onCheckAgain }: {
+  pack: PackDetail;
+  runs: { first: number; last: number };
+  state: LeftOutState;
+  onCheckAgain: () => void;
+}) {
+  const span = runSpan(runs.first, runs.last);
+  if (state === "checking" || state === "error") {
+    return (
+      <section className="fw-panel pack-check enter" aria-labelledby="h-left-out" aria-live="polite">
+        <div className="rec-head">
+          <h2 id="h-left-out">{state === "checking" ? `Checking ${span} for a detection left out` : `Couldn't check ${span} for a detection left out`}</h2>
+          {state === "checking" && <Chip check={{ state: "checking" }} />}
+        </div>
+        {state === "checking" ? (
+          <p className="fw-help rec-note">
+            Your browser reads every record these runs sealed and rebuilds each root, so this can take a few seconds.
+          </p>
+        ) : (
+          <div className="rec-act">
+            <p className="fw-help rec-note">Couldn't read the runs from Fire Watch's server or Base Sepolia.</p>
+            <button className="fw-btn" type="button" onClick={onCheckAgain}>Check again</button>
+          </div>
+        )}
+      </section>
+    );
+  }
+
+  const { first, last, records, beforeRuns, missing, unmatched } = state;
+  const checked = runSpan(first.run, last.run);
+  let title = `No detection of this fire is left out of ${checked}`;
+  let chip = <span className="fw-chip fw-chip--ok"><OkIcon />Nothing left out</span>;
+  if (missing.length) {
+    title = `${plural(missing.length, "detection", "detections")} of this fire ${missing.length === 1 ? "is" : "are"} left out of this pack`;
+    chip = <span className="fw-chip fw-chip--bad"><BadIcon />Left out</span>;
+  } else if (unmatched.length) {
+    title = `Can't show that nothing is left out of ${checked}`;
+    chip = <Chip check={{ state: "mismatch", sealed: zeroHash }} />;
+  }
+
+  return (
+    <section className="fw-panel pack-check enter" aria-labelledby="h-left-out" aria-live="polite">
+      <div className="rec-head">
+        <h2 id="h-left-out">{title}</h2>
+        {chip}
+      </div>
+      <p className="fw-help rec-note">
+        Fire Watch sent all {plural(records, "record", "records")} these runs sealed. Your browser rebuilt each run's
+        root from them and compared it with FireRuns. The runs start 48 hours before this fire was first seen and end
+        at the pack's cut.
+      </p>
+      {!missing.length && !unmatched.length && (
+        <p className="fw-help rec-note">No run holds a detection that the fire rule joins to this fire and this pack leaves out.</p>
+      )}
+      {missing.length > 0 && (
+        <>
+          <p className="fw-help rec-note">
+            The fire rule joins each detection below to this fire, through detections at most 1 km and 48 hours apart,
+            but this pack leaves it out. Each one sits in a run whose root matches FireRuns.
+          </p>
+          <div className="table-box">
+            <table className="fw-table" aria-labelledby="h-left-out">
+              <thead>
+                <tr><th scope="col">Detected (UTC)</th><th scope="col">Where</th><th scope="col">Sealed in</th></tr>
+              </thead>
+              <tbody>
+                {missing.map((h) => (
+                  <tr key={h.record_id}>
+                    <td>{detectedShort(h.acquired_unix)}</td>
+                    <td>
+                      {where(h, pack.concession_id)}
+                      <span className="sub fw-mono">{location(h.lat_e5, h.lon_e5)}</span>
+                    </td>
+                    <td>Run {h.run}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+      {unmatched.length > 0 && (
+        <p className="fw-help rec-note">
+          Fire Watch's records for {runList(unmatched)} don't rebuild {unmatched.length === 1 ? "its root" : "their roots"} on
+          FireRuns. A record was removed or changed after its run was sealed, or Fire Watch holds no list for that root.
+          So this pack can't show that nothing is left out.
+        </p>
+      )}
+      {beforeRuns && (
+        <p className="fw-help rec-note">
+          Detections sealed before {detected(first.sealedAt)} each have a seal of their own on FireRecords. The chain
+          holds no list of them, so NASA FIRMS's public archive is the way to find one left out.
+        </p>
+      )}
+      <dl className="fw-kv">
+        <dt>Runs checked</dt>
+        <dd>
+          {first.run === last.run ? first.run : `${first.run} to ${last.run}`}, with {plural(records, "record", "records")}
+        </dd>
+        <dt>{first.run === last.run ? "Run sealed" : "First run sealed"}</dt>
+        <dd>{detected(first.sealedAt)}</dd>
+        {first.run !== last.run && (
+          <>
+            <dt>Last run sealed</dt>
+            <dd>{detected(last.sealedAt)}</dd>
+          </>
+        )}
+        {unmatched.length > 0 && (
+          <>
+            <dt>Not matching</dt>
+            <dd>{unmatched.join(", ")}</dd>
+          </>
+        )}
+      </dl>
+    </section>
   );
 }
 
