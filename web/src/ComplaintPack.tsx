@@ -447,8 +447,8 @@ export function ComplaintPack({ source, packRef, initialOpen = null }: Props) {
 
               <footer className="pack-foot">
                 <p className="fw-help">
-                  This pack holds every detection of this fire that Fire Watch had stored by{" "}
-                  {detected(pack.as_of_unix)}. Passes after that are not in it.
+                  This pack holds this fire as Fire Watch had stored it by {detected(pack.as_of_unix)}. Passes after
+                  that are not in it.
                 </p>
                 <p className="fw-help">
                   Link: <span className="fw-mono pack-link">{window.location.href}</span>

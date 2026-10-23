@@ -78,7 +78,9 @@ describe("RealCase", () => {
       "Every record is sealed",
       "What the buyer gets",
     ]);
-    expect(steps[0]).toHaveTextContent("From 12 Oct to 17 Oct 2026, the NOAA-20 satellite saw this fire 283 times near ID-WOOD-CONCESSION-0332");
+    expect(steps[0]).toHaveTextContent(
+      "From 12 Oct to 17 Oct 2026, the NOAA-20 satellite saw this fire on 8 passes, 283 detections in all, near ID-WOOD-CONCESSION-0332, in Central Kalimantan.",
+    );
     expect(steps[1]).toHaveTextContent("The company that holds it can answer that the fire started outside its land and spread in.");
     expect(steps[2]).toHaveTextContent(
       "The satellite first saw it on 12 Oct 05:16 UTC as one detection, outside the concession and 3,100 m from its edge. It didn't see the fire again for 25 hours, so that detection may be a separate fire. Scroll on to see what came next, one satellite pass at a time.",
