@@ -43,3 +43,4 @@
 - Resume a chunk agent at its turn limit with SendMessage — [resume-chunk-at-turn-limit](resume-chunk-at-turn-limit.md)
 - Click `Fires in <id>` before opening a second fire in an e2e; the fire view hides the table — [fire-view-hides-fires-table](fire-view-hides-fires-table.md)
 - Prove each test for pause 2 code with a mutant; it passes the first time it runs — [pause-2-code-needs-mutants](pause-2-code-needs-mutants.md)
+- Stage an old FireRecords seal before the run root that would hold it; never pull a row out of a sealed root — [never-move-rows-out-of-a-sealed-root](never-move-rows-out-of-a-sealed-root.md)
