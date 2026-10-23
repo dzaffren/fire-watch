@@ -9,7 +9,7 @@ import {
   type Hex,
 } from "viem";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { checkReads, sealsOf } from "./chain";
+import { checkReads, runsOf, sealsOf } from "./chain";
 
 vi.hoisted(() => {
   vi.stubEnv("VITE_RPC_URL", "http://rpc.test/");
@@ -168,5 +168,18 @@ describe("checkReads", () => {
       ids.map((id) => ({ contract: "FireRecords", fingerprint: sealed(id), sealedAt: Number(SEALED_AT) })),
     );
     expect(calls.map((c) => c.records).sort((a, b) => a - b)).toEqual([200, 500, 500]);
+  });
+});
+
+describe("runsOf", () => {
+  it("reads each run's root and seal time in one aggregate3, in order, zero for one not sealed", async () => {
+    const calls = fakeRpc(new Map(), 3n);
+
+    await expect(runsOf([2, 3, 4])).resolves.toEqual([
+      { root: runRoot(2n), sealedAt: Number(RUN_SEALED_AT) },
+      { root: runRoot(3n), sealedAt: Number(RUN_SEALED_AT) },
+      { root: zeroHash, sealedAt: 0 },
+    ]);
+    expect(calls).toEqual([{ to: MULTICALL3, records: 3, runs: [2n, 3n, 4n] }]);
   });
 });
