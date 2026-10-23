@@ -1,6 +1,6 @@
 # Damage check
 
-**Version:** v1 · **Status:** Built · **Type:** Enhancement · **Project type:** Web UI
+**Version:** v1 · **Status:** Shipped · **Type:** Enhancement · **Project type:** Web UI
 
 **Shape doc:** docs/specs/judge-review/shape.md
 **Depends on:** damage-estimate, season-backtest
