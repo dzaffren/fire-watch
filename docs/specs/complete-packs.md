@@ -1,6 +1,6 @@
 # Complete packs
 
-**Version:** v1 · **Status:** Refined · **Type:** Enhancement · **Project type:** Web UI
+**Version:** v1 · **Status:** Draft · **Type:** Enhancement · **Project type:** Web UI
 
 **Shape doc:** docs/specs/judge-review/shape.md
 **Depends on:** run-roots, complaint-pack
@@ -403,6 +403,7 @@ Recorded as D119, D120, D121, D122, D123, D124, D125. D24 is superseded by D119.
 | O10 | Two files the plan didn't name. `web/e2e/global-setup.ts` sealed run 1's root over 0332's first pass, then moved those 3 rows to FireRecords, so run 1's list could no longer rebuild its root. `web/e2e/run-roots.spec.ts:100` expected one chain read, and a pack with runs now makes two | flag | build | user | Decided alone | Chose: before run 1, a run from the owner key stores and forecasts, and FireRuns refuses its root (D110). The first pass is then sealed on FireRecords, and run 1's root holds the rest (commit a75b83f). run-roots waits for the left-out panel and expects two reads (commit abfbb69). Other: keep the old staging, and have every e2e pack read "Not matching 1". Undo: `git revert a75b83f abfbb69`. 2026-10-23 |
 | O11 | `web/e2e/complaint-pack.spec.ts` needed more than the note at `:157` | flag | build | user | Decided alone | Chose: it expects two chain reads after the left-out panel settles, and its print test waits for "Couldn't check runs 1 to 4 for a detection left out" and counts 3 Check again buttons (commit 13afb4f). Other: leave them, so they race or fail. Undo: revert those hunks of 13afb4f. 2026-10-23 |
 | O12 | The plan didn't say whether `runRecords` asks its steps of 100 runs together or in turn | flag | build | user | Decided alone | Chose: together, kept in order (commit 271d125). Other: one after another, which is gentler on the API. Undo: a plain `for` loop with `await` in `runRecords`. 2026-10-23 |
+| O13 | The test Postgres on 127.0.0.1:55432 can't be reached: its Docker bridge `br-4f6b8ed739a0` is up with no IPv4 address. Chunk A's 8 new `test_app.py` tests, the API suite and the e2e have not run. The fix needs `sudo ip addr add 172.19.0.1/16 dev br-4f6b8ed739a0` | question | build | user | Open | — |
 
 _Never delete this section or its rows. See references/ledger.md._
 
