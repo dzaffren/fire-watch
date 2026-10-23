@@ -13,6 +13,14 @@ const CO2_PER_C = 44 / 12;
 const COST_USD = 16.1e9;
 const COST_HA = 2.6e6;
 
+// NASA's MODIS MCD64A1 C6.1 over 2023's detection pixels near concessions: the ground it found
+// burned, in patches of more than 20 joined squares and in all (D126, D127).
+const CHECK_2023 = {
+  peat: { ha: 31915, share: 0.611 },
+  other: { ha: 25535, share: 0.416 },
+  all: { ha: 456345, share: 0.148 },
+};
+
 const peatCo2 = (dm: number) => ((dm * PEAT_CO2_C) / 1000) * CO2_PER_C;
 const OTHER_CO2_HA = (OTHER_DM * OTHER_CO2) / 1000;
 const COST_PER_HA = COST_USD / COST_HA;
@@ -23,27 +31,36 @@ const IPCC_OTHER_URL = "https://www.ipcc-nggip.iges.or.jp/public/2006gl/pdf/4_Vo
 const COST_URL = "https://openknowledge.worldbank.org/entities/publication/391e19f4-18f7-56c2-8c28-bb89cc9e7d6f";
 const PEAT_MAP_URL = "https://data.globalforestwatch.org/datasets/gfw::global-peatlands/about";
 const PEAT_TILES_URL = "https://github.com/dzaffren/fire-watch/blob/main/api/src/firewatch/peat.py";
+const MODIS_URL = "https://lpdaac.usgs.gov/products/mcd64a1v061/";
+const CHECK_URL = "https://github.com/dzaffren/fire-watch/blob/main/api/src/firewatch/damage_check.py";
 
 const NOT_MEASURED =
-  "An estimate, not a measurement. A detection means fire somewhere in its 375 m pixel, so less ground may have burned.";
+  "An estimate, not a measurement. A detection means fire somewhere in its 375 m pixel, not that the whole pixel burned.";
 const NEVER_SPREAD = "This fire never spread. If it is a fixed heat source, such as a mill, little or nothing here burned.";
 
-/** A fire's ground, CO2 and cost from its four parts, whole and inside the concession. */
+/** A fire's ground, the part that likely burned, and its CO2 and cost, whole and inside the concession. */
 export function estimate(d: Damage) {
   const peat = d.inside_peat_ha + d.outside_peat_ha;
   const other = d.inside_other_ha + d.outside_other_ha;
   const inside = d.inside_peat_ha + d.inside_other_ha;
+  // The CO2 and the cost follow the ground that likely burned, not the whole pixels (D126).
+  const peatBurned = peat * CHECK_2023.peat.share;
+  const otherBurned = other * CHECK_2023.other.share;
+  const insidePeatBurned = d.inside_peat_ha * CHECK_2023.peat.share;
+  const insideOtherBurned = d.inside_other_ha * CHECK_2023.other.share;
   const co2 = (dm: number, peatHa: number, otherHa: number) => peatHa * peatCo2(dm) + otherHa * OTHER_CO2_HA;
   return {
     peat,
     ha: peat + other,
     haInside: inside,
-    co2: co2(PEAT_DM.mean, peat, other),
-    co2Low: co2(PEAT_DM.low, peat, other),
-    co2High: co2(PEAT_DM.high, peat, other),
-    co2Inside: co2(PEAT_DM.mean, d.inside_peat_ha, d.inside_other_ha),
-    cost: (peat + other) * COST_PER_HA,
-    costInside: inside * COST_PER_HA,
+    burned: peatBurned + otherBurned,
+    burnedInside: insidePeatBurned + insideOtherBurned,
+    co2: co2(PEAT_DM.mean, peatBurned, otherBurned),
+    co2Low: co2(PEAT_DM.low, peatBurned, otherBurned),
+    co2High: co2(PEAT_DM.high, peatBurned, otherBurned),
+    co2Inside: co2(PEAT_DM.mean, insidePeatBurned, insideOtherBurned),
+    cost: (peatBurned + otherBurned) * COST_PER_HA,
+    costInside: (insidePeatBurned + insideOtherBurned) * COST_PER_HA,
   };
 }
 
@@ -64,6 +81,7 @@ const perHa = (n: number) => n.toLocaleString("en-GB", { maximumFractionDigits: 
 const ha = (n: number) => `${amount(n)}\u00a0ha`;
 const tonnes = (n: number) => `${amount(n)}\u00a0t`;
 const usd = (n: number) => `US$${amount(n).replace(" ", "\u00a0")}`;
+const percent = (share: number, places = 0) => `${(share * 100).toFixed(places)}%`;
 
 function DamageFigures({ d }: { d: Damage }) {
   const e = estimate(d);
@@ -77,6 +95,14 @@ function DamageFigures({ d }: { d: Damage }) {
         <dd>
           <span className="damage-value">About {ha(e.ha)}</span>
           {split && <span className="sub">{ha(e.haInside)} of it inside the concession.</span>}
+        </dd>
+        <dt>Likely burned</dt>
+        <dd>
+          <span className="damage-value">About {ha(e.burned)}</span>
+          <span className="sub">
+            At NASA's 2023 shares: {percent(CHECK_2023.peat.share)} of peat, {percent(CHECK_2023.other.share)} of other
+            ground.{inside(ha(e.burnedInside))}
+          </span>
         </dd>
         <dt>CO₂ released</dt>
         <dd>
@@ -121,7 +147,7 @@ function DamageMethod({ d, labelledBy }: { d: Damage; labelledBy: string }) {
       <p className="fw-help">
         Each detection stands for a 375 m square of ground around it. Where squares from different passes overlap, the
         ground counts once. The ground is split at the concession's edge, and by WRI's Global Peatlands map into peat
-        and other ground.
+        and other ground. The ground that likely burned is each part at the share NASA found burned in 2023, below.
       </p>
       <div className="table-box">
         <table className="fw-table" aria-labelledby={labelledBy}>
@@ -142,7 +168,43 @@ function DamageMethod({ d, labelledBy }: { d: Damage; labelledBy: string }) {
           </tbody>
         </table>
       </div>
+      <p className="fw-help" id="damage-check-2023">
+        In 2023, NASA's MODIS burned-area map checked the squares of every detection within 5 km of a concession:
+      </p>
+      <div className="table-box">
+        <table className="fw-table" aria-labelledby="damage-check-2023">
+          <thead>
+            <tr><td /><th scope="col" className="num">Ground in its pixels</th><th scope="col" className="num">Found burned</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row">Peat, in large patches</th>
+              <td className="num">{count(CHECK_2023.peat.ha)} ha</td>
+              <td className="num">{percent(CHECK_2023.peat.share, 1)}</td>
+            </tr>
+            <tr>
+              <th scope="row">Other ground, in large patches</th>
+              <td className="num">{count(CHECK_2023.other.ha)} ha</td>
+              <td className="num">{percent(CHECK_2023.other.share, 1)}</td>
+            </tr>
+            <tr>
+              <th scope="row">All ground</th>
+              <td className="num">{count(CHECK_2023.all.ha)} ha</td>
+              <td className="num">{percent(CHECK_2023.all.share, 1)}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p className="fw-help">
+        A large patch is more than 20 squares that touch. MODIS's 500 m pixels miss small burns, so the shares come
+        from large patches, which it can see. A small fire may have burned less than these shares.
+      </p>
       <dl className="fw-kv">
+        <dt>Likely burned</dt>
+        <dd>
+          {percent(CHECK_2023.peat.share, 1)} of the peat and {percent(CHECK_2023.other.share, 1)} of the other ground in
+          its pixels.
+        </dd>
         <dt>CO₂ on peat</dt>
         <dd>
           {perHa(peatCo2(PEAT_DM.mean))} t a hectare, likely {perHa(peatCo2(PEAT_DM.low))} to{" "}
@@ -161,14 +223,16 @@ function DamageMethod({ d, labelledBy }: { d: Damage; labelledBy: string }) {
         </dd>
       </dl>
       <p className="fw-help">
-        Methane and carbon monoxide are left out. This estimate is not sealed. Its detections are sealed, and the map
-        and the factors are pinned, so anyone can redo it.
+        Methane and carbon monoxide are left out. This estimate is not sealed. Its detections are sealed, and the maps,
+        the 2023 check and the factors are pinned, so anyone can redo it.
       </p>
       <Source href={IPCC_PEAT_URL}>IPCC 2013 Wetlands Supplement, Tables 2.6 and 2.7</Source>
       <Source href={IPCC_OTHER_URL}>IPCC 2006 Guidelines, Volume 4, Tables 2.4 and 2.5</Source>
       <Source href={COST_URL}>World Bank, The Cost of Fire (2016)</Source>
       <Source href={PEAT_MAP_URL}>WRI Global Peatlands, v20230315, CC BY 4.0</Source>
       <Source href={PEAT_TILES_URL}>The peat map's tiles and their sha256</Source>
+      <Source href={MODIS_URL}>NASA MODIS Burned Area, MCD64A1 Collection 6.1</Source>
+      <Source href={CHECK_URL}>The 2023 check, its files and their sha256</Source>
     </>
   );
 }
