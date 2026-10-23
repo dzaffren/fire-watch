@@ -49,7 +49,7 @@ const RUNS = [
   { at: "2026-10-15T21:00:00Z", key: NEW_RECORDER_PRIVATE_KEY },
 ];
 const REPLACED_BEFORE_RUN = 2;
-// The 0332 fire's first pass, 3 detections, stored by run 1.
+// The 0332 fire's first pass, 3 detections, stored by the refused run before run 1.
 const FIRST_PASS =
   "SELECT h.id, '0x' || encode(h.record_id, 'hex') AS record_id, h.source, h.lat_e5, h.lon_e5," +
   " extract(epoch FROM h.acquired_at)::integer AS acquired_unix, h.frp_e2, h.confidence, h.fingerprint_version, h.map_version," +
@@ -73,13 +73,13 @@ const PATH = `${homedir()}/.foundry/bin:${process.env.PATH}`;
 const apiEnv = { DATABASE_URL: E2E_DATABASE_URL };
 
 // Async, so the FIRMS fixture server in this process can still answer while a command runs.
-function run(cmd: string, args: string[], cwd: string, env: Record<string, string> = {}): Promise<void> {
+function run(cmd: string, args: string[], cwd: string, env: Record<string, string> = {}, exitCode = 0): Promise<void> {
   if (!existsSync(cwd)) throw new Error(`${cwd} does not exist; the e2e needs contracts/ and api/ beside web/`);
   return new Promise((done, fail) => {
     const child = spawn(cmd, args, { cwd, env: { ...process.env, PATH, ...env }, stdio: "inherit" });
     child.on("error", (err) => fail(new Error(`\`${cmd} ${args.join(" ")}\` failed in ${cwd}: ${err.message}`)));
     child.on("exit", (code) =>
-      code === 0 ? done() : fail(new Error(`\`${cmd} ${args.join(" ")}\` failed in ${cwd}: exit ${code}`)),
+      code === exitCode ? done() : fail(new Error(`\`${cmd} ${args.join(" ")}\` failed in ${cwd}: exit ${code}`)),
     );
   });
 }
@@ -133,9 +133,10 @@ async function sealCase() {
 }
 
 // Staged, not recorded: before the switch to FireRuns the recorder sealed each record on FireRecords
-// in its own transaction (D19). So the 0332 fire's first pass is taken out of run 1's root and sealed
-// that way, minutes after the run, and the e2e's packs mix old seals with run roots.
-async function moveFirstPassToFireRecords() {
+// in its own transaction (D19). So the 0332 fire's first pass, stored by a run whose root FireRuns
+// refused, is sealed that way before run 1, and the e2e's packs mix old seals with run roots. Run 1's
+// root then holds only what it stores, as a root on Base Sepolia does, so a pack's runs rebuild.
+async function sealFirstPassOnFireRecords() {
   const db = new pg.Client(E2E_DATABASE_URL);
   await db.connect();
   try {
@@ -227,15 +228,13 @@ export default async function globalSetup() {
       // The recorder's clock is the latest block's time (D50).
       const mined = await (await fetch(RPC_URL, rpc("evm_mine", [runAt / 1000]))).json();
       if (mined.error) throw new Error(`evm_mine at ${at} failed: ${mined.error.message}`);
-      await run("uv", ["run", "record-hotspots"], API, {
-        ...apiEnv,
-        FIRMS_MAP_KEY: "e2e",
-        FIRMS_BASE_URL: FIRMS_URL,
-        RPC_URL,
-        FIRE_RUNS_ADDRESS,
-        RECORDER_PRIVATE_KEY: key,
-      });
-      if (i === 0) await moveFirstPassToFireRecords();
+      const recorderEnv = { ...apiEnv, FIRMS_MAP_KEY: "e2e", FIRMS_BASE_URL: FIRMS_URL, RPC_URL, FIRE_RUNS_ADDRESS };
+      if (i === 0) {
+        // The owner key isn't FireRuns' recorder, so the run stores and forecasts, then drops its root and exits 1 (D110).
+        await run("uv", ["run", "record-hotspots"], API, { ...recorderEnv, RECORDER_PRIVATE_KEY: OWNER_PRIVATE_KEY }, 1);
+        await sealFirstPassOnFireRecords();
+      }
+      await run("uv", ["run", "record-hotspots"], API, { ...recorderEnv, RECORDER_PRIVATE_KEY: key });
     }
     await sealCase();
 
