@@ -1,7 +1,7 @@
 import type { Hex } from "viem";
 import { describe, expect, it } from "vitest";
 import vectors from "../../fixtures/merkle-vectors.json";
-import { leaf, rootFrom } from "./merkle";
+import { leaf, rootFrom, rootOf } from "./merkle";
 import { inRun } from "./preview/fixture";
 
 const leaves = vectors.flatMap((tree) => tree.leaves.map((l) => ({ ...l, tree: tree.name, root: tree.root as Hex })));
@@ -17,6 +17,10 @@ describe("merkle", () => {
 
   it.each(leaves)("leads each proof to its tree's root: $tree, $record_id", ({ leaf: l, proof, root }) => {
     expect(rootFrom(l as Hex, proof as Hex[])).toBe(root);
+  });
+
+  it.each(vectors)("rebuilds the shared root from its leaves: $name", ({ leaves: given, root }) => {
+    expect(rootOf(given.map((l) => l.leaf as Hex))).toBe(root);
   });
 
   it.each(vectors)("builds the shared tree in the previews' inRun: $name", ({ leaves: given, root }) => {
