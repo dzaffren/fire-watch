@@ -1,4 +1,5 @@
 import csv
+import dataclasses
 import hashlib
 import io
 import json
@@ -238,6 +239,52 @@ def test_next_pass_warning_on_0264_did_not_come_in(cut):
     out, _ = cut
     r = row(rows_of(out), C0264, "2023-09-28T18:28Z")
     assert (r["next_pass_inside_by"], r["outcome"]) == ("2023-09-29T06:28Z", "not_seen_inside")
+
+
+def lone_0264(replayed):
+    """The forecast after 0264's 1 Oct 17:32 pass: one detection 66 m inside, and no other within
+    5 km of the concession in the 48 hours to it."""
+    return made_after(replayed, C0264, utc("2023-10-01T17:32"), utc("2023-10-02T05:32"))
+
+
+def test_v2_candidate_warns_where_another_detection_is_near(cut, found, replayed):
+    out, _ = cut
+    made = made_after(replayed, C0332, utc("2023-10-14T05:46"), utc("2023-10-15T05:46"))
+    at = made.forecast.after_pass_at
+    assert len([d for d in found[C0332] if at - timedelta(hours=48) < d.acquired_at <= at]) == 34
+
+    assert backtest.v2_candidate([made], found) == [utc("2023-10-14T17:46")]
+    r = row(rows_of(out), C0332, "2023-10-14T05:46Z", rule_inside_by="2023-10-15T05:46Z")
+    assert r["v2_candidate_inside_by"] == "2023-10-14T17:46Z"
+
+
+def test_v2_candidate_says_no_to_a_lone_detection(cut, found, replayed):
+    out, _ = cut
+    made = lone_0264(replayed)
+    (d,) = made.newest
+    assert (d.inside, d.edge_m) == (True, 66)
+    assert [
+        e for e in found[C0264]
+        if d.acquired_at - timedelta(hours=48) < e.acquired_at <= d.acquired_at
+    ] == [d]
+
+    assert backtest.near_edge([made]) == [utc("2023-10-02T05:32")]
+    assert backtest.v2_candidate([made], found) == [None]
+    r = row(rows_of(out), C0264, "2023-10-01T17:32Z")
+    assert (r["near_edge_inside_by"], r["v2_candidate_inside_by"], r["outcome"]) == (
+        "2023-10-02T05:32Z", "", "not_seen_inside",
+    )
+
+
+def test_lone_counts_48_hours_and_no_more(found, replayed):
+    made = lone_0264(replayed)
+    (d,) = made.newest
+    for before, said in [
+        (timedelta(hours=48), None),
+        (timedelta(hours=47, minutes=59), utc("2023-10-02T05:32")),
+    ]:
+        copy = dataclasses.replace(d, record_id=b"copy", acquired_at=d.acquired_at - before)
+        assert backtest.v2_candidate([made], {C0264: [*found[C0264], copy]}) == [said]
 
 
 def test_committed_guesses_say_yes_only_where_the_rule_does():

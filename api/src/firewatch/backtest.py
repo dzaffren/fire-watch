@@ -1,6 +1,6 @@
 """backtest-2023: replay 2023 as the hourly recorder would have run it, with forecast rule version
 1 and the guesses below at every forecast moment, and write the totals and every forecast
-(D52–D60, D99).
+(D52–D60, D99, D132–D134).
 
 Usage: backtest-2023 [--firms <path>] [--map <path>] [--wind <path>] [--fetch-wind] [--out <dir>]
 
@@ -45,10 +45,22 @@ The near-edge step, rule version 1 step 5 alone (D99):
 
 The next-pass guess (D99): every forecast moment says the fire is seen inside 12 hours after the
 newest pass's first detection, rule version 1 step 5's lead.
+
+The rule version 2 tried (D132–D134), the near-edge step except for a lone detection:
+
+1. Take the near-edge step's time.
+2. Count the detections matched to the concession that were taken in the 48 hours up to and
+   including the newest pass's first detection. One taken exactly 48 hours before doesn't count.
+3. When that count is 1, the pass is a lone detection, and the candidate says no. Otherwise it
+   gives the near-edge step's time.
+
+It was picked on forecasts made before 1 October 2023, and judged once on those made from then
+(D133). The totals give both parts for it, the near-edge step and rule version 1.
 """
 
 import argparse
 import csv
+from bisect import bisect_right
 import hashlib
 import io
 import json
@@ -75,6 +87,8 @@ FIXTURES = Path(__file__).parents[3] / "fixtures" / "backtest"
 LAG = timedelta(hours=3)
 HOUR = timedelta(hours=1)
 YEAR_END = datetime(2024, 1, 1, tzinfo=timezone.utc)
+JUDGED_FROM = datetime(2023, 10, 1, tzinfo=timezone.utc)
+LONE = timedelta(hours=48)
 MATCH_BATCH = 20_000
 GRID_E5 = 25_000
 WIND_URL = "https://archive-api.open-meteo.com/v1/archive"
@@ -86,7 +100,7 @@ TIME = "%Y-%m-%dT%H:%MZ"
 COLUMNS = [
     "concession_id", "fire_first_seen_at", "fire_latitude", "fire_longitude", "after_pass_at",
     "made_at", "rule_inside_by", "downwind_inside_by", "near_edge_inside_by",
-    "next_pass_inside_by", "outcome", "seen_inside_at",
+    "next_pass_inside_by", "v2_candidate_inside_by", "outcome", "seen_inside_at",
 ]
 WIND_COLUMNS = ["latitude", "longitude", "hour", "speed_ms", "from_deg"]
 
@@ -371,6 +385,19 @@ def next_pass(made: list[Replayed]) -> list[datetime]:
     return [r.forecast.after_pass_at + timedelta(hours=forecast.STEP_H) for r in made]
 
 
+def v2_candidate(
+    made: list[Replayed], found: dict[str, list[fires.Detection]]
+) -> list[datetime | None]:
+    """The rule version 2 tried's inside-by time for each forecast, or None where it says no."""
+    times = {cid: sorted(d.acquired_at for d in ds) for cid, ds in found.items()}
+
+    def lone(r: Replayed) -> bool:
+        seen, at = times[r.forecast.concession_id], r.forecast.after_pass_at
+        return bisect_right(seen, at) - bisect_right(seen, at - LONE) == 1
+
+    return [None if lone(r) else at for r, at in zip(made, near_edge(made))]
+
+
 def outcome_of(r: Replayed) -> str:
     if r.forecast.until_at + forecast.SETTLE > YEAR_END:
         return "ends_after_2023"
@@ -473,6 +500,7 @@ def main(argv: list[str] | None = None, client: httpx.Client | None = None) -> i
             "downwind": downwind(conn, made, wind),
             "near_edge": near_edge(made),
             "next_pass": next_pass(made),
+            "v2_candidate": v2_candidate(made, found),
         }
 
     result = totals(made, guesses)
