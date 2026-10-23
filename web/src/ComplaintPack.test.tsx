@@ -418,15 +418,19 @@ describe("ComplaintPack", () => {
     expect(within(basis).queryByText(/fires joined to this one$/)).toBeNull();
   });
 
-  it("holds the damage estimate with its working in full", async () => {
+  it("holds the damage estimate at the 2023 shares, with its working and the 2023 check in full", async () => {
     // The 0332 fire's four parts from its 19 detections, as the damage query works them out.
     const damage = { inside_peat_ha: 59.21, inside_other_ha: 0, outside_peat_ha: 144.31, outside_other_ha: 6.3 };
     render(<ComplaintPack source={sourceOf({ ...packOf(FIRES.outside), damage })} packRef={refOf(FIRES.outside)} />);
 
     const section = await screen.findByRole("region", { name: "Damage estimate" });
-    const value = (label: string) => within(section).getByText(label, { selector: "dt" }).nextElementSibling!.textContent;
+    const figures = section.querySelector("dl")!;
+    const value = (label: string) => within(figures).getByText(label, { selector: "dt" }).nextElementSibling!.textContent;
     expect(value("Ground in its pixels")).toMatch(/^About 210\sha59\sha of it inside the concession\.$/);
-    expect(value("CO₂ released")).toMatch(/^About 120,000\st/);
+    expect(value("Likely burned")).toMatch(
+      /^About 130\shaAt NASA's 2023 shares: 62% of peat, 42% of other ground\. 37\sha of it inside the concession\.$/,
+    );
+    expect(value("CO₂ released")).toMatch(/^About 76,000\st/);
 
     // Shown in full, so a printed pack carries it.
     expect(section.querySelector("details")).toBeNull();
@@ -436,6 +440,13 @@ describe("ComplaintPack", () => {
       ["Inside the concession", "59.21 ha", "0.00 ha"],
       ["Outside", "144.31 ha", "6.30 ha"],
     ]);
+    const check = within(section).getByRole("table", { name: /^In 2023, NASA's MODIS burned-area map checked the squares/ });
+    expect(within(check).getAllByRole("row").slice(1).map((r) => [...r.children].map((c) => c.textContent))).toEqual([
+      ["Peat, in large patches", "31,915 ha", "61.8%"],
+      ["Other ground, in large patches", "25,536 ha", "42.2%"],
+      ["All ground", "456,345 ha", "15.1%"],
+    ]);
+    expect(within(section).getByText(/^A large patch is more than 20 squares that touch\./)).toBeInTheDocument();
     expect(within(section).getByText(/^Methane and carbon monoxide are left out\. This estimate is not sealed\./)).toBeInTheDocument();
     expect(within(section).getAllByRole("link").map((a) => a.textContent)).toEqual([
       "IPCC 2013 Wetlands Supplement, Tables 2.6 and 2.7",
@@ -443,6 +454,8 @@ describe("ComplaintPack", () => {
       "World Bank, The Cost of Fire (2016)",
       "WRI Global Peatlands, v20230315, CC BY 4.0",
       "The peat map's tiles and their sha256",
+      "NASA MODIS Burned Area, MCD64A1 Collection 6.1",
+      "The 2023 check, its files and their sha256",
     ]);
     expect(within(section).getByRole("link", { name: "The peat map's tiles and their sha256" })).toHaveAttribute(
       "href",
