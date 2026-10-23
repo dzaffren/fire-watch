@@ -404,8 +404,8 @@ Recorded as D119, D120, D121, D122, D123, D124, D125. D24 is superseded by D119.
 | O11 | `web/e2e/complaint-pack.spec.ts` needed more than the note at `:157` | flag | build | user | Decided alone | Chose: it expects two chain reads after the left-out panel settles, and its print test waits for "Couldn't check runs 1 to 4 for a detection left out" and counts 3 Check again buttons (commit 13afb4f). Other: leave them, so they race or fail. Undo: revert those hunks of 13afb4f. 2026-10-23 |
 | O12 | The plan didn't say whether `runRecords` asks its steps of 100 runs together or in turn | flag | build | user | Decided alone | Chose: together, kept in order (commit 271d125). Other: one after another, which is gentler on the API. Undo: a plain `for` loop with `await` in `runRecords`. 2026-10-23 |
 | O13 | The test Postgres on 127.0.0.1:55432 can't be reached: its Docker bridge `br-4f6b8ed739a0` is up with no IPv4 address. Chunk A's 8 new `test_app.py` tests, the API suite and the e2e have not run. The fix needs `sudo ip addr add 172.19.0.1/16 dev br-4f6b8ed739a0` | question | build | user | Resolved | 2026-10-23: the user gave the bridge its address back. The API suite then passed (198), the web suite (322) and the e2e (29) |
-
 | O14 | Two more files the plan didn't name. `web/e2e/fire-record.spec.ts`'s last test left a run 2 detection's match edited, so every later 0332 pack rightly read that run 2 doesn't match. `web/e2e/palette.spec.ts` read `.pack-check`, which now matches two panels | flag | build | user | Decided alone | Chose: fire-record puts the match back in a `finally` (commit 313ddb9), and palette checks that both panels print white (commit 8d72808). Other: run fire-record last. Undo: `git revert 313ddb9 8d72808`. 2026-10-23 |
+
 _Never delete this section or its rows. See references/ledger.md._
 
 ## Glossary
