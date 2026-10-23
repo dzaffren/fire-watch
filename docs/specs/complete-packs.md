@@ -300,7 +300,7 @@ detection. L is the newest run holding a detection stored by the cut. No run, or
 | `api/src/firewatch/app.py:25`, `:262`, `:308` | `MAX_RUNS = 100`. A `WINDOW_RUNS` query gives F and L, and the pack (a request with `as_of`) adds `runs`, or `null`. The log line adds `runs=F-L` | 1, 4, 5 |
 | `api/src/firewatch/app.py` | New `GET /api/runs?first=&last=`: every hotspot of the sealed runs with `_record`, its `run` and `stored_unix`, and every forecast with `record_id`, `forecast_fields` and `run`. 422 when `first` is under 1, `last` is under `first`, or the range is over 100 runs. Logs `served runs first= last= hotspots= forecasts=` | 1, 2, 3 |
 | `api/tests/test_app.py` | The pack's `runs`: the window's start, the cut, `null` with no root, none on the fire view. The run route: records with their runs and store times, sealed runs only, each 422 | 1–5 |
-| `fixtures/join-vectors.json` | New. Pairs of real detections from `fixtures/firms/fire-origin.csv` on both sides of 1,000 m and 48 hours, with `fires.distance_m` and the join answer | 2 |
+| `fixtures/join-vectors.json` | New. Pairs of real detections from `web/src/preview/fire-origin.fixture.json` (O9) on both sides of 1,000 m and 48 hours, with `fires.distance_m` and the join answer | 2 |
 | `api/tests/test_fires.py` | Reads the join vectors against `distance_m` and the 1 km and 48 hour limits | 2 |
 | `web/src/merkle.ts` | Adds `rootOf(leaves)`, as `merkle.py`'s `tree` gives the root (D108) | 1, 3 |
 | `web/src/chain.ts:51` | Adds `runsOf(runs)`: each run's root and seal time through `readAll` | 1, 3 |
