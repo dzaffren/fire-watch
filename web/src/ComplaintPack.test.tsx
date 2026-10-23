@@ -145,10 +145,10 @@ describe("ComplaintPack", () => {
     ).toBeInTheDocument();
     expect(
       screen.getByText(
-        "This pack holds every detection of this fire that Fire Watch had stored by 2026-10-17 09:00 UTC. Passes after that are not in it.",
+        "This pack holds this fire as Fire Watch had stored it by 2026-10-17 09:00 UTC. Passes after that are not in it.",
       ),
     ).toBeInTheDocument();
-    expect(document.body.textContent).not.toMatch(/never changes|only sent the records/);
+    expect(document.body.textContent).not.toMatch(/never changes|only sent the records|every detection of this fire/);
     const records = screen.getByRole("link", { name: /^View FireRecords/ });
     expect(records).toHaveAttribute("href", `https://sepolia.basescan.org/address/${CONTRACT}#code`);
     expect(kv("FireRecords")).toBe("0x6a55489a…dceb2a");

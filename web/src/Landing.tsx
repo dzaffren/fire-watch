@@ -40,11 +40,13 @@ export function Landing({ caseSource }: { caseSource: CaseSource }) {
       <main className="landing-main">
         <div className="landing-hero">
           <section className="landing-intro" aria-labelledby="h-landing">
-            <h1 id="h-landing">Show where satellites first saw a plantation fire, on records anyone can check.</h1>
+            <h1 id="h-landing">
+              When a company says a fire spread in from outside its land, show where satellites first saw it.
+            </h1>
             <p className="landing-lede">
-              Watchdog groups use Fire Watch to report a fire on plantation land to the companies that buy from it. It
-              shows where satellites first saw the fire and how it spread, and the buyer checks every record in their
-              own browser.
+              Fire Watch is built for the watchdog groups that report plantation fires to the companies that buy from
+              the plantation. It shows where satellites first saw a fire and how it spread, on records the buyer checks
+              in their own browser.
             </p>
             <div className="landing-actions">
               <a className="fw-btn" href="#case">Walk through a real case</a>
@@ -68,8 +70,8 @@ export function Landing({ caseSource }: { caseSource: CaseSource }) {
                 </p>
               ) : (
                 <p>
-                  Every dot is a fire the NOAA-20 satellite saw on 14 Oct 2026: {count(DAY_DETECTIONS)} worldwide,{" "}
-                  {count(DAY_DETECTIONS_INDONESIA)} of them in and around Indonesia.
+                  Every dot is one detection by the NOAA-20 satellite on 14 Oct 2026: {count(DAY_DETECTIONS)}{" "}
+                  worldwide, {count(DAY_DETECTIONS_INDONESIA)} of them in and around Indonesia.
                 </p>
               )}
               {!atFire && (

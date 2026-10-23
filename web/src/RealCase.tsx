@@ -111,8 +111,9 @@ export function RealCase({ source, packHref }: { source: CaseSource; packHref: s
           <>
             <h3>A fire near a pulpwood plantation</h3>
             <p>
-              From {day(pack!.first_seen_unix)} to {day(pack!.last_seen_unix)} 2026, the NOAA-20 satellite saw this fire{" "}
-              {count(pack!.detections)} times near {id}, in Central Kalimantan. The dashed line is the concession's edge.
+              From {day(pack!.first_seen_unix)} to {day(pack!.last_seen_unix)} 2026, the NOAA-20 satellite saw this fire on{" "}
+              {times.length} passes, {count(pack!.detections)} detections in all, near {id}, in Central Kalimantan. The
+              dashed line is the concession's edge.
               The company that holds the land answers for fires inside it.
             </p>
           </>

@@ -26,16 +26,19 @@ const EXAMPLE_PACK =
   "/?pack=ID-WOOD-CONCESSION-0332&fire=0x13b417c6f54dd95c7c418b5df3f34963cf00f46555d5cae74693cdffbb1d1cf7&as_of=1792227600";
 
 describe("Landing", () => {
-  it("says what Fire Watch does, who uses it, and that Indonesia is the first map", () => {
+  it("says why Fire Watch matters, who it is for, and that Indonesia is the first map", () => {
     render(<Landing caseSource={caseSource} />);
 
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
-      "Show where satellites first saw a plantation fire, on records anyone can check.",
+      "When a company says a fire spread in from outside its land, show where satellites first saw it.",
     );
     expect(document.body.textContent).not.toMatch(/fire started/);
-    expect(screen.getByText(/^Watchdog groups use Fire Watch to report a fire on plantation land/)).toHaveTextContent(
-      "the buyer checks every record in their own browser",
-    );
+    expect(
+      screen.getByText(
+        "Fire Watch is built for the watchdog groups that report plantation fires to the companies that buy from the plantation. It shows where satellites first saw a fire and how it spread, on records the buyer checks in their own browser.",
+      ),
+    ).toBeInTheDocument();
+    expect(document.body.textContent).not.toMatch(/groups use Fire Watch/);
     expect(screen.getByText(/^Today it watches Indonesia's pulpwood concessions, the first map loaded\./)).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "A real case" })).toBeInTheDocument();
     expect(screen.queryByRole("region", { name: "Two accounts of the same fire" })).not.toBeInTheDocument();
@@ -53,7 +56,7 @@ describe("Landing", () => {
     ]);
     expect(
       screen.getByText(
-        "Every dot is a fire the NOAA-20 satellite saw on 14 Oct 2026: 62,489 worldwide, 9,923 of them in and around Indonesia.",
+        "Every dot is one detection by the NOAA-20 satellite on 14 Oct 2026: 62,489 worldwide, 9,923 of them in and around Indonesia.",
       ),
     ).toBeInTheDocument();
     const words = within(screen.getByRole("region", { name: "Words used here" }));
@@ -89,6 +92,6 @@ describe("Landing", () => {
     ).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "See its complaint pack" })).toHaveAttribute("href", EXAMPLE_PACK);
     expect(screen.queryByRole("button", { name: "Go to the example fire" })).not.toBeInTheDocument();
-    expect(screen.queryByText(/^Every dot is a fire/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/^Every dot is one detection/)).not.toBeInTheDocument();
   });
 });
