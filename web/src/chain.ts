@@ -41,9 +41,21 @@ const sealOf = (recordId: Hex): Read => ({
   args: [recordId],
 });
 
+const runOf = (run: number): Read => ({
+  address: import.meta.env.VITE_FIRE_RUNS_ADDRESS,
+  abi: fireRuns,
+  functionName: "runOf",
+  args: [BigInt(run)],
+});
+
 /** Each record's sealed fingerprint on FireRecords, in order; zero for one not sealed yet. */
 export async function sealsOf(recordIds: Hex[]): Promise<Hex[]> {
   return (await readAll(recordIds.map(sealOf))).map(([fingerprint]) => fingerprint);
+}
+
+/** Each run's root on FireRuns and its seal time by the chain's clock, in order; zeros for one not sealed yet. */
+export async function runsOf(runs: number[]): Promise<{ root: Hex; sealedAt: number }[]> {
+  return (await readAll(runs.map(runOf))).map(([root, sealedAt]) => ({ root, sealedAt: Number(sealedAt) }));
 }
 
 /** Each record's seal, in order: its run's root on FireRuns for a record with a run, each run read
@@ -51,15 +63,7 @@ export async function sealsOf(recordIds: Hex[]): Promise<Hex[]> {
 export async function checkReads(records: { record_id: Hex; run?: number | null }[]): Promise<Seal[]> {
   const runs = [...new Set(records.flatMap((r) => (r.run == null ? [] : [r.run])))];
   const own = records.filter((r) => r.run == null);
-  const answers = await readAll([
-    ...runs.map((run): Read => ({
-      address: import.meta.env.VITE_FIRE_RUNS_ADDRESS,
-      abi: fireRuns,
-      functionName: "runOf",
-      args: [BigInt(run)],
-    })),
-    ...own.map((r) => sealOf(r.record_id)),
-  ]);
+  const answers = await readAll([...runs.map(runOf), ...own.map((r) => sealOf(r.record_id))]);
   const roots = new Map(runs.map((run, i) => [run, answers[i]]));
   let next = runs.length;
   return records.map((r): Seal => {
