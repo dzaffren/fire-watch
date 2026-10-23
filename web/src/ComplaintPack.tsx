@@ -518,11 +518,19 @@ function LeftOutPanel({ pack, runs, state, onCheckAgain }: {
   onCheckAgain: () => void;
 }) {
   const span = runSpan(runs.first, runs.last);
+  const heading = useRef<HTMLHeadingElement>(null);
   if (state === "checking" || state === "error") {
+    // Check again leaves the page as the panel goes back to Checking, so focus moves to the heading, which stays.
+    const checkAgain = () => {
+      heading.current?.focus();
+      onCheckAgain();
+    };
     return (
       <section className="fw-panel pack-check enter" aria-labelledby="h-left-out" aria-live="polite">
         <div className="rec-head">
-          <h2 id="h-left-out">{state === "checking" ? `Checking ${span} for a detection left out` : `Couldn't check ${span} for a detection left out`}</h2>
+          <h2 id="h-left-out" ref={heading} tabIndex={-1}>
+            {state === "checking" ? `Checking ${span} for a detection left out` : `Couldn't check ${span} for a detection left out`}
+          </h2>
           {state === "checking" && <Chip check={{ state: "checking" }} />}
         </div>
         {state === "checking" ? (
@@ -532,7 +540,7 @@ function LeftOutPanel({ pack, runs, state, onCheckAgain }: {
         ) : (
           <div className="rec-act">
             <p className="fw-help rec-note">Couldn't read the runs from Fire Watch's server or Base Sepolia.</p>
-            <button className="fw-btn" type="button" onClick={onCheckAgain}>Check again</button>
+            <button className="fw-btn" type="button" onClick={checkAgain}>Check again</button>
           </div>
         )}
       </section>
@@ -554,7 +562,7 @@ function LeftOutPanel({ pack, runs, state, onCheckAgain }: {
   return (
     <section className="fw-panel pack-check enter" aria-labelledby="h-left-out" aria-live="polite">
       <div className="rec-head">
-        <h2 id="h-left-out">{title}</h2>
+        <h2 id="h-left-out" ref={heading} tabIndex={-1}>{title}</h2>
         {chip}
       </div>
       <p className="fw-help rec-note">
