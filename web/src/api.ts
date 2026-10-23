@@ -109,6 +109,20 @@ export interface Backtest {
   near_edge: BacktestTotals;
   /** Every fire, 12 hours after the pass. */
   next_pass: BacktestTotals;
+  /** The rule version 2 tried, picked on forecasts made January to September (D133). */
+  picked_on: BacktestPart;
+  /** The same three, on forecasts made October to December, which judged it once (D134). */
+  judged_on: BacktestPart;
+}
+
+/** A method's counts on one part of 2023. The hours off are given for all of 2023 only. */
+export type PartCounts = Omit<BacktestTotals, "median_hours_off">;
+
+/** The rule version 2 tried, the near-edge step it had to beat, and the rule, on one part of 2023. */
+export interface BacktestPart {
+  v2_candidate: PartCounts;
+  near_edge: PartCounts;
+  rule: PartCounts;
 }
 
 /** A fire's ground in hectares: its detections' joined 375 m squares, split at the concession's edge

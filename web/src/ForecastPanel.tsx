@@ -1,5 +1,5 @@
 import type { Hex } from "viem";
-import type { Backtest, BacktestTotals, FireDetail, Forecast } from "./api";
+import type { Backtest, BacktestPart, BacktestTotals, FireDetail, Forecast, PartCounts } from "./api";
 import { count, detected, detectedShort, duration, gap, location, plural, shortHash } from "./format";
 import { ExternalIcon } from "./icons";
 import { Chip, SealRows, type Check, type SealCheck } from "./RecordPanel";
@@ -26,6 +26,17 @@ function addsLine(b: Backtest): string {
   return (
     `Rule version ${b.rule_version}'s advance step warned of ${plural(warned, "arrival", "arrivals")} the near-edge ` +
     `step missed, and added ${plural(extra, "warning", "warnings")} that didn't come in.`
+  );
+}
+
+/** That the rule version 2 tried missed the bar on the months that judged it, from the totals
+ *  (D134). It warned of fewer arrivals there than the near-edge step. */
+function triedLine(b: Backtest): string {
+  const { v2_candidate: tried, near_edge, rule } = b.judged_on;
+  return (
+    `Fire Watch tried one rule version 2, picked on January to September 2023. On October to December it warned ` +
+    `of ${count(tried.warned)} of ${count(rule.warned + rule.missed)} arrivals, ${count(near_edge.warned - tried.warned)} ` +
+    `fewer than the near-edge step, so rule version ${b.rule_version} stays.`
   );
 }
 
@@ -57,6 +68,7 @@ function BacktestSummary({ b }: { b: Backtest }) {
         </table>
       </div>
       <p className="fw-help">{addsLine(b)}</p>
+      <p className="fw-help">{triedLine(b)}</p>
       <p className="fw-help">A replay of 2023, run in 2026. Nothing in it was sealed in 2023.</p>
     </div>
   );
@@ -103,6 +115,48 @@ function BacktestCounts({ b }: { b: Backtest }) {
           </tbody>
         </table>
       </div>
+    </>
+  );
+}
+
+/** The rule version 2 tried, against the near-edge step and the rule, on the forecasts it was picked
+ *  on and on those that judged it (D133, D134). */
+function TriedCounts({ b }: { b: Backtest }) {
+  const parts: [string, string, BacktestPart][] = [
+    ["Picked on: January to September 2023", "Picked on, Jan to Sep", b.picked_on],
+    ["Judged on: October to December 2023", "Judged on, Oct to Dec", b.judged_on],
+  ];
+  return (
+    <>
+      {parts.map(([label, head, part]) => {
+        const rows: [string, PartCounts][] = [
+          ["Rule version 2, tried", part.v2_candidate],
+          ["Near-edge step", part.near_edge],
+          [`Rule version ${b.rule_version}`, part.rule],
+        ];
+        return (
+          <div className="table-box" key={label}>
+            <table className="fw-table" aria-label={label}>
+              <thead>
+                <tr>
+                  <th scope="col">{head}</th>
+                  <th scope="col" className="num">Arrivals warned of, out of {count(part.rule.warned + part.rule.missed)}</th>
+                  <th scope="col" className="num">Warnings that didn't come in</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map(([name, t]) => (
+                  <tr key={name}>
+                    <th scope="row" className="method">{name}</th>
+                    <td className="num">{count(t.warned)}</td>
+                    <td className="num">{count(t.did_not_come_in)} of {count(t.warned + t.did_not_come_in)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        );
+      })}
     </>
   );
 }
@@ -287,6 +341,17 @@ export function ForecastPanel({ fire, checks, fingerprints, picked, now, backtes
                 forecast that the fire is seen inside.
               </p>
               <BacktestCounts b={replayed} />
+              <p className="fw-help">
+                The rule version 2 tried is the near-edge step, except that a lone detection gets no warning. A lone
+                detection is the only detection within 5 km of the concession in the 48 hours to its pass. The CSV
+                gives its time for every forecast.
+              </p>
+              <p className="fw-help">
+                Fire Watch picked it from more than 3,400 variants, tried on forecasts made January to September 2023
+                only. Fire Watch then judged it once on forecasts made October to December. There it had to warn of at
+                least as many arrivals as the near-edge step, with fewer warnings that didn't come in.
+              </p>
+              <TriedCounts b={replayed} />
               <p className="fw-help">
                 <a className="fw-link" href={BACKTEST_CSV_URL} target="_blank" rel="noopener">
                   Every 2023 forecast, as CSV
