@@ -120,6 +120,34 @@ database. An empty `git diff` means you got the same bytes.
 Peat map: [WRI Global Peatlands](https://data.globalforestwatch.org/datasets/gfw::global-peatlands/about),
 under CC BY 4.0.
 
+## Redo the 2023 damage check
+
+The damage estimate scales each fire's ground by the share that NASA's MODIS burned-area map found
+burned in 2023 near concessions: `fixtures/damage/2023-check.json`. `api/src/firewatch/damage_check.py`
+gives the method and pins the 12 monthly MCD64A1 Collection 6.1 files by sha256. The University
+of Maryland serves them over SFTP with a public login. Fetch them once:
+
+```sh
+mkdir -p ~/modis-2023 && cd ~/modis-2023 && for d in 001 032 060 091 121 152 182 213 244 274 305 335; do f=MCD64monthly.A2023$d.Win19.061.burndate.tif; curl -su fire:burnt -o $f sftp://fuoco.geog.umd.edu/data/MODIS/C61/MCD64A1/TIFF/Win19/2023/$f; done
+```
+
+Then, from the repo root, run the check on the compose database:
+
+```sh
+docker compose up -d --wait db
+cd api && DATABASE_URL=postgresql://firewatch:firewatch@127.0.0.1:55432/firewatch uv run damage-check-2023 --modis ~/modis-2023
+git diff --stat ../fixtures/damage
+```
+
+`damage-check-2023` stops if one of the 12 files is missing or its sha256 has changed. It
+downloads FIRMS's 2023 file and Trase's map as `backtest-2023` does, and loads the map and the
+committed peat cut into the database. It writes the check over the committed one in about a
+minute. An empty `git diff` means you got the same bytes, on the compose database's PostGIS 3.5.
+`--firms <path>` and `--map <path>` read saved copies instead. `--out <dir>` writes somewhere else.
+
+Burned area: [NASA MODIS MCD64A1 Collection 6.1](https://lpdaac.usgs.gov/products/mcd64a1v061/),
+from the University of Maryland's copy.
+
 ## Redo the globe's data
 
 The landing's globe reads three gzipped files in `web/public/globe`: Natural Earth's land, the

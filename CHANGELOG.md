@@ -31,6 +31,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - The forecast panel's 2023 replay shows rule version 1 next to three guesses: its near-edge step alone, every fire by the next pass, and the downwind guess. One sentence says what the rule's advance step adds. `backtest-2023` writes both new guesses' totals and a column for each in the CSV.
 - Each recorder run seals all its new detections and forecasts under one Merkle root on a new contract, FireRuns, in one transaction, so no run leaves seals for the next hour. An owner key kept off Azure can replace a leaked recorder key. The tool, the forecast panel and the complaint pack check a newer record against its run's root and an older one on FireRecords, in one read.
 - A fire and its complaint pack say when the fire was first seen as one detection and then not seen for more than 14 hours, and when Fire Watch joined other fires to it, with where each was first seen. "How this is worked out" names joins, NOAA-20's position error and that Trase gives no accuracy for its concession edges. The landing tells its example fire as one detection, then a second fire joined on 14 Oct.
+- The damage estimate adds the ground that likely burned: 61.8% of the peat and 42.2% of the other ground in a fire's pixels, the shares NASA's MODIS burned-area map found burned near concessions in 2023. The CO₂ and the cost follow it. `damage-check-2023` redoes the check byte for byte from pinned files.
 
 ### Removed
 
