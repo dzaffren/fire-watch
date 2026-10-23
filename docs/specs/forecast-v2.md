@@ -100,9 +100,9 @@ Scenario: The forecast panel says the candidate missed the bar
   Given the committed 2023 result
   When anyone opens the ID-WOOD-CONCESSION-0332 fire of spread-forecast scenario 1
   Then the 2023 block keeps its four rows and its sentence about rule version 1's advance step
-  And one more sentence says that one rule version 2 was tried: picked on January to September,
-    it warned of 63 of October to December's 79 arrivals against the near-edge step's 65, so rule
-    version 1 stays
+  And one more paragraph says "Fire Watch tried one rule version 2, picked on January to September
+    2023. On October to December it warned of 63 of 79 arrivals, 2 fewer than the near-edge step,
+    so rule version 1 stays."
   And "How this is worked out" gives the candidate in full, and says it was picked from more than
     3,400 variants tried on January to September only
   And it gives both parts' counts for the candidate, the near-edge step and rule version 1
@@ -144,6 +144,74 @@ exactly. Scenario 3's sentence takes its counts from the committed totals, as D1
 - Another year's replay: not planned (D52).
 - A change to the complaint pack: not planned (D43).
 
+## Interface
+
+The forecast panel's 2023 block gains one paragraph under its sentence about the advance step.
+"How this is worked out" gains two paragraphs and two tables, after the counts tables and before
+the links. The concession view and the pack don't change (D43, D46).
+
+```mermaid
+flowchart LR
+    C["Concession: the fires table"] -- "picks a fire" --> F["Fire: forecast panel"]
+    F -- "reads the four rows and two sentences" --> B["2023 block: what v1 adds, the v2 tried"]
+    B -- "opens How this is worked out" --> D["the v2 tried in words, Jan–Sep and Oct–Dec tables"]
+    D -- "Every 2023 forecast, as CSV" --> G["fixtures/backtest/2023-forecasts.csv on GitHub"]
+```
+
+The investigator reads in the block that a rule version 2 was tried and missed. The disclosure says
+what it was and how it was picked, and gives its counts on both parts of 2023.
+
+| Part | What shows |
+| ---- | ---------- |
+| Block, after the advance-step sentence | "Fire Watch tried one rule version 2, picked on January to September 2023. On October to December it warned of 63 of 79 arrivals, 2 fewer than the near-edge step, so rule version 1 stays." The three numbers come from `judged_on` |
+| "How this is worked out", after the counts tables | "The rule version 2 tried is the near-edge step, except that a lone detection gets no warning. A lone detection is the only detection within 5 km of the concession in the 48 hours to its pass. The CSV gives its time for every forecast." |
+| | "Fire Watch picked it from more than 3,400 variants, tried on forecasts made January to September 2023 only. Fire Watch then judged it once on forecasts made October to December. There it had to warn of at least as many arrivals as the near-edge step, with fewer warnings that didn't come in." |
+| Table "Picked on: January to September 2023" | Columns: "Picked on, Jan to Sep", "Arrivals warned of, out of 56", "Warnings that didn't come in". Rows: "Rule version 2, tried" (52, "1,871 of 1,923"), "Near-edge step" (52, "2,091 of 2,143"), "Rule version 1" (53, "2,395 of 2,448") |
+| Table "Judged on: October to December 2023" | Columns: "Judged on, Oct to Dec", "Arrivals warned of, out of 79", "Warnings that didn't come in". Rows: "Rule version 2, tried" (63, "1,022 of 1,085"), "Near-edge step" (65, "1,102 of 1,167"), "Rule version 1" (70, "1,356 of 1,426") |
+| Links | "Every 2023 forecast, as CSV", "Redo the 2023 replay", "Forecast rule, version 1, in full", as now |
+
+The two tables have the block's two count columns, which fit a 390 px phone (D102). The rule version
+2 tried comes first in each, the near-edge step it had to beat second.
+
+The states are season-backtest's, unchanged:
+
+| State | What shows |
+| ----- | ---------- |
+| A forecast by rule version 1, in any state | The block with the new paragraph, and the additions to "How this is worked out" |
+| A forecast changed after its seal | The same. The block is about the rule, not this forecast |
+| A forecast by a rule version with no replay | No block and no additions |
+| No forecasts | One line, no block |
+| Checking, or couldn't reach the chain | The same as the first row. The replay needs no chain read |
+
+The page bundles the totals, so nothing here has a loading or error state (D59).
+
+**The page expects:** `picked_on` and `judged_on` on `Backtest` in `web/src/api.ts`, each a
+`BacktestPart` of `v2_candidate`, `near_edge` and `rule`, in `fixtures/backtest/2023.json`. Each is a
+`PartCounts`: `warned`, `missed`, `did_not_come_in` and `stayed_out`, with no hours off.
+
+**Motion tier:** 1 (O7). The paragraph enters with the block, and the disclosure opens as it does
+today (`--fw-dur`). Nothing new moves.
+
+**Components used:** `fw-panel`, `table-box` with `fw-table`, its `num` columns and `th.method`,
+`fw-help`, and the disclosure from the record panel. There is no new component, no new token and no
+CSS change.
+
+**Design system:** Fire Watch, `docs/design/design-system/` (D2).
+
+**Preview:** real components in `web/src`, at `http://localhost:5173/?preview=season-backtest` after
+`cd web && pnpm dev`. `&theme=dark` gives the dark theme. `fixtures/backtest/2023.json` holds the O1
+spike's split counts until `/build` redoes the replay. They add up to the committed totals for rule
+version 1 and the near-edge step, and each part's counts add up to its 13,205 and 6,790 counted
+forecasts. The drift check passed over the 5 files written. `tsc -b` is clean, 326 web unit tests
+pass, and `season-backtest.spec.ts` passes with checks for the paragraph and both tables. Three
+mutants each failed a new test: a fixed difference, the two parts swapped, the paragraph dropped. At
+390 px and 360 px, with "How this is worked out" open, neither the tables nor the page scroll sideways.
+
+**Craft checks:** a one-line prompt would add the candidate as a fifth row and colour the winner of
+each column. This page keeps the block's four rows, states the attempt and its result in one
+paragraph, and shows the hold-out as its own table. Next to Stripe's documentation, the reference
+for D2, it keeps the same order: the answer in the block, every count one click away.
+
 ## Open items
 
 | ID | What | Type | Raised at | Owner | Status | Answer |
@@ -154,6 +222,7 @@ exactly. Scenario 3's sentence takes its counts from the committed totals, as D1
 | O4 | How a rule version 2 is kept from being picked on the same forecasts that judge it | question | spec p1 | user | Resolved | 2026-10-23: pick it on forecasts made January to September 2023, 56 arrivals. Judge it once on October to December, 79 arrivals. The page gives both parts |
 | O5 | What ships when no candidate clears the bar | question | spec p1 | user | Resolved | 2026-10-23: the recorder keeps rule version 1. The panel says in one sentence how many rules were tried and that none cleared the bar, and links their scores |
 | O6 | What the 2023 block shows on a forecast once two rule versions exist | question | spec p1 | user | Resolved | 2026-10-23: every forecast's block lists rule version 2, rule version 1 and the three guesses, and names the rule that made it. Not used while no rule version 2 ships (O1) |
+| O7 | Which motion tier the new paragraph and tables use | question | spec p2 | user | Open | — |
 
 _Never delete this section or its rows. See references/ledger.md._
 
