@@ -384,8 +384,14 @@ def create_app(allowed_origin: str) -> FastAPI:
             first, last, len(hotspots), len(made),
         )
         return {
+            # Store times rounded up, as the cut is, so a record stored after a cut never reads
+            # as stored by it (D123).
             "hotspots": [
-                {**_record(row), "run": row["run"], "stored_unix": _unix(row["created_at"])}
+                {
+                    **_record(row),
+                    "run": row["run"],
+                    "stored_unix": math.ceil(row["created_at"].timestamp()),
+                }
                 for row in hotspots
             ],
             "forecasts": [
