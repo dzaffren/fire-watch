@@ -1,9 +1,20 @@
 import { zeroHash } from "viem";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { apiSource, concession, concessions, pack, packRef, packSource, type Forecast, type HotspotRecord } from "./api";
-import { checkReads, type Seal } from "./chain";
+import {
+  apiSource,
+  concession,
+  concessions,
+  pack,
+  packRef,
+  packSource,
+  runRecords,
+  type Forecast,
+  type HotspotRecord,
+  type PackDetail,
+} from "./api";
+import { checkReads, runsOf, type Seal } from "./chain";
 
-vi.mock("./chain", () => ({ checkReads: vi.fn() }));
+vi.mock("./chain", () => ({ checkReads: vi.fn(), runsOf: vi.fn() }));
 
 vi.hoisted(() => {
   vi.stubEnv("VITE_CONTRACT_ADDRESS", "0x6a55489a05a9c79d2cd35212878d113557dceb2a");
@@ -197,5 +208,60 @@ describe("packSource", () => {
     await expect(packSource.sealsOf([hotspotA, hotspotB])).resolves.toEqual(seals);
     expect(checkReads).toHaveBeenCalledTimes(1);
     expect(checkReads).toHaveBeenCalledWith([hotspotA, hotspotB]);
+  });
+
+  it("checks the pack's runs against the runs on each side of them on FireRuns", async () => {
+    answer(200, { hotspots: [], forecasts: [] });
+    vi.mocked(runsOf).mockClear().mockImplementation(async (runs) => runs.map(() => ({ root: zeroHash, sealedAt: 0 })));
+    const packed = { concession_id: "ID-WOOD-CONCESSION-0540", as_of_unix: 1792227602, hotspots: [hotspotA], runs: { first: 2, last: 3 } };
+
+    await expect(packSource.leftOut!(packed as PackDetail)).resolves.toEqual({
+      first: { run: 2, sealedAt: 0 },
+      last: { run: 3, sealedAt: 0 },
+      records: 0,
+      beforeRuns: false,
+      missing: [],
+      unmatched: [2, 3],
+    });
+    expect(fetch).toHaveBeenCalledWith(expect.stringMatching(/\/api\/runs\?first=2&last=3$/));
+    expect(runsOf).toHaveBeenCalledTimes(1);
+    expect(runsOf).toHaveBeenCalledWith([1, 2, 3, 4]);
+  });
+
+  it("reads run 1 and the run after the window when the window starts at run 1", async () => {
+    answer(200, { hotspots: [], forecasts: [] });
+    vi.mocked(runsOf).mockClear().mockImplementation(async (runs) => runs.map(() => ({ root: zeroHash, sealedAt: 0 })));
+    const packed = { concession_id: "ID-WOOD-CONCESSION-0540", as_of_unix: 1792227602, hotspots: [hotspotA], runs: { first: 1, last: 1 } };
+
+    await packSource.leftOut!(packed as PackDetail);
+    expect(runsOf).toHaveBeenCalledWith([1, 2]);
+  });
+});
+
+describe("runRecords", () => {
+  it("asks for 250 runs in three requests of at most 100 runs, and joins the answers in order", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) => {
+        const query = new URL(url, "http://api.test").searchParams;
+        const [first, last] = [Number(query.get("first")), Number(query.get("last"))];
+        return new Response(JSON.stringify({ hotspots: [{ run: first }], forecasts: [{ run: last }] }));
+      }),
+    );
+
+    await expect(runRecords(1, 250)).resolves.toEqual({
+      hotspots: [{ run: 1 }, { run: 101 }, { run: 201 }],
+      forecasts: [{ run: 100 }, { run: 200 }, { run: 250 }],
+    });
+    expect(vi.mocked(fetch).mock.calls.map(([url]) => String(url).replace(/^.*\/api/, "/api"))).toEqual([
+      "/api/runs?first=1&last=100",
+      "/api/runs?first=101&last=200",
+      "/api/runs?first=201&last=250",
+    ]);
+  });
+
+  it("throws on a server error", async () => {
+    answer(422, { detail: "Too many runs" });
+    await expect(runRecords(1, 2)).rejects.toThrow();
   });
 });

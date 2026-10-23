@@ -1,8 +1,9 @@
 import type { Hex } from "viem";
 import backtest2023 from "../../fixtures/backtest/2023.json";
-import { checkReads } from "./chain";
+import { checkReads, runsOf } from "./chain";
 import { fingerprint, forecastFingerprint, type ForecastFields, type MatchedDetection } from "./fingerprint";
 import type { PackSource } from "./ComplaintPack";
+import { checkRuns, type RunRecords } from "./leftOut";
 import type { FireRecordSource } from "./FireRecordPage";
 
 export type { ConcessionMatch, Point } from "./fingerprint";
@@ -196,6 +197,20 @@ export async function pack({ id, key, asOf }: PackRef): Promise<PackDetail | nul
   return res.json();
 }
 
+// The run route's cap on one request (D122).
+const RUNS_PER_REQUEST = 100;
+
+/** Every record of FireRuns runs `first` to `last`, asked in steps of 100 runs. */
+export async function runRecords(first: number, last: number): Promise<RunRecords> {
+  const steps: Promise<RunRecords>[] = [];
+  for (let from = first; from <= last; from += RUNS_PER_REQUEST) {
+    const to = Math.min(from + RUNS_PER_REQUEST - 1, last);
+    steps.push(get<RunRecords>(`/api/runs?${new URLSearchParams({ first: String(from), last: String(to) })}`));
+  }
+  const answers = await Promise.all(steps);
+  return { hotspots: answers.flatMap((a) => a.hotspots), forecasts: answers.flatMap((a) => a.forecasts) };
+}
+
 /** The pack's public link: the site root with the concession, the fire key and the as-of time. */
 export const packHref = (id: string, f: FireDetail) =>
   `/?${new URLSearchParams({ pack: id, fire: f.key, as_of: String(f.as_of_unix) })}`;
@@ -227,4 +242,11 @@ export const packSource: PackSource = {
   contracts: { records: import.meta.env.VITE_CONTRACT_ADDRESS, runs: import.meta.env.VITE_FIRE_RUNS_ADDRESS },
   sealsOf: checkReads,
   fingerprint,
+  async leftOut(p) {
+    const { first, last } = p.runs!;
+    const from = Math.max(1, first - 1);
+    const runs = Array.from({ length: last + 2 - from }, (_, i) => from + i);
+    const [sent, roots] = await Promise.all([runRecords(first, last), runsOf(runs)]);
+    return checkRuns(p, sent, new Map(runs.map((run, i) => [run, roots[i]])));
+  },
 };
