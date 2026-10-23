@@ -26,6 +26,28 @@ halve.
 The 2023 replay already has the ground to test on: 42,682 VIIRS NOAA-20 detections within 5 km of
 a concession (season-backtest). MODIS MCD64A1 maps burned ground each month at 500 m.
 
+The O1 spike measured the gap on 23 Oct 2026. It used UMD's public copy of MODIS MCD64A1
+Collection 6.1: window 19, the 12 monthly burn-date files of 2023. Every 2023 burn fell in a mapped
+pixel.
+
+| 2023 ground near concessions | Squares | On peat | MODIS burned | Share | Peat share | Other share |
+| ---------------------------- | ------- | ------- | ------------ | ----- | ---------- | ----------- |
+| All 42,682 detections        | 456,345 ha | 105,961 ha | 67,688 ha | 14.8% | 35.8% | 8.5% |
+
+The share grows with the size of the joined ground. Each row is a piece of connected squares.
+
+| Squares in the piece | Pieces | Ground | Share | Peat share | Other share |
+| -------------------- | ------ | ------ | ----- | ---------- | ----------- |
+| 1                    | 15,063 | 211,895 ha | 6.4% | 20.1% | 4.0% |
+| 2 to 4               | 4,369  | 124,840 ha | 8.2% | 22.7% | 5.2% |
+| 5 to 20              | 816    | 62,160 ha  | 22.0% | 34.8% | 15.6% |
+| 21 to 100            | 104    | 29,264 ha  | 49.9% | 58.1% | 42.5% |
+| More than 100        | 33     | 28,186 ha  | 55.2% | 63.5% | 40.3% |
+| More than 20, joined | 137    | 57,450 ha  | 52.5% | 61.1% | 41.6% |
+
+MODIS's 500 m pixels miss small burns. A lone square's 6.4% is therefore partly MODIS's blind spot
+and partly ground that did not burn. The spike cannot separate the two.
+
 ## Slice test
 
 | Check                         | Result |
@@ -118,13 +140,14 @@ Scenario: Anyone can redo the 2023 check
 
 | ID | What | Type | Raised at | Owner | Status | Answer |
 | -- | ---- | ---- | --------- | ----- | ------ | ------ |
-| O1 | Joined 375 m squares overstate burned ground. A rough union gave about 2.5 Mha for 2023, against the ministry's 1.16 Mha; nobody has checked it (from shape O10) | unproven | shape | spike | Open | — |
+| O1 | Joined 375 m squares overstate burned ground. A rough union gave about 2.5 Mha for 2023, against the ministry's 1.16 Mha; nobody has checked it (from shape O10) | unproven | shape | spike | Resolved | 2026-10-23, measured: the 42,682 detections' squares join into 456,345 ha, 105,961 ha of it on peat. MODIS MCD64A1 C6.1 mapped 67,688 ha of it as burned in 2023: 14.8%. On peat 35.8%, on other ground 8.5%. Both are below O7's 80%, so the estimate scales |
 | O2 | Two days remain to the 2026-10-25 deadline. The video and the written deliverables are not done, and forecast-v2 is not specced | flag | spec p1 | user | Resolved | 2026-10-23: go ahead. The spike decides: at a share of 80% or more, ship only the check and change no figure (O7) |
 | O3 | What changes in the estimate when MODIS maps much less of the squares as burned | question | spec p1 | user | Resolved | 2026-10-23: scale the ground burned, the CO₂ and the cost by the 2023 share. "Ground in its pixels" stays as the ceiling. The page says MODIS misses small fires, so the share may be low |
 | O4 | Whether the share is one number for all ground, or one for peat and one for other ground | question | spec p1 | user | Resolved | 2026-10-23: one share for peat and one for other ground |
 | O5 | Whether the check also compares all of Indonesia's 2023 squares with the ministry's 1.16 Mha | question | spec p1 | user | Resolved | 2026-10-23: no. Only the ground within 5 km of a concession, against MODIS in the same place |
 | O6 | The page applies the factors (D71), so a pack made before this ships shows the new figures when opened. A PDF printed earlier keeps the old ones | flag | spec p1 | user | Accepted risk | 2026-10-23: every pack uses the current method, and "How this is worked out" names the 2023 check. No buyer has a pack yet (judge-review shape O3) |
 | O7 | At what share the figures stay unchanged | question | spec p1 | user | Resolved | 2026-10-23: at 80% or more. A gap under a fifth sits inside the CO₂ range the page already gives |
+| O8 | The share follows fire size more than peat. A lone square: 6.4%. Joined ground of more than 20 squares: 52.5%, 61.1% on peat and 41.6% on other ground. MODIS's 500 m pixels miss small burns, so a small fire's low share is partly MODIS's blind spot. Which share scales the estimate? | question | spike | user | Open | — |
 
 _Never delete this section or its rows. See references/ledger.md._
 
