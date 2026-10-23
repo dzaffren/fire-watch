@@ -1,6 +1,6 @@
 # ClimateChain hackathon entry
 
-**Status:** Active · **Updated:** 2026-10-23 by /ship origin-confidence
+**Status:** Active · **Updated:** 2026-10-23 by /ship complete-packs
 
 Fire Watch, an entry for the IEEE ClimateChain Global Hackathon (deadline 2026-10-25). It shows
 satellite fire hotspots with on-chain proof that each record hasn't changed since it was written,
@@ -44,6 +44,7 @@ for watchdog investigators who file grievances over fires on plantation land.
 | fair-baseline    | Shipped | The 2023 replay adds rule version 1's near-edge step alone and a next-pass guess beside the downwind guess. The forecast panel shows all four, and one sentence says what the rule adds. | docs/specs/fair-baseline.md       |
 | run-roots        | Shipped | The recorder seals one Merkle root per run on FireRuns, whose recorder key an owner key can replace. The page checks each new record's proof against its run's root, and old seals still check on FireRecords. | docs/specs/run-roots.md           |
 | origin-confidence | Shipped | The fire view, the pack and the landing say when a fire's first sighting is one detection with a long gap after it, and when one fire is several that the satellite first saw apart. | docs/specs/origin-confidence.md   |
+| complete-packs   | Shipped | A complaint pack shows, in the reader's browser, that no stored detection of its fire was left out of the recorder runs in its window, and lists any that was. | docs/specs/complete-packs.md      |
 
 ## More
 

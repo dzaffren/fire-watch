@@ -20,6 +20,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Each fire and complaint pack gives an estimate of the ground in the fire's pixels, the CO₂ it released and its cost, split at the concession's edge, from WRI's peat map and IPCC and World Bank factors. Operators load the peat map with `load-peat`.
 - The site opens on a landing page that says what Fire Watch is, for someone new to plantation fires, with a globe of 14 Oct 2026's fires that flies to a real fire and its complaint pack. The tool moves to `/?tool`, and operators redo the globe's data with `globe-day`.
 - The landing says who uses Fire Watch and how, and walks one real fire as you scroll: where the satellite first saw it, each pass in turn, and its 283 records checked against Base Sepolia in your browser.
+- A complaint pack checks in your browser, against the recorder runs sealed on Base Sepolia, that Fire Watch's server left no detection of the fire out, and lists any it did; it says plainly that detections sealed before the runs began can't be checked.
 
 ### Changed
 
