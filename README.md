@@ -179,7 +179,7 @@ curl -s "https://firewatch-api.thankfulhill-89a2c8ca.southeastasia.azurecontaine
 sha256sum web/public/case/pack-0332.json
 ```
 
-The sha256 is `740b31ffbca2458b295eecd6318c78606e5a761cdc98e99ebe9bc01fd5838db5`. The first call after a
+The sha256 is `33037b98adedebb862c94dc110d5a13b4c562cfb5b19349898d42323f38728fa`. The first call after a
 quiet hour can take up to a minute while the API wakes.
 
 ## First deploy

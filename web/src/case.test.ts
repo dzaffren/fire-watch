@@ -1,4 +1,5 @@
 /// <reference types="node" />
+import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { zeroHash } from "viem";
@@ -75,6 +76,15 @@ it("names no company (shape O10)", () => {
   const text = readFileSync(resolve("public/case/pack-0332.json"), "utf8");
 
   expect(text).not.toMatch(/\bPT\b|\bTbk\b|\bLtd\b|\bGroup\b/);
+});
+
+it("is the copy the README's curl line redoes, by its sha256 (D90)", () => {
+  const readme = readFileSync(resolve("../README.md"), "utf8");
+  const redo = readme.slice(readme.indexOf("## Redo the real case's data"));
+
+  const sha = createHash("sha256").update(readFileSync(resolve("public/case/pack-0332.json"))).digest("hex");
+
+  expect(redo.match(/The sha256 is `([0-9a-f]{64})`/)![1]).toBe(sha);
 });
 
 it("checks each record against its seal, loading the chain code only when asked", async () => {
