@@ -31,5 +31,45 @@
     "did_not_come_in": 19860,
     "stayed_out": 0,
     "median_hours_off": 11.7
+  },
+  "picked_on": {
+    "v2_candidate": {
+      "warned": 52,
+      "missed": 4,
+      "did_not_come_in": 1871,
+      "stayed_out": 11278
+    },
+    "near_edge": {
+      "warned": 52,
+      "missed": 4,
+      "did_not_come_in": 2091,
+      "stayed_out": 11058
+    },
+    "rule": {
+      "warned": 53,
+      "missed": 3,
+      "did_not_come_in": 2395,
+      "stayed_out": 10754
+    }
+  },
+  "judged_on": {
+    "v2_candidate": {
+      "warned": 63,
+      "missed": 16,
+      "did_not_come_in": 1022,
+      "stayed_out": 5689
+    },
+    "near_edge": {
+      "warned": 65,
+      "missed": 14,
+      "did_not_come_in": 1102,
+      "stayed_out": 5609
+    },
+    "rule": {
+      "warned": 70,
+      "missed": 9,
+      "did_not_come_in": 1356,
+      "stayed_out": 5355
+    }
   }
 }

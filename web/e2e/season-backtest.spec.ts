@@ -22,8 +22,17 @@ interface Totals {
   did_not_come_in: number;
   median_hours_off: number | null;
 }
+type Part = Record<"v2_candidate" | "near_edge" | "rule", Omit<Totals, "median_hours_off">>;
 // The page bundles the committed totals, not the cut's (D59).
-const committed: { forecasts: number; rule: Totals; downwind: Totals; near_edge: Totals; next_pass: Totals } = JSON.parse(
+const committed: {
+  forecasts: number;
+  rule: Totals;
+  downwind: Totals;
+  near_edge: Totals;
+  next_pass: Totals;
+  picked_on: Part;
+  judged_on: Part;
+} = JSON.parse(
   readFileSync(resolve(BACKTEST, "2023.json"), "utf8"),
 );
 
@@ -123,10 +132,25 @@ test("replays a cut of 2023 and shows the committed result on the 0332 fire", as
       `and added ${count(rule.did_not_come_in - near_edge.did_not_come_in)} warnings that didn't come in.`,
   );
   await expect(panel).toContainText("A replay of 2023, run in 2026. Nothing in it was sealed in 2023.");
+  const judged = committed.judged_on;
+  await expect(panel).toContainText(
+    `On October to December it warned of ${count(judged.v2_candidate.warned)} of ${count(judged.rule.warned + judged.rule.missed)} ` +
+      `arrivals, ${count(judged.near_edge.warned - judged.v2_candidate.warned)} fewer than the near-edge step, so rule version 1 stays.`,
+  );
 
   await panel.getByText("How this is worked out").click();
   const same = panel.getByRole("table", { name: "The same for all four" });
   await expect(same.getByRole("row", { name: /^Forecasts made/ })).toHaveText(`Forecasts made${count(committed.forecasts)}`);
+  for (const [name, part] of [
+    ["Picked on: January to September 2023", committed.picked_on],
+    ["Judged on: October to December 2023", committed.judged_on],
+  ] as const) {
+    await expect(panel.getByRole("table", { name }).locator("tbody tr")).toHaveText(
+      ([["Rule version 2, tried", part.v2_candidate], ["Near-edge step", part.near_edge], ["Rule version 1", part.rule]] as const).map(
+        ([method, t]) => `${method}${count(t.warned)}${count(t.did_not_come_in)} of ${count(t.warned + t.did_not_come_in)}`,
+      ),
+    );
+  }
   await expect(panel.getByRole("link", { name: "Every 2023 forecast, as CSV" })).toHaveAttribute(
     "href",
     "https://github.com/dzaffren/fire-watch/blob/main/fixtures/backtest/2023-forecasts.csv",

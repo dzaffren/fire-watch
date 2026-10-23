@@ -41,6 +41,16 @@ const REPLAY: Backtest = {
   downwind: { warned: 19, missed: 116, did_not_come_in: 256, stayed_out: 19604, median_hours_off: 9 },
   near_edge: { warned: 117, missed: 18, did_not_come_in: 3193, stayed_out: 16667, median_hours_off: 11.7 },
   next_pass: { warned: 135, missed: 0, did_not_come_in: 19860, stayed_out: 0, median_hours_off: 11.7 },
+  picked_on: {
+    v2_candidate: { warned: 52, missed: 4, did_not_come_in: 1871, stayed_out: 11278 },
+    near_edge: { warned: 52, missed: 4, did_not_come_in: 2091, stayed_out: 11058 },
+    rule: { warned: 53, missed: 3, did_not_come_in: 2395, stayed_out: 10754 },
+  },
+  judged_on: {
+    v2_candidate: { warned: 63, missed: 16, did_not_come_in: 1022, stayed_out: 5689 },
+    near_edge: { warned: 65, missed: 14, did_not_come_in: 1102, stayed_out: 5609 },
+    rule: { warned: 70, missed: 9, did_not_come_in: 1356, stayed_out: 5355 },
+  },
 };
 
 /** Scenario 1's forecast: made 14 Oct 20:00 after the 17:20 pass, inside by about 15 Oct 05:20. */
@@ -381,6 +391,48 @@ describe("ForecastPanel", () => {
         screen.getByText(
           "Rule version 1's advance step warned of 1 arrival the near-edge step missed, and added 1 warning that didn't come in.",
         ),
+      ).toBeInTheDocument();
+    });
+
+    it("says the rule version 2 tried missed the bar on the months that judged it", () => {
+      show({ backtest: REPLAY });
+
+      const block = screen.getByRole("heading", { name: "How this rule did on 2023, replayed" }).parentElement!;
+      expect(
+        within(block).getByText(
+          "Fire Watch tried one rule version 2, picked on January to September 2023. On October to December it warned " +
+            "of 63 of 79 arrivals, 2 fewer than the near-edge step, so rule version 1 stays.",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("works the tried rule's sentence out from the totals", () => {
+      const judged_on = { ...REPLAY.judged_on, near_edge: { ...REPLAY.judged_on.near_edge, warned: 66, missed: 13 } };
+      show({ backtest: { ...REPLAY, judged_on } });
+
+      expect(screen.getByText(/On October to December it warned of 63 of 79 arrivals, 3 fewer than the near-edge step,/)).toBeInTheDocument();
+    });
+
+    it("gives the rule version 2 tried, and both parts of 2023, under How this is worked out", () => {
+      show({ backtest: REPLAY });
+
+      expect(cells(screen.getByRole("table", { name: "Picked on: January to September 2023" }))).toEqual([
+        ["Picked on, Jan to Sep", "Arrivals warned of, out of 56", "Warnings that didn't come in"],
+        ["Rule version 2, tried", "52", "1,871 of 1,923"],
+        ["Near-edge step", "52", "2,091 of 2,143"],
+        ["Rule version 1", "53", "2,395 of 2,448"],
+      ]);
+      expect(cells(screen.getByRole("table", { name: "Judged on: October to December 2023" }))).toEqual([
+        ["Judged on, Oct to Dec", "Arrivals warned of, out of 79", "Warnings that didn't come in"],
+        ["Rule version 2, tried", "63", "1,022 of 1,085"],
+        ["Near-edge step", "65", "1,102 of 1,167"],
+        ["Rule version 1", "70", "1,356 of 1,426"],
+      ]);
+      expect(
+        screen.getByText(/^The rule version 2 tried is the near-edge step, except that a lone detection gets no warning\. A lone detection is the only detection within 5 km of the concession in the 48 hours to its pass\./),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(/^Fire Watch picked it from more than 3,400 variants, tried on forecasts made January to September 2023 only\. Fire Watch then judged it once on forecasts made October to December\./),
       ).toBeInTheDocument();
     });
 
