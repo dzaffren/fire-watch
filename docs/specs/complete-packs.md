@@ -387,6 +387,14 @@ suite. No lockfile changes.
 
 Recorded as D119, D120, D121, D122, D123, D124, D125. D24 is superseded by D119.
 
+## Review
+
+2026-10-23 · 4 raw findings, 3 survived, 3 fixed.
+
+- correctness · `web/src/leftOut.ts:69` · the run route rounds each store time up, as the cut is, so a detection stored just after the cut never reads as left out · `1588f5b`
+- correctness · `web/src/ComplaintPack.tsx:535` · Check again moves focus to the left-out panel's heading, which stays through Checking and the result · `576ff83`
+- quality · `api/tests/test_fires.py:23` · name the join vectors' real source, the preview fixture, in the comment and the Changes row · `7faf016`
+
 ## Open items
 
 | ID | What | Type | Raised at | Owner | Status | Answer |
