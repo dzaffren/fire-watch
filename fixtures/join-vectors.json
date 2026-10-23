@@ -1,0 +1,92 @@
+[
+  {
+    "name": "just under 1 km, same pass",
+    "a": {
+      "lat_e5": -309486,
+      "lon_e5": 11280227,
+      "acquired_unix": 1791958680
+    },
+    "b": {
+      "lat_e5": -310173,
+      "lon_e5": 11280808,
+      "acquired_unix": 1791958680
+    },
+    "distance_m": 999.8557992747033,
+    "joins": true
+  },
+  {
+    "name": "just over 1 km, same pass",
+    "a": {
+      "lat_e5": -309335,
+      "lon_e5": 11280393,
+      "acquired_unix": 1791913020
+    },
+    "b": {
+      "lat_e5": -310057,
+      "lon_e5": 11280930,
+      "acquired_unix": 1791913020
+    },
+    "distance_m": 1000.0211392746892,
+    "joins": false
+  },
+  {
+    "name": "under 1 km, longest gap within 48 hours",
+    "a": {
+      "lat_e5": -288658,
+      "lon_e5": 11275463,
+      "acquired_unix": 1792043940
+    },
+    "b": {
+      "lat_e5": -287760,
+      "lon_e5": 11275464,
+      "acquired_unix": 1791873420
+    },
+    "distance_m": 998.5324380579724,
+    "joins": true
+  },
+  {
+    "name": "under 1 km, shortest gap over 48 hours",
+    "a": {
+      "lat_e5": -307684,
+      "lon_e5": 11284232,
+      "acquired_unix": 1791958680
+    },
+    "b": {
+      "lat_e5": -307018,
+      "lon_e5": 11284235,
+      "acquired_unix": 1791782160
+    },
+    "distance_m": 740.5667258995848,
+    "joins": false
+  },
+  {
+    "name": "just under 1 km, a pass apart",
+    "a": {
+      "lat_e5": -357753,
+      "lon_e5": 10573571,
+      "acquired_unix": 1792004520
+    },
+    "b": {
+      "lat_e5": -357378,
+      "lon_e5": 10572752,
+      "acquired_unix": 1791873420
+    },
+    "distance_m": 999.9999433598318,
+    "joins": true
+  },
+  {
+    "name": "just over 1 km, a pass apart",
+    "a": {
+      "lat_e5": -357577,
+      "lon_e5": 10572295,
+      "acquired_unix": 1792089660
+    },
+    "b": {
+      "lat_e5": -357202,
+      "lon_e5": 10573114,
+      "acquired_unix": 1791958680
+    },
+    "distance_m": 1000.0015287169399,
+    "joins": false
+  }
+]
