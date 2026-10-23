@@ -149,6 +149,70 @@ Scenario: The newest pass waits for its root
 - A smaller download for long windows, such as a list per concession inside each root. No slice
   until packs get slow.
 
+## Interface
+
+One new panel in the pack, under the seal-check panel, built from the parts that panel already
+uses. It shows only when the API gives the pack's window a run range. No new token, component or
+motion. The two craft checks pass. The panel's look comes from the seal-check panel, not from a
+generic prompt. It holds up as documentation-grade: a result, how it was worked out, and its limit
+(D2).
+
+**Motion tier:** 1. The panel enters with the pack's existing `enter`, and nothing else moves (O5).
+
+**Components used:** `fw-panel` with `pack-check`, `rec-head`, `Chip` for Checking and "Does not
+match the chain", `fw-chip--ok` and `fw-chip--bad` with `OkIcon` and `BadIcon`, `fw-help rec-note`,
+`rec-act` with `fw-btn`, `table-box` and `fw-table`, `sub`, `fw-mono`, `fw-kv`. All exist in
+`docs/design/design-system` and `web/src/styles/app.css`.
+
+**Preview:** `/?preview=complete-packs` on the dev server, one state per scenario, plus Checking and
+Couldn't check. The code is `LeftOutPanel` in `web/src/ComplaintPack.tsx`, and the fixture is
+`web/src/preview/CompletePacksPreview.tsx`. Run numbers, seal times and record counts there are
+made up.
+
+```mermaid
+flowchart TB
+    A["API: pack with its first and last run, or none"] -- "pack" --> SC[seal-check panel]
+    SC -- "seal checks done" --> LO["source.leftOut(pack)"]
+    LO -- "first, last, records, beforeRuns, missing, unmatched" --> P[LeftOutPanel]
+    A -- "runs null" --> N[no panel; the seal note keeps the FIRMS line]
+```
+
+The seal checks run first. Then the pack asks for the left-out check, and the panel shows its
+result. A pack with no run in its window shows no panel, as today.
+
+### The panel's states
+
+| State | Heading | Chip | Notes |
+| --- | --- | --- | --- |
+| Checking | Checking runs `<first>` to `<last>` for a detection left out | Checking | Your browser reads every record these runs sealed and rebuilds each root, so this can take a few seconds. |
+| Nothing left out | No detection of this fire is left out of runs `<first>` to `<last>` | Nothing left out (ok) | The method note, then: No run holds a detection that the fire rule joins to this fire and this pack leaves out. |
+| Left out | `<n>` detection(s) of this fire is (are) left out of this pack | Left out (bad) | The method note, then: The fire rule joins each detection below to this fire, through detections at most 1 km and 48 hours apart, but this pack leaves it out. Each one sits in a run whose root matches FireRuns. Then a table: Detected (UTC), Where with the coordinates under it, Sealed in ("Run 31") |
+| Can't say | Can't show that nothing is left out of runs `<first>` to `<last>` | Does not match the chain (bad) | The method note, then: Fire Watch's records for run `<n>` don't rebuild its root on FireRuns. A record was removed or changed after its run was sealed, or Fire Watch holds no list for that root. So this pack can't show that nothing is left out. |
+| Couldn't check | Couldn't check runs `<first>` to `<last>` for a detection left out | none | Couldn't read the runs from Fire Watch's server or Base Sepolia. Then Check again, which reruns only this check |
+
+The method note: "Fire Watch sent all `<records>` records these runs sealed. Your browser rebuilt
+each run's root from them and compared it with FireRuns. The runs start 48 hours before this fire
+was first seen and end at the pack's cut."
+
+When both a detection is left out and a run doesn't match, the heading and chip say "left out", and
+both notes show. When the window starts before FireRuns' first run, a last note follows: "Detections
+sealed before `<first run's seal time>` each have a seal of their own on FireRecords. The chain
+holds no list of them, so NASA FIRMS's public archive is the way to find one left out."
+
+Under the notes, `fw-kv` rows: "Runs checked" (`<first>` to `<last>`, with `<records>` records),
+"First run sealed" and "Last run sealed" by the chain's clock ("Run sealed" for one run), and "Not
+matching" with the run numbers when a run doesn't match.
+
+### Copy
+
+| Where | Today | After |
+| --- | --- | --- |
+| `ComplaintPack.tsx`, seal-check note, pack with runs | … Fire Watch's server chose which records to send. NASA FIRMS's public archive shows whether one is missing. | … Fire Watch's server chose which records to send. The check below shows whether it left one out. |
+| the same, pack with no runs | as today | as today (D98) |
+
+A printed pack carries the panel, as it does the seal-check panel. Check again doesn't print. At
+390 px the panel and its table fit without a sideways scroll, in both themes.
+
 ## Technical plan
 
 _(the rest is added at pause 3)_
@@ -202,6 +266,7 @@ Status: active
 | O2 | The recorder job still seals on FireRecords: Neon had no root on 23 Oct 2026 at 01:27 UTC. Until the switch, no pack has a run to check | flag | spec p1 | user | Resolved | 2026-10-23: the operator switches the job now, before `/build`, by the README's "Turning on run roots", steps 3 to 6 |
 | O3 | FireRecords' seals have no list on the chain, and the public RPC reads 200 blocks of logs at a time. What does a pack say about detections sealed before run roots? | question | spec p1 | user | Resolved | 2026-10-23: check the runs only, and say plainly that the older detections can't be checked. FIRMS's archive shows whether one is missing (D120) |
 | O4 | The check needs every record of each run in the window: 2.0 MB gzipped for a week. Does it run when the pack opens, or when the reader asks? | question | spec p1 | user | Resolved | 2026-10-23: when the pack opens, after the seal checks, so a print always carries the result (D121) |
+| O5 | Which motion tier the new panel uses | question | spec p2 | user | Open | — |
 
 _Never delete this section or its rows. See references/ledger.md._
 
