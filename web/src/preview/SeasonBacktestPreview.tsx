@@ -24,8 +24,8 @@ export default function SeasonBacktestPreview() {
     <div className="preview">
       <div className="preview-bar">
         <p className="fw-help">
-          Preview of season-backtest, fair-baseline and forecast-v2. The replay totals are the committed 2023 result;
-          the counts split at 1 October are the forecast-v2 spike's until /build redoes the replay. The 2026
+          Preview of season-backtest, fair-baseline and forecast-v2-trial. The replay totals are the committed 2023 result;
+          the counts split at 1 October are the forecast-v2-trial spike's until /build redoes the replay. The 2026
           forecasts, seals and transactions are made up, as in the spread-forecast preview.
         </p>
         <label className="preview-pick">
