@@ -36,6 +36,7 @@ const PREVIEWS = import.meta.env.DEV
       "landing-page": lazy(() => import("./preview/LandingPagePreview")),
       "newcomer-walkthrough": lazy(() => import("./preview/NewcomerWalkthroughPreview")),
       "origin-confidence": lazy(() => import("./preview/OriginConfidencePreview")),
+      "complete-packs": lazy(() => import("./preview/CompletePacksPreview")),
     }
   : null;
 const Preview = PREVIEWS?.[params.get("preview") as keyof typeof PREVIEWS] ?? null;
