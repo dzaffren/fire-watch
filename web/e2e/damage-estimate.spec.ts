@@ -10,11 +10,18 @@ test.beforeEach(async ({ context }) => {
   );
 });
 
-/** The figures of scenario 1: 209.8 ha, 59.2 of it inside, all on peat. */
+/** The figures of scenario 1: 209.8 ha, 59.2 of it inside, nearly all on peat, at the 2023 shares. */
 async function readFigures(damage: Locator) {
   await expect(damage.getByText("About 210 ha", { exact: true })).toBeVisible();
   await expect(damage.getByText("59 ha of it inside the concession.", { exact: true })).toBeVisible();
-  await expect(damage.getByText("About 120,000 t", { exact: true })).toBeVisible();
+  await expect(damage.getByText("About 130 ha", { exact: true })).toBeVisible();
+  await expect(damage.getByText("About 76,000 t", { exact: true })).toBeVisible();
+}
+
+/** The 2023 check's peat row, which the shares come from. */
+async function readCheck(damage: Locator) {
+  const peat = damage.getByRole("row", { name: /^Peat, in large patches/ });
+  await expect(peat.getByRole("cell")).toHaveText(["31,915 ha", "61.8%"]);
 }
 
 // fire-origin.csv holds the 19 detections of the ID-WOOD-CONCESSION-0332 fire, and global-setup
@@ -30,6 +37,7 @@ test("reads the 0332 fire's damage in the fire view and the same in its pack", a
   await readFigures(damage);
   await damage.getByText("How this is worked out").click();
   await expect(damage.getByRole("cell", { name: "59.21 ha" })).toBeVisible();
+  await readCheck(damage);
 
   const [pack] = await Promise.all([
     page.context().waitForEvent("page"),
@@ -40,6 +48,7 @@ test("reads the 0332 fire's damage in the fire view and the same in its pack", a
   const packDamage = pack.getByRole("region", { name: "Damage estimate" });
   await readFigures(packDamage);
   await expect(packDamage.getByRole("cell", { name: "59.21 ha" })).toBeVisible();
+  await readCheck(packDamage);
 });
 
 test("every damage control is at least 44 px to tap on a touch screen", async ({ browser }) => {
