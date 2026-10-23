@@ -1,6 +1,6 @@
 # ClimateChain hackathon entry · architecture
 
-**Status:** Active · **Updated:** 2026-10-23 by /ship damage-check
+**Status:** Active · **Updated:** 2026-10-23 by /ship forecast-v2-trial
 
 ## Context
 
@@ -53,7 +53,7 @@ itself.
 | load-concessions | `api/`                          | Operator CLI: loads Trase's pulpwood concession map, once per map version                     |
 | load-peat        | `api/`, `fixtures/peat/`        | Operator CLI: loads the committed cut of WRI's Global Peatlands map, once per map version (D69). `--cut` redoes the cut from the 10 pinned tiles with a GFW key (D70) |
 | globe-day        | `api/`, `web/public/globe/`     | Operator CLI: redoes the landing globe's three gzipped files from FIRMS's 14 Oct 2026 world file, Natural Earth 110m and 10m land, and Trase, each pinned by sha256 (D79) |
-| backtest-2023    | `api/`, `fixtures/backtest/`    | Operator CLI, run by hand on the compose db: replays 2023 as the recorder would have run it, with rule version 1, the downwind guess, the near-edge step alone and the next-pass guess (D57, D60, D99), and writes the totals and every forecast to `fixtures/backtest/`. Seals nothing (D55) |
+| backtest-2023    | `api/`, `fixtures/backtest/`    | Operator CLI, run by hand on the compose db: replays 2023 as the recorder would have run it, with rule version 1, the downwind guess, the near-edge step alone, the next-pass guess and the rule version 2 tried (D57, D60, D99, D133), and writes the totals, also split at 1 October 2023, and every forecast to `fixtures/backtest/`. Seals nothing (D55) |
 | damage-check-2023 | `api/`, `fixtures/damage/`     | Operator CLI, run by hand on the compose db: joins the squares of 2023's detections near concessions and measures the part MODIS MCD64A1 mapped burned, from 12 files on the operator's disk, each pinned by sha256 (D130, D131). Writes the peat and other-ground shares of large patches to `fixtures/damage/2023-check.json` (D127) |
 | API              | `api/`                          | Read-only FastAPI: `GET /api/concessions`, `GET /api/concessions/{id}`, `GET /api/concessions/{id}/fires/{key}` (`?as_of=` for a pack, D37, with the FireRuns runs in its window, D123; each record with its run and proof, D109), `GET /api/runs` (every record of up to 100 sealed runs, D122) and `GET /api/health`; groups a concession's detections into fires on each request (`fires.py`, D31); the fire route adds when a fire's first sighting was one detection alone and the fires joined to it, pass by pass (fire rule version 2, D112, D114, D117); a fire lists its forecasts, and a concession lists fires forecast inside first (D45); a fire and a pack carry the four hectare parts of its damage, inside and outside, on peat and off it (`peat.py`, D71) |
 | Database         | `api/migrations/`               | Postgres with PostGIS on Neon: hotspots, concessions, their matches, forecasts, recorder runs, peat, and each run's root with its records' proofs |
