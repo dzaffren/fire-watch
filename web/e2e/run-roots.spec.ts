@@ -97,7 +97,9 @@ test("a pack checks old seals and run roots in one read, and names both contract
   try {
     const { page: pack, chainReads } = await openAsBuyer(buyer, url);
     await expect(pack.getByRole("heading", { name: ALL_MATCH })).toBeVisible();
-    expect(chainReads).toHaveLength(1);
+    await expect(pack.getByRole("heading", { name: /^Checking runs/ })).toHaveCount(0);
+    // Every seal in one read, then the left-out check's run roots in one more.
+    expect(chainReads).toHaveLength(2);
 
     const check = pack.getByRole("region", { name: ALL_MATCH });
     await expect(check).toContainText("An older detection has a seal of its own on FireRecords.");
