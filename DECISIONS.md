@@ -268,7 +268,7 @@ Rejected: sealing each reading (proves what we said, not what the satellite saw,
 again as fires grow or join), sealing each run's list of records (would show a missing record, but
 needs a new record type and recorder work; FIRMS's public archive already lets anyone find one).
 Source: docs/specs/fire-origin.md
-Status: active
+Status: superseded by D119
 
 ## D25 · 2026-10-16 · Same fire when within 1 km and 48 hours of a detection already in it
 
@@ -1239,4 +1239,83 @@ Rejected: staging 0332's fire in the e2e database (4 of its records also match
 ID-WOOD-CONCESSION-0637, which the e2e's concession cut lacks, so a new boundary fixture and loader
 test changes).
 Source: docs/specs/origin-confidence.md
+Status: active
+
+## D119 · 2026-10-23 · Work out readings from sealed detections, and check a pack's list against each run's sealed list
+
+Why: a reading changes when a pass grows a fire or joins two, so a sealed reading would need
+sealing again (D24's reason, which still holds). run-roots seals each run's whole list (D103) and
+stores it (D110). A browser can rebuild a run's root from its records and find a detection that a
+pack lacks. FIRMS's public archive still shows a detection the recorder never stored.
+Rejected: sealing each reading (proves what we said, not what the satellite saw, and needs sealing
+again as fires grow or join), leaving a pack's list on the server's word (a deleted detection
+still leaves "N of N match the chain", D98).
+Supersedes: D24
+Source: docs/specs/complete-packs.md
+Status: active
+
+## D120 · 2026-10-23 · Check a pack's list against FireRuns' runs only, and say plainly that older seals can't be checked
+
+Why: FireRecords' 17,173 detection seals have no list on the chain. Base Sepolia's public RPC
+answers `eth_getLogs` for 200 blocks at most (measured 23 Oct 2026), so listing a week of seals
+takes about 1,500 calls at 25 a second. FIRMS's public archive still shows whether an older
+detection is missing.
+Rejected: reading FireRecords' seal events in the browser (about 1,500 calls for a week), sealing
+the old lists once in catch-up roots (proves only that nothing was removed after that day, and
+needs recorder work).
+Source: docs/specs/complete-packs.md
+Status: active
+
+## D121 · 2026-10-23 · Check that nothing is left out when the pack opens, after the seal checks
+
+Why: a buyer gets the pack as a link or a PDF (D95), so a print must carry the result. The check
+downloads every record of each run in the window: about 1 MB gzipped for 4 days, 2 MB for a week
+(0341's fire, measured 23 Oct 2026).
+Rejected: a button the reader taps (a print made without the tap has no result).
+Source: docs/specs/complete-packs.md
+Status: active
+
+## D122 · 2026-10-23 · Send every record of a pack's runs from a run route, at most 100 runs a request
+
+Why: the browser can rebuild a run's root only from all of its records (D108). A week's window
+held 19,398 detections and 890 forecasts, 2.0 MB gzipped (measured 23 Oct 2026). A route of its own
+keeps the pack's first answer as fast as today, and the check starts after the seal checks (D121).
+The cap bounds what one request to the open API reads, and the page asks in steps of 100 runs.
+Rejected: the records inside the fire route (every pack waits for megabytes before it shows), a
+list per concession inside each root (a new tree format and a recorder change two days before the
+deadline), a route per pack that works out its own window (the fire is grouped twice).
+Source: docs/specs/complete-packs.md
+Status: active
+
+## D123 · 2026-10-23 · End a pack's runs at the newest run holding a detection stored by the cut, and trust the server's store time only in runs sealed after the cut
+
+Why: the newest pass's run is sealed minutes after the pack's cut (D37), so a range of runs sealed
+by the cut would never check it. A run sealed before the cut holds only records stored before it,
+so there the browser ignores the server's store time. The browser refuses a range whose next run
+was sealed before the cut, or that misses a run holding one of the pack's detections.
+Rejected: only runs sealed by the cut (the newest pass is never checked), the server's store time
+in every run (it could date a detection after the cut to drop it), no store time at all (a
+detection stored after the cut, sealed with a failed run's records, would read as left out).
+Source: docs/specs/complete-packs.md
+Status: active
+
+## D124 · 2026-10-23 · Find a detection left out by the fire rule's 1 km and 48 hours alone, chained from the pack's detections
+
+Why: a detection belongs in the fire when a chain of pairs at most 1,000 m and 48 hours apart links
+it to the pack's detections (`fires.py`, step 2). Only that step decides which fire a detection is
+in. The page keeps `fires.py`'s haversine and limits, and both test suites read shared pairs.
+Rejected: all ten steps of the fire rule again in TypeScript (a second copy of the reading, to
+answer which detections are in the fire), the concession's other detections counted without the
+rule (a buyer can't tell which fire they belong to).
+Source: docs/specs/complete-packs.md
+Status: active
+
+## D125 · 2026-10-23 · Leave a pack that the API gives no runs as it reads today
+
+Why: the API gives no runs to a pack whose window holds no FireRuns run. A server that withholds
+them only takes the check away. The pack then says that the server chose its records and that
+FIRMS's archive shows a missing one (D98), and claims nothing more.
+Rejected: reading FireRuns' run 1 for every pack to catch a withheld range (a state and copy
+beyond the approved interface, for a case with no false claim).
+Source: docs/specs/complete-packs.md
 Status: active
