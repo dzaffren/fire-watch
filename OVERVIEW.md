@@ -1,6 +1,6 @@
 # ClimateChain hackathon entry
 
-**Status:** Active · **Updated:** 2026-10-23 by /ship damage-check
+**Status:** Active · **Updated:** 2026-10-23 by /ship forecast-v2-trial
 
 Fire Watch, an entry for the IEEE ClimateChain Global Hackathon (deadline 2026-10-25). It shows
 satellite fire hotspots with on-chain proof that each record hasn't changed since it was written,
@@ -46,6 +46,7 @@ for watchdog investigators who file grievances over fires on plantation land.
 | origin-confidence | Shipped | The fire view, the pack and the landing say when a fire's first sighting is one detection with a long gap after it, and when one fire is several that the satellite first saw apart. | docs/specs/origin-confidence.md   |
 | complete-packs   | Shipped | A complaint pack shows, in the reader's browser, that no stored detection of its fire was left out of the recorder runs in its window, and lists any that was. | docs/specs/complete-packs.md      |
 | damage-check     | Shipped | Each damage estimate adds the ground that likely burned, at the shares NASA's MODIS map found burned near concessions in 2023: 61.8% of peat and 42.2% of other ground. `damage-check-2023` redoes the shares from pinned files. | docs/specs/damage-check.md        |
+| forecast-v2-trial | Shipped | The 2023 replay adds one rule version 2, picked on January to September and judged once on October to December. It warned of 2 fewer arrivals than the near-edge step there, so rule version 1 stays, and the forecast panel says so. | docs/specs/forecast-v2-trial.md   |
 
 ## More
 
