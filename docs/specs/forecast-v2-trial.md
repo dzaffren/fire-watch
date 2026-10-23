@@ -1,6 +1,6 @@
 # Forecast v2 trial
 
-**Version:** v1 · **Status:** Refined · **Type:** Enhancement · **Project type:** Web UI
+**Version:** v1 · **Status:** Built · **Type:** Enhancement · **Project type:** Web UI
 
 **Shape doc:** docs/specs/judge-review/shape.md
 **Depends on:** fair-baseline
@@ -284,7 +284,7 @@ inputs are season-backtest's pinned files, and the outputs are public files in t
 | `api/src/firewatch/backtest.py:369` | `v2_candidate(made, found)` after `next_pass()`: the near-edge time from `near_edge(made)`, or `None` when the concession's sorted detection times hold one in the 48 hours to `after_pass_at`, by `bisect` | Scenarios 1, 2 |
 | `api/src/firewatch/backtest.py:394` | `totals()` gains `picked_on` and `judged_on`. Each runs `_method()` on the forecasts made before or from `JUDGED_FROM`, for `v2_candidate`, `near_edge` and `rule`, and drops `median_hours_off`. `v2_candidate`'s all-2023 counts come from the guesses dict, as the other guesses' do | Scenarios 1, 3 |
 | `api/src/firewatch/backtest.py:433` | The description and `main()`'s guesses dict gain the candidate, after `next_pass`. The print line gains `v2_candidate_warned=`, `judged_v2_candidate=` and `judged_near_edge=` | Scenarios 1, 4 |
-| `api/tests/test_backtest.py` | On the cut: the 0332 forecast 105 m out gets the candidate's `2023-10-14T17:46Z`, because the 0332 fire 2,168 m out has a detection at the same 05:46. With that detection removed from `found`, the candidate says no. A copy taken exactly 48 hours before still leaves it lone, and one taken 47 hours 59 minutes before doesn't. The totals test counts the candidate and each part from the CSV, by `made_at`, and checks the new print fields. On the committed CSV: 0273's 2023-10-23T17:19Z and 0349's 2023-11-02T04:50Z rows have a near-edge time, no candidate time, and `seen_inside`. Every candidate time equals the near-edge time on its row | Scenarios 1–3 |
+| `api/tests/test_backtest.py` | On the cut: the 0332 forecast 105 m out gets the candidate's `2023-10-14T17:46Z`, because 34 detections near 0332 fall in its 48 hours. 0264's 2023-10-01 17:32 pass, one detection 66 m inside and no other in its 48 hours, gets the near-edge step's `2023-10-02T05:32Z` and no candidate time (O8). A copy of it taken exactly 48 hours before still leaves it lone, and one taken 47 hours 59 minutes before doesn't. The totals test counts the candidate and each part from the CSV, by `made_at`, and checks the new print fields. On the committed CSV: 0273's 2023-10-23T17:19Z and 0349's 2023-11-02T04:50Z rows have a near-edge time, no candidate time, and `seen_inside`. Every candidate time equals the near-edge time on its row | Scenarios 1–3 |
 | `fixtures/backtest/2023.json`, `2023-forecasts.csv` (generated) | The full run's output. The JSON replaces pause 2's typed-in parts. The CSV grows by about 70 KB, from 2.86 MB | Scenarios 1, 4; D55 |
 | `web/e2e/season-backtest.spec.ts:86` | The cut's CSV rows gain `v2_candidate_inside_by`: empty on the 0263, 0332 2,168 m and 0264 rows, and `2023-10-14T17:46Z` on the 0332 105 m row. Pause 2 already added the page checks | E2E |
 | `web/src/preview/SeasonBacktestPreview.tsx:25` | Drop the note that the split counts are the spike's | Preview |
@@ -372,6 +372,7 @@ Recorded as D132, D133, D134.
 | O5 | What ships when no candidate clears the bar | question | spec p1 | user | Resolved | 2026-10-23: the recorder keeps rule version 1. The panel says in one sentence how many rules were tried and that none cleared the bar, and links their scores |
 | O6 | What the 2023 block shows on a forecast once two rule versions exist | question | spec p1 | user | Resolved | 2026-10-23: every forecast's block lists rule version 2, rule version 1 and the three guesses, and names the rule that made it. Not used while no rule version 2 ships (O1) |
 | O7 | Which motion tier the new paragraph and tables use | question | spec p2 | user | Resolved | 2026-10-23: tier 1, as season-backtest. The paragraph enters with the block, and the disclosure opens as today |
+| O8 | The plan's cut test said: the 0332 forecast 105 m out gets the candidate's time "because the 0332 fire 2,168 m out has a detection at the same 05:46. With that detection removed from `found`, the candidate says no." In the cut, 34 detections near 0332 fall in that pass's 48 hours, and the pass has two of its own, so removing one leaves it far from lone | flag | build | user | Decided alone | Chose: test the lone case on 0264's 2023-10-01 17:32 pass in the cut. It is one detection 66 m inside, with no other detection near 0264 in the 48 hours to it. The near-edge step warned, and the fire stayed out. The 48-hour edge test copies that detection. Other: build a lone case by hand, by dropping 33 of 0332's detections from `found`. Undo: swap `lone_0264()` in `api/tests/test_backtest.py` for a hand-cut `found`. 2026-10-23 |
 
 _Never delete this section or its rows. See references/ledger.md._
 
