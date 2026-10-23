@@ -852,6 +852,23 @@ def test_runs_send_every_record_of_their_sealed_runs(client, db, caplog):
     assert "served runs first=2 last=3 hotspots=3 forecasts=2" in caplog.text
 
 
+def test_runs_round_a_store_time_up_as_the_cut_is(client, db):
+    # Stored 0.4 s after 09:00:00 is after a cut at 09:00:00, so it must read as after it.
+    sealed = {
+        "root_id": root(db, 2, b"\x02" * 32, "2026-10-14T09:05Z"), "proof": [b"\x11" * 32],
+        "tx_hash": b"\x02" * 32, "sealed_at": "2026-10-14T09:05Z",
+    }
+    record(db, "2026-10-14T05:00Z", [(C0540, True, 3099)], created_at="2026-10-14T09:00:00.4Z", **sealed)
+    record(db, "2026-10-14T05:00Z", [(C0540, True, 3099)], created_at="2026-10-14T09:00Z",
+           lat_e5=-310200, **sealed)
+
+    body = client.get("/api/runs", params={"first": 2, "last": 2}).json()
+
+    assert sorted(h["stored_unix"] for h in body["hotspots"]) == [
+        unix("2026-10-14T09:00Z"), unix("2026-10-14T09:00:01Z"),
+    ]
+
+
 @pytest.mark.parametrize(
     "params",
     [{"first": 0, "last": 1}, {"first": 5, "last": 4}, {"first": 1, "last": 101}],
