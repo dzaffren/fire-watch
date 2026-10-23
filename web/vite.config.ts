@@ -10,6 +10,7 @@ export default defineConfig({
         ".",
         fileURLToPath(new URL("../docs/design/design-system", import.meta.url)),
         fileURLToPath(new URL("../fixtures/backtest", import.meta.url)),
+        fileURLToPath(new URL("../fixtures/damage", import.meta.url)),
       ],
     },
   },
