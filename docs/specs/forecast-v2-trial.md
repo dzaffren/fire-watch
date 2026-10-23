@@ -1,4 +1,4 @@
-# Forecast v2
+# Forecast v2 trial
 
 **Version:** v1 · **Status:** Refined · **Type:** Enhancement · **Project type:** Web UI
 
@@ -369,7 +369,7 @@ near-edge step's 3,193. A version 2 must keep the near-edge step's arrivals and 
 Rule version 1 fails this bar.
 Rejected: beating rule version 1 (a version 2 could still lose to its own step 5), the highest CSI
 (the downwind guess leads at 5.0% with wind, which the rule can't use, D48).
-Source: docs/specs/forecast-v2.md
+Source: docs/specs/forecast-v2-trial.md
 Status: active
 
 #### D133 · 2026-10-23 · Pick a rule version 2 on January to September 2023, and judge it once on October to December
@@ -378,7 +378,7 @@ Why: rule version 1 was chosen on the week it was measured on (D48). The split l
 to pick on and 79 to judge on, in the months when most of 2023's arrivals came.
 Rejected: fixing candidates first and judging on all of 2023 (still the best of several on the same
 forecasts), picking and judging on all of 2023 (a fitted rule).
-Source: docs/specs/forecast-v2.md
+Source: docs/specs/forecast-v2-trial.md
 Status: active
 
 #### D134 · 2026-10-23 · Keep forecast rule version 1, and say on the panel that the 2023 candidate missed the bar
@@ -389,7 +389,7 @@ lets the reader of a forecast see the attempt and its result.
 Rejected: shipping the candidate (misses D132's bar), a second candidate judged after seeing
 October to December (spends the hold-out, D133), the result in the spec only (a reader of a
 forecast never sees it).
-Source: docs/specs/forecast-v2.md
+Source: docs/specs/forecast-v2-trial.md
 Status: active
 
 ## Open items

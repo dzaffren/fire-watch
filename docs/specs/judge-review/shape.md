@@ -47,7 +47,7 @@ flowchart LR
         S3[3 run-roots] -- "sealed run roots" --> S5[5 complete-packs]
     end
     subgraph science
-        S2[2 fair-baseline] -- "fair numbers to judge v2" --> S7[7 forecast-v2]
+        S2[2 fair-baseline] -- "fair numbers to judge v2" --> S7[7 forecast-v2-trial]
         S4[4 origin-confidence]
         S6[6 damage-check]
     end
@@ -61,7 +61,7 @@ flowchart LR
 | 4 | origin-confidence | The fire view and the pack flag a weak first sighting, such as one low-confidence pixel and then a long gap. They name VIIRS position error, Trase boundary accuracy and fire merging. | Science again. It can change the landing's example fire (O9). |
 | 5 | complete-packs | A pack proves that no stored detection of its fire was left out, against the sealed run roots in its window. | It closes the review's worst hole. It needs run-roots. It supersedes D24 if its spec agrees (O7). |
 | 6 | damage-check | The estimate's method shows how the joined-squares area compares with MODIS burned area for 2023. If the gap is real, the estimate is corrected. | It starts with a spike (O10), so it goes after the slices whose work is known. |
-| 7 | forecast-v2 | A rule version 2 replaces version 1 for new forecasts, but only if a spike shows it beats slice 2's baselines on 2023. | It depends on a spike (O11), and fair-baseline's numbers judge it. |
+| 7 | forecast-v2-trial | A rule version 2 replaces version 1 for new forecasts, but only if a spike shows it beats slice 2's baselines on 2023. | It depends on a spike (O11), and fair-baseline's numbers judge it. |
 
 ## Not doing
 
@@ -89,7 +89,7 @@ flowchart LR
 | O8 | fair-baseline supersedes D51's rejection of the near-edge step as a baseline | flag | shape | fair-baseline | Handed to fair-baseline | — |
 | O9 | A stricter origin rule may stop calling 0332's fire "first seen outside", and the landing is built on it (D78, D84) | unproven | shape | origin-confidence | Handed to origin-confidence | — |
 | O10 | Joined 375 m squares overstate burned ground. A rough union gave about 2.5 Mha for 2023, against the ministry's 1.16 Mha; nobody has checked it | unproven | shape | damage-check | Handed to damage-check | — |
-| O11 | A rule version 2 can beat the near-edge baseline on 2023 | unproven | shape | forecast-v2 | Handed to forecast-v2 | — |
+| O11 | A rule version 2 can beat the near-edge baseline on 2023 | unproven | shape | forecast-v2-trial | Handed to forecast-v2-trial | — |
 | O12 | Who holds the power to replace the recorder key on the new contract? | question | shape | run-roots | Handed to run-roots | — |
 | O13 | Base Sepolia is a test network that can be shut down, and a grievance needs evidence that lasts | flag | shape | user | Accepted risk | Stay on the test network; the hackathon allows it. The roadmap write-up names Base mainnet and its cost after run-roots. 2026-10-22 |
 
