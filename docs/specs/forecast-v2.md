@@ -1,6 +1,6 @@
 # Forecast v2
 
-**Version:** v1 · **Status:** Draft · **Type:** Enhancement · **Project type:** Web UI
+**Version:** v1 · **Status:** Refined · **Type:** Enhancement · **Project type:** Web UI
 
 **Shape doc:** docs/specs/judge-review/shape.md
 **Depends on:** fair-baseline
@@ -212,6 +212,186 @@ each column. This page keeps the block's four rows, states the attempt and its r
 paragraph, and shows the hold-out as its own table. Next to Stripe's documentation, the reference
 for D2, it keeps the same order: the answer in the block, every count one click away.
 
+## Technical plan
+
+### Approach
+
+`backtest-2023` gains the rule version 2 tried as a fourth guess, `v2_candidate`. It is the
+near-edge step's time, or none when the forecast's newest pass is a lone detection. The totals file
+gains its all-2023 counts, as each guess has, and two parts split at 1 October 2023: `picked_on` and
+`judged_on`. Each part counts the candidate, the near-edge step and rule version 1. One full run
+rewrites both committed files, and the page bundles the totals as it does now (D59). The recorder,
+the API, the schema and the chain don't change.
+
+Relies on: D44, D48, D52, D53, D55, D56, D57, D59, D99, D100, D101, D102, D132, D133, D134.
+
+**The rule version 2 tried**, written out in `backtest.py` as the other guesses are:
+
+1. Take the near-edge step's time for the forecast.
+2. Count the detections matched to the concession that were taken in the 48 hours up to and
+   including the newest pass's first detection. A detection exactly 48 hours before doesn't count.
+3. When that count is 1, the pass is a lone detection, and the candidate says no. Otherwise it gives
+   the near-edge step's time.
+
+Every detection taken by then was stored by the forecast's run, because each is stored 3 hours
+after it was taken (D57). So the count reads only what the recorder would have held.
+
+```mermaid
+flowchart TB
+    subgraph cmd["backtest-2023, run by hand"]
+        B[backtest.py] -- "each fire, each run" --> F["forecast.make, outcome"]
+        B -- "newest pass of each forecast" --> N["near_edge: rule step 5"]
+        N -- "near-edge times" --> V["v2_candidate: no for a lone detection"]
+        B -- "each concession's detection times" --> V
+        V -- "five methods' times" --> T["totals: all of 2023, picked_on, judged_on; forecasts_csv"]
+    end
+    T -- "2023.json, 2023-forecasts.csv" --> X[("fixtures/backtest")]
+    X -- "2023.json bundled at build" --> W["web: ForecastPanel, the paragraph and two tables"]
+```
+
+The replay makes each forecast with the recorder's code, then times it five ways. The candidate
+needs only the near-edge time and the concession's detection times, so it adds no database query.
+
+```mermaid
+sequenceDiagram
+    participant O as operator
+    participant C as backtest-2023
+    participant D as compose db
+    participant R as repo
+    participant P as page
+    O->>C: uv run backtest-2023
+    C->>D: load the pinned map, MATCH 250,312 rows
+    D-->>C: 42,682 detections near a concession
+    C->>C: each concession, each hourly run: group, settle, make
+    C->>D: downwind paths against each concession shrunk 375 m
+    C->>C: near-edge, next-pass and v2_candidate times
+    C->>C: totals for all of 2023, then picked_on and judged_on at 1 Oct
+    C->>R: 2023.json with v2_candidate and both parts, the CSV with one more column
+    O->>R: commit, merge to main
+    R->>P: Deploy builds the page with 2023.json inside
+```
+
+The operator runs the replay once and commits its output. No data crosses a new boundary: the
+inputs are season-backtest's pinned files, and the outputs are public files in the repo.
+
+### Changes
+
+| File | What | Why |
+| ---- | ---- | --- |
+| `api/src/firewatch/backtest.py:1` | The docstring writes out the rule version 2 tried and the split at 1 October | Scenarios 1, 2 |
+| `api/src/firewatch/backtest.py:77` | `JUDGED_FROM = datetime(2023, 10, 1, tzinfo=timezone.utc)` and `LONE = timedelta(hours=48)` beside `YEAR_END` | Scenarios 1, 2; D133 |
+| `api/src/firewatch/backtest.py:86` | `COLUMNS` gains `v2_candidate_inside_by` after `next_pass_inside_by`. The sort key's indexes, 0 to 5, stay | Scenario 4; D55 |
+| `api/src/firewatch/backtest.py:369` | `v2_candidate(made, found)` after `next_pass()`: the near-edge time from `near_edge(made)`, or `None` when the concession's sorted detection times hold one in the 48 hours to `after_pass_at`, by `bisect` | Scenarios 1, 2 |
+| `api/src/firewatch/backtest.py:394` | `totals()` gains `picked_on` and `judged_on`. Each runs `_method()` on the forecasts made before or from `JUDGED_FROM`, for `v2_candidate`, `near_edge` and `rule`, and drops `median_hours_off`. `v2_candidate`'s all-2023 counts come from the guesses dict, as the other guesses' do | Scenarios 1, 3 |
+| `api/src/firewatch/backtest.py:433` | The description and `main()`'s guesses dict gain the candidate, after `next_pass`. The print line gains `v2_candidate_warned=`, `judged_v2_candidate=` and `judged_near_edge=` | Scenarios 1, 4 |
+| `api/tests/test_backtest.py` | On the cut: the 0332 forecast 105 m out gets the candidate's `2023-10-14T17:46Z`, because the 0332 fire 2,168 m out has a detection at the same 05:46. With that detection removed from `found`, the candidate says no. A copy taken exactly 48 hours before still leaves it lone, and one taken 47 hours 59 minutes before doesn't. The totals test counts the candidate and each part from the CSV, by `made_at`, and checks the new print fields. On the committed CSV: 0273's 2023-10-23T17:19Z and 0349's 2023-11-02T04:50Z rows have a near-edge time, no candidate time, and `seen_inside`. Every candidate time equals the near-edge time on its row | Scenarios 1–3 |
+| `fixtures/backtest/2023.json`, `2023-forecasts.csv` (generated) | The full run's output. The JSON replaces pause 2's typed-in parts. The CSV grows by about 70 KB, from 2.86 MB | Scenarios 1, 4; D55 |
+| `web/e2e/season-backtest.spec.ts:86` | The cut's CSV rows gain `v2_candidate_inside_by`: empty on the 0263, 0332 2,168 m and 0264 rows, and `2023-10-14T17:46Z` on the 0332 105 m row. Pause 2 already added the page checks | E2E |
+| `web/src/preview/SeasonBacktestPreview.tsx:25` | Drop the note that the split counts are the spike's | Preview |
+
+Done at pause 2 and kept: `web/src/ForecastPanel.tsx`, `ForecastPanel.test.tsx`, `api.ts`, and the
+page checks in `season-backtest.spec.ts`.
+
+Reusing: `near_edge()`, `_method()`, `outcome_of()`, `totals()`, `forecasts_csv()`, `replay()`, the
+`cut`, `found` and `replayed` fixtures, `row()`, `rows_of()` and `made_after()`, and the e2e's cut
+run.
+
+### Earn-it
+
+| Added | Triggered by |
+| ----- | ------------ |
+| `v2_candidate()` | Scenarios 1, 2 |
+| `JUDGED_FROM` | Scenarios 1, 3; D133: one split for the command, the tests and the page |
+| `LONE` | Scenario 2: the 48 hours of the lone count |
+| `picked_on`, `judged_on` in `2023.json` | Scenario 3; D59: the page holds no number the totals file doesn't |
+| One CSV column | Scenario 3; D55: anyone can recount the candidate |
+| The committed-CSV checks | Scenario 2 needs 0273, which the cut doesn't hold |
+
+Cut: a setting for the split date or the 48 hours, a sixth row in the block (O5), the search that
+picked the candidate (O1 records it; it was a spike), and a README change. Its "Redo the 2023 replay"
+section still holds.
+
+### Non-functionals
+
+|                      |                                                                               |
+| -------------------- | ----------------------------------------------------------------------------- |
+| **Load**             | One run by hand: about 75 seconds, as the spike's was. The candidate adds one `bisect` pair for each of 20,277 forecasts. The page grows by about 0.6 KB of bundled JSON, with no new request |
+| **Breaks first**     | Nothing at 10× for one year. Each replayed year adds about 2.9 MB of CSV to the repo |
+| **Security surface** | No new route, input or secret. The candidate reads only the replay's own detections. Stores public data only, with concession IDs and no company names |
+| **Proof it works**   | The command prints `replayed year=2023 detections=42682 forecasts=20277 arrivals=135 rule_warned=123 downwind_warned=20 near_edge_warned=117 next_pass_warned=135 v2_candidate_warned=115 judged_v2_candidate=63 judged_near_edge=65 seconds=<n>`. The live fire view shows the paragraph under a rule version 1 forecast |
+| **Rollout**          | No flag. Run the replay, commit the result, merge to main; Deploy ships the page (D21). Rollback: revert the merge, and the paragraph and both tables go |
+
+### Test plan
+
+| Scenario | Test | Command |
+| -------- | ---- | ------- |
+| 1. The candidate judged on Oct–Dec | `test_backtest.py::test_totals_count_every_forecast_in_the_csv`; the full run's print line | `cd api && uv run pytest tests/test_backtest.py` |
+| 2. No warning for a lone detection | `test_backtest.py::test_v2_candidate_warns_where_another_detection_is_near`, `::test_v2_candidate_says_no_to_a_lone_detection`, `::test_lone_counts_48_hours_and_no_more`, `::test_committed_v2_candidate_missed_0273_and_0349`, `::test_committed_v2_candidate_is_the_near_edge_time_or_none` | `cd api && uv run pytest tests/test_backtest.py` |
+| 3. The panel | `ForecastPanel.test.tsx` "the 2023 replay"; `season-backtest.spec.ts` | `cd web && pnpm test && pnpm e2e season-backtest` |
+| 4. Byte for byte | `test_backtest.py::test_two_runs_write_the_same_bytes` | `cd api && uv run pytest tests/test_backtest.py` |
+| The recorder doesn't change | `test_forecast.py`, `test_backtest.py::test_replay_of_fire_origin_matches_the_recorder` | `cd api && uv run pytest tests/test_forecast.py tests/test_backtest.py` |
+| Earlier slices | the full suites | `cd api && uv run pytest`; `cd web && pnpm test && pnpm e2e` |
+
+pytest and the e2e need `docker compose up -d --wait db` and `~/.foundry/bin` on `PATH`. Run one
+API suite at a time.
+
+**E2E:** `web/e2e/season-backtest.spec.ts` "replays a cut of 2023 and shows the committed result on
+the 0332 fire". It runs `backtest-2023` on the cut and checks the four rows, with the candidate's
+column. It then opens the 0332 fire and reads the paragraph and both tables as
+`fixtures/backtest/2023.json` holds them.
+
+### Chunks
+
+Single chunk. The page work is done, and the rest is one command's change, its tests and one run.
+
+Order within it: `v2_candidate()` and its tests on the cut, then the parts in `totals()` and the
+totals test, then the full run and its commit, then the committed-CSV tests, the e2e's CSV checks
+and the preview note.
+
+### Risks
+
+| Risk | Mitigation |
+| ---- | ---------- |
+| The full run's counts differ from the spike's | The spike ran `replay()` unchanged and matched the committed totals, so they should agree. If they don't, commit what the run gives, and update the scenarios, the Interface and O1 to match |
+| The bar is missed by 2 arrivals of 79, and a reader may call that noise | The page gives both counts, and the bar and the split were set before the result (D132, D133). The candidate's 80 fewer warnings that didn't come in are on the page too |
+| "More than 3,400 variants" can't be redone by the command | O1 records the method and the counts it rests on. The page says "more than", the spike's lower bound |
+| The days left: 2026-10-25 is the deadline | A single chunk. The page is done, and the full run takes about 75 seconds with no wind fetch |
+
+### Decisions to record
+
+`/build` appends these to `DECISIONS.md`. None supersedes an entry; D132 sets the bar D101 left
+to this slice.
+
+#### D132 · 2026-10-23 · A rule version 2 must beat the near-edge step on both counts
+
+Why: the review's complaint is rule version 1's 3,751 warnings that didn't come in, against the
+near-edge step's 3,193. A version 2 must keep the near-edge step's arrivals and cut those warnings.
+Rule version 1 fails this bar.
+Rejected: beating rule version 1 (a version 2 could still lose to its own step 5), the highest CSI
+(the downwind guess leads at 5.0% with wind, which the rule can't use, D48).
+Source: docs/specs/forecast-v2.md
+Status: active
+
+#### D133 · 2026-10-23 · Pick a rule version 2 on January to September 2023, and judge it once on October to December
+
+Why: rule version 1 was chosen on the week it was measured on (D48). The split leaves 56 arrivals
+to pick on and 79 to judge on, in the months when most of 2023's arrivals came.
+Rejected: fixing candidates first and judging on all of 2023 (still the best of several on the same
+forecasts), picking and judging on all of 2023 (a fitted rule).
+Source: docs/specs/forecast-v2.md
+Status: active
+
+#### D134 · 2026-10-23 · Keep forecast rule version 1, and say on the panel that the 2023 candidate missed the bar
+
+Why: the candidate warned of 63 of October to December's 79 arrivals, 2 fewer than the near-edge
+step, though 1,022 of its warnings didn't come in against 1,102. D132 needs both. One sentence
+lets the reader of a forecast see the attempt and its result.
+Rejected: shipping the candidate (misses D132's bar), a second candidate judged after seeing
+October to December (spends the hold-out, D133), the result in the spec only (a reader of a
+forecast never sees it).
+Source: docs/specs/forecast-v2.md
+Status: active
+
 ## Open items
 
 | ID | What | Type | Raised at | Owner | Status | Answer |
@@ -222,7 +402,7 @@ for D2, it keeps the same order: the answer in the block, every count one click 
 | O4 | How a rule version 2 is kept from being picked on the same forecasts that judge it | question | spec p1 | user | Resolved | 2026-10-23: pick it on forecasts made January to September 2023, 56 arrivals. Judge it once on October to December, 79 arrivals. The page gives both parts |
 | O5 | What ships when no candidate clears the bar | question | spec p1 | user | Resolved | 2026-10-23: the recorder keeps rule version 1. The panel says in one sentence how many rules were tried and that none cleared the bar, and links their scores |
 | O6 | What the 2023 block shows on a forecast once two rule versions exist | question | spec p1 | user | Resolved | 2026-10-23: every forecast's block lists rule version 2, rule version 1 and the three guesses, and names the rule that made it. Not used while no rule version 2 ships (O1) |
-| O7 | Which motion tier the new paragraph and tables use | question | spec p2 | user | Open | — |
+| O7 | Which motion tier the new paragraph and tables use | question | spec p2 | user | Resolved | 2026-10-23: tier 1, as season-backtest. The paragraph enters with the block, and the disclosure opens as today |
 
 _Never delete this section or its rows. See references/ledger.md._
 
