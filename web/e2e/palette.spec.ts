@@ -58,7 +58,11 @@ test("a judge meets the palette on the landing, the tool's map and the printed p
   await pack.emulateMedia({ media: "print" });
   await expect(pack.locator("body")).toHaveCSS("background-color", "rgb(255, 255, 255)");
   await expect(pack.getByRole("heading", { level: 1 })).toHaveCSS("color", "rgb(31, 36, 33)");
-  await expect(pack.locator(".pack-check")).toHaveCSS("background-color", "rgb(255, 255, 255)");
+  // The seal check and the left-out check.
+  await expect(pack.locator(".pack-check")).toHaveCount(2);
+  for (const panel of await pack.locator(".pack-check").all()) {
+    await expect(panel).toHaveCSS("background-color", "rgb(255, 255, 255)");
+  }
   await expect.poll(() => mapColours(pack)).toEqual({ land: "#d9e8c4", water: "#bdd6e0" });
   await expect(pack.locator(".legend-dot").first()).toHaveCSS("print-color-adjust", "exact");
 });
