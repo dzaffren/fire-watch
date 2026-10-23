@@ -209,19 +209,25 @@ test("A still matches the chain when the API sends it with no tx_hash", async ({
   }
 });
 
-// Last, since it edits the stored record the other tests read.
+// Last, since it edits the stored record the other tests read. Put back after, since run 2's root holds
+// it and a later spec's pack checks that its runs rebuild.
 test("an edited match reads Does not match", async ({ page }) => {
-  await sql(
-    "UPDATE hotspot_concessions SET inside = true WHERE concession_id = 'ID-WOOD-CONCESSION-0377' " +
-      "AND hotspot_id = (SELECT id FROM hotspots WHERE lat_e5 = -367525 AND lon_e5 = 11535328)",
-  );
+  const match = (inside: boolean) =>
+    sql(
+      `UPDATE hotspot_concessions SET inside = ${inside} WHERE concession_id = 'ID-WOOD-CONCESSION-0377' ` +
+        "AND hotspot_id = (SELECT id FROM hotspots WHERE lat_e5 = -367525 AND lon_e5 = 11535328)",
+    );
+  await match(true);
+  try {
+    await openFixtureDates(page);
+    await page.getByRole("button", { name: /^ID-WOOD-CONCESSION-0377/ }).click();
+    await fireOfB(page).getByRole("button").click();
+    await hotspotRow(page, "3.03 MW").getByRole("button").click();
 
-  await openFixtureDates(page);
-  await page.getByRole("button", { name: /^ID-WOOD-CONCESSION-0377/ }).click();
-  await fireOfB(page).getByRole("button").click();
-  await hotspotRow(page, "3.03 MW").getByRole("button").click();
-
-  const panel = page.getByRole("article", { name: "Hotspot record" });
-  await expect(panel.getByText("Does not match the chain")).toBeVisible();
-  await expect(panel).toContainText("Inside, 370 m from the edge, within one satellite pixel of it");
+    const panel = page.getByRole("article", { name: "Hotspot record" });
+    await expect(panel.getByText("Does not match the chain")).toBeVisible();
+    await expect(panel).toContainText("Inside, 370 m from the edge, within one satellite pixel of it");
+  } finally {
+    await match(false);
+  }
 });
