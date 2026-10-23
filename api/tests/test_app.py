@@ -803,7 +803,7 @@ def test_runs_send_every_record_of_their_sealed_runs(client, db, caplog):
     made_3 = forecast(
         db, C0540, key, "2026-10-14T05:00Z", "2026-10-14T08:30Z", "2026-10-15T06:18Z", **in_run[3]
     )
-    made_2 = forecast(db, C0540, key, "2026-10-14T05:00Z", "2026-10-14T07:00Z", **in_run[2])
+    made_2 = forecast(db, C0540, key, "2026-10-14T04:30Z", "2026-10-14T07:00Z", **in_run[2])
     forecast(db, C0540, key, "2026-10-14T09:30Z", "2026-10-14T10:00Z", **in_run[4])
     forecast(db, C0540, key, "2026-10-14T09:40Z", "2026-10-14T11:00Z", **unsent)
 
