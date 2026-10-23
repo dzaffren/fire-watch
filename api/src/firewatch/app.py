@@ -23,6 +23,7 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)s:     %(message)s")
 log = logging.getLogger("firewatch.app")
 
 MAX_DAYS = 31
+MAX_RUNS = 100
 # About 50 m: enough to draw the boundary, a fraction of the full file's points.
 SIMPLIFY_DEGREES = 0.0005
 
@@ -77,6 +78,31 @@ WHERE f.concession_id = %(id)s AND f.fire_key = ANY(%(keys)s)
 ORDER BY f.made_at DESC, f.id DESC
 """
 FORECASTS_FROM = "SELECT min(made_at) AS started FROM forecasts"
+# A pack's runs: from the first sealed at or after its window starts, to the newest holding a
+# detection stored by its cut (D123).
+WINDOW_RUNS = """
+SELECT (SELECT min(run) FROM roots WHERE run IS NOT NULL AND sealed_at >= %(start)s) AS first,
+       (SELECT max(r.run) FROM roots r JOIN hotspots h ON h.root_id = r.id
+        WHERE r.run IS NOT NULL AND h.created_at <= %(cut)s) AS last
+"""
+# Every record of the sealed runs first to last, so a browser can rebuild each root (D122).
+RUN_HOTSPOTS = """
+SELECT h.*, r.run,
+       (SELECT json_agg(json_build_object('id', a.concession_id, 'inside', a.inside,
+                                          'edge_m', a.edge_m)
+                        ORDER BY a.inside DESC, a.edge_m, a.concession_id)
+        FROM hotspot_concessions a WHERE a.hotspot_id = h.id) AS concessions
+FROM hotspots h
+JOIN roots r ON r.id = h.root_id
+WHERE r.run BETWEEN %(first)s AND %(last)s
+ORDER BY r.run, h.id
+"""
+RUN_FORECASTS = """
+SELECT f.*, r.run FROM forecasts f
+JOIN roots r ON r.id = f.root_id
+WHERE r.run BETWEEN %(first)s AND %(last)s
+ORDER BY r.run, f.id
+"""
 # The concession's forecasts, oldest first, but those of fires that joined an older one (D44).
 CONCESSION_FORECASTS = """
 SELECT fire_key, inside_by_at, outcome FROM forecasts
@@ -265,6 +291,7 @@ def create_app(allowed_origin: str) -> FastAPI:
             raise HTTPException(status_code=422, detail="as_of is in the future")
         wanted = bytes.fromhex(key[2:])
         site = None
+        window = None
         with connect() as conn:
             if as_of is None:
                 # The cut first: a detection stored after it is then left out of the grouping.
@@ -276,13 +303,18 @@ def create_app(allowed_origin: str) -> FastAPI:
                 site = conn.execute(CONCESSION, params).fetchone()
                 if site is None:
                     raise HTTPException(status_code=404, detail="No such concession")
+            cut = datetime.fromtimestamp(as_of, timezone.utc)
             # An unknown concession has no detections, so no fire.
-            grouped, group_ms = fires.stored(
-                conn, concession_id, datetime.fromtimestamp(as_of, timezone.utc)
-            )
+            grouped, group_ms = fires.stored(conn, concession_id, cut)
             found = next((fire for fire in grouped if fire.key == wanted), None)
             if found is None:
                 raise HTTPException(status_code=404, detail="No such fire")
+            if site is not None:
+                # From 48 hours before the fire was first seen: the fire rule joins that far back.
+                start = found.first_seen_at - fires.JOIN_TIME
+                runs = conn.execute(WINDOW_RUNS, {"start": start, "cut": cut}).fetchone()
+                if None not in runs.values() and runs["first"] <= runs["last"]:
+                    window = runs
             ids = [d.record_id for d in found.detections]
             rows = conn.execute(FIRE_HOTSPOTS, {"record_ids": ids}).fetchall()
             # From the detections stored by as_of, so a pack holds it as of its cut (D37).
@@ -300,10 +332,10 @@ def create_app(allowed_origin: str) -> FastAPI:
         joined = fires.joined(found)
         log.info(
             "served fire id=%s key=%s as_of=%d detections=%d passes=%d forecasts=%d group_ms=%d"
-            " damage_ms=%d joined=%d first_alone_h=%s",
+            " damage_ms=%d joined=%d first_alone_h=%s runs=%s",
             concession_id, key, as_of, len(ids), found.passes,
             len(forecasts.get("forecasts", [])), group_ms, damage_ms, len(joined),
-            found.first_alone_h,
+            found.first_alone_h, f"{window['first']}-{window['last']}" if window else "none",
         )
         pack = {} if site is None else {
             "concession_id": site["id"],
@@ -311,6 +343,7 @@ def create_app(allowed_origin: str) -> FastAPI:
             "boundary": _rings(site["boundary"]),
             "map_version": site["map_version"],
             "rule_version": fires.RULE_VERSION,
+            "runs": window,
         }
         return {
             **_fire(found),
@@ -331,6 +364,33 @@ def create_app(allowed_origin: str) -> FastAPI:
             "hotspots": [
                 {**_record(by_id[record_id]), **_proof(by_id[record_id]), "pass": number}
                 for record_id, number in zip(ids, found.pass_numbers)
+            ],
+        }
+
+    @app.get("/api/runs")
+    def run_records(first: int, last: int):
+        if first < 1:
+            raise HTTPException(status_code=422, detail="first is under 1")
+        if last < first:
+            raise HTTPException(status_code=422, detail="last is before first")
+        if last - first + 1 > MAX_RUNS:
+            raise HTTPException(status_code=422, detail=f"Pick {MAX_RUNS} runs or fewer")
+        params = {"first": first, "last": last}
+        with connect() as conn:
+            hotspots = conn.execute(RUN_HOTSPOTS, params).fetchall()
+            made = conn.execute(RUN_FORECASTS, params).fetchall()
+        log.info(
+            "served runs first=%d last=%d hotspots=%d forecasts=%d",
+            first, last, len(hotspots), len(made),
+        )
+        return {
+            "hotspots": [
+                {**_record(row), "run": row["run"], "stored_unix": _unix(row["created_at"])}
+                for row in hotspots
+            ],
+            "forecasts": [
+                {"record_id": _hex(row["record_id"]), **forecast_fields(row), "run": row["run"]}
+                for row in made
             ],
         }
 

@@ -712,6 +712,161 @@ def test_pack_has_its_concession_map_and_rule(client, db):
     assert (pack["key"], pack["as_of_unix"], pack["detections"]) == (first, as_of, 1)
 
 
+def test_pack_runs_from_the_window_start_to_the_cut(client, db, caplog):
+    # The fire is first seen 13 Oct 17:37 UTC, so the window starts 11 Oct 17:37 UTC.
+    root(db, run=3, tx_hash=b"\x03" * 32, sealed_at="2026-10-11T17:36Z")
+    root(db, run=4, tx_hash=b"\x04" * 32, sealed_at="2026-10-11T17:37Z")
+    sealed_at = "2026-10-14T09:05Z"
+    in_run_5 = root(db, run=5, tx_hash=b"\x05" * 32, sealed_at=sealed_at)
+    after_cut = root(db, run=6, tx_hash=b"\x06" * 32, sealed_at="2026-10-14T10:05Z")
+    first = record(
+        db, "2026-10-13T17:37Z", [(C0332, False, 954)], lat_e5=-310000, lon_e5=11281000,
+        created_at="2026-10-14T09:00Z", root_id=in_run_5, proof=[b"\x11" * 32],
+        tx_hash=b"\x05" * 32, sealed_at=sealed_at,
+    )
+    record(
+        db, "2026-10-14T09:30Z", [(C0540, True, 3099)], created_at="2026-10-14T10:00Z",
+        root_id=after_cut, proof=[b"\x22" * 32], tx_hash=b"\x06" * 32,
+        sealed_at="2026-10-14T10:05Z",
+    )
+
+    with caplog.at_level(logging.INFO, logger="firewatch.app"):
+        pack = client.get(
+            f"/api/concessions/{C0332}/fires/{first}", params={"as_of": unix("2026-10-14T09:00Z")}
+        ).json()
+
+    assert pack["runs"] == {"first": 4, "last": 5}
+    assert "runs=4-5" in caplog.text
+
+
+def test_pack_runs_are_null_without_a_sealed_run_in_its_window(client, db, caplog):
+    unsent = root(db)
+    first = record(
+        db, "2026-10-13T17:37Z", [(C0332, False, 954)], created_at="2026-10-14T09:00Z",
+        root_id=unsent, proof=[b"\x11" * 32],
+    )
+    url = f"/api/concessions/{C0332}/fires/{first}"
+    as_of = unix("2026-10-14T09:00Z")
+
+    with caplog.at_level(logging.INFO, logger="firewatch.app"):
+        no_root = client.get(url, params={"as_of": as_of}).json()
+    # Run 2 is sealed before the window and run 3 holds only a detection stored after the cut.
+    before = root(db, run=2, tx_hash=b"\x02" * 32, sealed_at="2026-10-11T09:00Z")
+    record(
+        db, "2026-10-11T06:00Z", [(C0540, True, 3099)], created_at="2026-10-11T08:00Z",
+        root_id=before, proof=[], tx_hash=b"\x02" * 32, sealed_at="2026-10-11T09:00Z",
+    )
+    after_cut = root(db, run=3, tx_hash=b"\x03" * 32, sealed_at="2026-10-14T10:05Z")
+    record(
+        db, "2026-10-14T09:30Z", [(C0540, True, 3099)], created_at="2026-10-14T10:00Z",
+        root_id=after_cut, proof=[], tx_hash=b"\x03" * 32, sealed_at="2026-10-14T10:05Z",
+    )
+    first_after_last = client.get(url, params={"as_of": as_of}).json()
+
+    assert no_root["runs"] is None and first_after_last["runs"] is None
+    assert "runs=none" in caplog.text
+
+
+def test_fire_view_has_no_runs(client, db):
+    sealed = root(db, run=1, tx_hash=b"\x01" * 32, sealed_at="2026-10-14T09:05Z")
+    first = record(
+        db, "2026-10-13T17:37Z", [(C0332, False, 954)], created_at="2026-10-14T09:00Z",
+        root_id=sealed, proof=[], tx_hash=b"\x01" * 32, sealed_at="2026-10-14T09:05Z",
+    )
+
+    fire = client.get(f"/api/concessions/{C0332}/fires/{first}").json()
+
+    assert "runs" not in fire
+
+
+def test_runs_send_every_record_of_their_sealed_runs(client, db, caplog):
+    sealed_at = "2026-10-14T09:05:12Z"
+    in_run = {
+        run: {"root_id": root(db, run, tx_hash, at), "proof": [b"\x11" * 32],
+              "tx_hash": tx_hash, "sealed_at": at}
+        for run, tx_hash, at in [
+            (2, b"\x02" * 32, "2026-10-14T08:05Z"),
+            (3, b"\xab" * 32, sealed_at),
+            (4, b"\x04" * 32, "2026-10-14T10:05Z"),
+        ]
+    }
+    unsent = {"root_id": root(db), "proof": []}
+    in_3 = record(
+        db, "2026-10-14T06:18Z", [(C0377, False, 371), (C0275, False, 1019)], lat_e5=-367525,
+        lon_e5=11535328, frp_e2=303, created_at="2026-10-14T09:00Z", **in_run[3],
+    )
+    in_2 = [record(db, "2026-10-14T05:00Z", [(C0540, True, 3099)], **in_run[2]) for _ in range(2)]
+    record(db, "2026-10-14T09:30Z", [(C0540, True, 3099)], **in_run[4])
+    record(db, "2026-10-14T09:40Z", [(C0540, True, 3099)], **unsent)
+    record(db, "2026-10-14T09:40Z", [(C0540, True, 3099)])
+    key = in_2[0]
+    made_3 = forecast(
+        db, C0540, key, "2026-10-14T05:00Z", "2026-10-14T08:30Z", "2026-10-15T06:18Z", **in_run[3]
+    )
+    made_2 = forecast(db, C0540, key, "2026-10-14T05:00Z", "2026-10-14T07:00Z", **in_run[2])
+    forecast(db, C0540, key, "2026-10-14T09:30Z", "2026-10-14T10:00Z", **in_run[4])
+    forecast(db, C0540, key, "2026-10-14T09:40Z", "2026-10-14T11:00Z", **unsent)
+
+    with caplog.at_level(logging.INFO, logger="firewatch.app"):
+        response = client.get("/api/runs", params={"first": 2, "last": 3})
+
+    assert response.status_code == 200
+    body = response.json()
+    assert [(h["record_id"], h["run"]) for h in body["hotspots"]] == [
+        (in_2[0], 2), (in_2[1], 2), (in_3, 3),
+    ]
+    assert body["hotspots"][2] == {
+        "record_id": in_3,
+        "source": "VIIRS_NOAA20_NRT",
+        "lat_e5": -367525,
+        "lon_e5": 11535328,
+        "acquired_at": "2026-10-14T06:18:00Z",
+        "acquired_unix": unix("2026-10-14T06:18Z"),
+        "frp_e2": 303,
+        "confidence": "n",
+        "tx_hash": "0x" + "ab" * 32,
+        "sealed_at": sealed_at,
+        "fingerprint_version": 2,
+        "map_version": MAP_VERSION,
+        "concessions": [
+            {"id": C0377, "inside": False, "edge_m": 371},
+            {"id": C0275, "inside": False, "edge_m": 1019},
+        ],
+        "run": 3,
+        "stored_unix": unix("2026-10-14T09:00Z"),
+    }
+    assert [(f["record_id"], f["run"]) for f in body["forecasts"]] == [(made_2, 2), (made_3, 3)]
+    assert body["forecasts"][1] == {
+        "record_id": made_3,
+        "concession_id": C0540,
+        "fire_key": key,
+        "after_pass_unix": unix("2026-10-14T05:00Z"),
+        "made_unix": unix("2026-10-14T08:30Z"),
+        "until_unix": unix("2026-10-16T08:30Z"),
+        "inside_by_unix": unix("2026-10-15T06:18Z"),
+        "from": {"lat_e5": -310200, "lon_e5": 11281200},
+        "crossing": {"lat_e5": -310150, "lon_e5": 11281210},
+        "rule_version": 1,
+        "run": 3,
+    }
+    assert "served runs first=2 last=3 hotspots=3 forecasts=2" in caplog.text
+
+
+@pytest.mark.parametrize(
+    "params",
+    [{"first": 0, "last": 1}, {"first": 5, "last": 4}, {"first": 1, "last": 101}],
+    ids=["first under 1", "last before first", "101 runs"],
+)
+def test_bad_run_range_is_422(client, params):
+    assert client.get("/api/runs", params=params).status_code == 422
+
+
+def test_100_runs_is_allowed(client):
+    response = client.get("/api/runs", params={"first": 1, "last": 100})
+
+    assert response.json() == {"hotspots": [], "forecasts": []}
+
+
 def test_future_as_of_is_422(client, db):
     first = record(db, "2026-10-13T17:37Z", [(C0332, False, 954)], created_at="2026-10-14T09:00Z")
     url = f"/api/concessions/{C0332}/fires/{first}"
