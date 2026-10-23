@@ -167,6 +167,67 @@ page rounds each to two significant figures, as today.
 - The real size of each VIIRS pixel: not planned, as in damage-estimate.
 - Methane and carbon monoxide: still left out (D68).
 
+## Interface
+
+The damage estimate keeps its place in the fire view and the pack (D64). It gains one figure,
+"Likely burned", between the pixels and the CO₂. The CO₂ and the cost now follow that figure. The
+2023 check goes into "How this is worked out", after the four parts: one table and one paragraph.
+
+```mermaid
+flowchart LR
+    C["Concession: the fires table"] -- "picks a fire" --> F["Fire view: Damage estimate panel"]
+    F -- "reads Likely burned, CO2, cost" --> F
+    F -- "opens How this is worked out" --> D["four parts, the 2023 check table, the factors, seven links"]
+    F -- "Make complaint pack" --> P["Pack: Damage estimate section, working and check in full"]
+    D -- "two new links" --> X["NASA MCD64A1 on LP DAAC, damage_check.py on GitHub"]
+```
+
+The investigator reads the figures first. The 2023 check sits one click away in the fire view,
+and is always shown in the pack.
+
+| Part | What shows |
+| ---- | ---------- |
+| Figures, a key-value list | "Ground in its pixels": "About 210 ha". "Likely burned": "About 130 ha". "CO₂ released": "About 75,000 t". "Cost": "About US$790,000" |
+| Under "Ground in its pixels" | "59 ha of it inside the concession.", as today |
+| Under "Likely burned" (new) | "At NASA's 2023 shares: 61% of peat, 42% of other ground. 36 ha of it inside the concession." The inside part shows only for a fire on both sides of the edge |
+| Under the CO₂ and the cost | As today, worked out from the likely burned ground |
+| Under the figures | "An estimate, not a measurement. A detection means fire somewhere in its 375 m pixel, not that the whole pixel burned." |
+| The method paragraph | As today, plus "The ground that likely burned is each part at the share NASA found burned in 2023, below." |
+| The 2023 check (new) | The lead "In 2023, NASA's MODIS burned-area map checked the squares of every detection within 5 km of a concession:", then a table. Rows "Peat, in large patches", "Other ground, in large patches" and "All ground". Columns "Ground in its pixels" and "Found burned": 31,915 ha and 61.1%, 25,535 ha and 41.6%, 456,345 ha and 14.8% |
+| Under the check | "A large patch is more than 20 squares that touch. MODIS's 500 m pixels miss small burns, so the shares come from large patches, which it can see. A small fire may have burned less than these shares." |
+| Factors | A new first row, "Likely burned": "61.1% of the peat and 41.6% of the other ground in its pixels." Then the CO₂ and cost rows, as today |
+| The closing line | "… Its detections are sealed, and the maps, the 2023 check and the factors are pinned, so anyone can redo it." |
+| Links (two new, seven in all) | "NASA MODIS Burned Area, MCD64A1 Collection 6.1" and "The 2023 check, its files and their sha256" |
+
+The large-patch hectares, 31,915 and 25,535, are sums of the spike's rounded rows. `damage-check-2023`
+gives the exact figures at `/build`, and the page takes them from its output.
+
+| State | What shows |
+| ----- | ---------- |
+| A fire on both sides of the edge | The four figures, each with its part inside |
+| A fire wholly inside or outside | The four figures, then the "All" or "None" line |
+| A fire with no peat ground | No CO₂ range, as today. The "Likely burned" line still names both shares |
+| A fire flagged as never spread | The caveat above the figures, as today (D67) |
+| The fire loading, or the server not answering | The fire view's and the pack's own states, as today |
+| An answer without `damage` | No panel and no section, as today |
+
+**Motion tier:** 1. The panel enters with the fire view, and the disclosure opens as today. The new
+row and table have no motion of their own.
+
+**Components used:** `fw-kv` with `sub` lines, `fw-help`, `table-box` with `fw-table` and row
+headers as in the four-parts table, `fw-link` with the external icon through the existing `Source`,
+and `pack-section`. There is no new component, no new token and no new CSS.
+
+**Design system:** Fire Watch, `docs/design/design-system/` (D2, D4).
+
+**Preview:** the real `web/src/Damage.tsx`, through the existing damage-estimate preview. Run
+`cd web && pnpm dev` and open `http://localhost:5173/?preview=damage-estimate`. The six states and
+both themes show the new figures. The pack state shows the 2023 check in full. The drift check
+passed over the one file that was written. `tsc -b` is clean. At 390 px, in dark theme and with
+the disclosure open, no state scrolls sideways. Six unit tests in `Damage.test.tsx` and
+`ComplaintPack.test.tsx` fail, because they check the old figures. `/build` changes them, and
+proves each one with a mutant.
+
 ## Decisions to record
 
 Drafted at pause 1. `/build` appends them to `DECISIONS.md`.
