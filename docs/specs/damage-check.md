@@ -417,66 +417,7 @@ page.
 
 ### Decisions to record
 
-`/build` appends these to `DECISIONS.md`. D126 supersedes D63, so `/build` also sets D63's Status
-to `superseded by D126`.
-
-#### D126 · 2026-10-23 · Count a fire's ground as its joined 375 m squares, and scale it by the 2023 MODIS shares for what likely burned
-
-Why: ground seen on several passes counts once, so the 0332 fire covers 209.8 ha, not 267.2.
-MODIS mapped only 14.8% of 2023's 456,345 ha of joined squares near concessions as burned, far
-under the 80% at which the figures would stay. The squares stay as the ceiling.
-Rejected: detections times 14.06 ha (counts the same ground again on each pass), the squares
-alone as burned ground (MODIS shows that most of them did not burn), a range from the MODIS share
-up to the squares (stacks on the peat factor's range), the check alone with no figure changed.
-Supersedes: D63
-Source: docs/specs/damage-check.md
-Status: active
-
-#### D127 · 2026-10-23 · Take the shares from 2023's pieces of more than 20 joined squares: 61.1% on peat, 41.6% on other ground
-
-Why: MODIS's 500 m pixels miss small burns. A lone square showed 6.4%, and pieces of more than
-20 squares 52.5%. Peat and other ground differ, 61.1% against 41.6%, and their CO₂ differs 9
-times.
-Rejected: the shares of all 2023 ground, 35.8% and 8.5% (mostly MODIS's blind spot, which favours
-the company), a share for each size band (puts the blind spot into each small fire), one share
-for all ground (peat and other ground differ by 19.5 points).
-Source: docs/specs/damage-check.md
-Status: active
-
-#### D128 · 2026-10-23 · Check the squares against MODIS near concessions only, not against the ministry's national total
-
-Why: the estimate covers only ground within 5 km of a concession, and MODIS in the same place is
-like for like.
-Rejected: a national line against the ministry's 1.16 Mha (a different map, over ground the
-estimate never covers).
-Source: docs/specs/damage-check.md
-Status: active
-
-#### D129 · 2026-10-23 · Every pack, old or new, shows the current estimate method
-
-Why: no buyer has a pack yet, and "How this is worked out" names the 2023 check, so a reader with
-an older PDF sees why the figures differ.
-Rejected: a method version in the pack link, with the old factors kept for old links (more code
-for packs that nobody has sent).
-Source: docs/specs/damage-check.md
-Status: active
-
-#### D130 · 2026-10-23 · Read the 12 MODIS files from the operator's disk, each checked by its pinned sha256
-
-Why: UMD serves the GeoTIFFs only over SFTP, with a public login, and httpx has no SFTP. Only the
-command reads the files, and the page reads the command's 300-byte output.
-Rejected: a committed MODIS cut (one more committed file and a --cut path, for reruns only), the
-command fetching over SFTP (paramiko, one more dependency to audit).
-Source: docs/specs/damage-check.md
-Status: active
-
-#### D131 · 2026-10-23 · Run the check as its own command, damage-check-2023
-
-Why: it shares only the FIRMS file and the match with the replay, and it writes one file. The
-forecast replay and its outputs stay as they are.
-Rejected: a --damage flag on backtest-2023 (ties the check to the forecast replay's module and run).
-Source: docs/specs/damage-check.md
-Status: active
+Recorded as D126, D127, D128, D129, D130, D131.
 
 ## Open items
 
