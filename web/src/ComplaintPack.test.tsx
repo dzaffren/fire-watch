@@ -3,7 +3,7 @@ import { zeroHash, type Hex } from "viem";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { HotspotRecord, PackDetail, PackRef } from "./api";
 import type { Seal } from "./chain";
-import { ComplaintPack, type PackSource } from "./ComplaintPack";
+import { ComplaintPack, type LeftOutCheck, type PackSource } from "./ComplaintPack";
 import { fingerprint } from "./fingerprint";
 import { shortHash } from "./format";
 import { leaf, rootFrom } from "./merkle";
@@ -578,5 +578,214 @@ describe("ComplaintPack", () => {
     window.dispatchEvent(new Event("afterprint"));
     expect(document.documentElement.dataset.theme).toBe("dark");
     delete document.documentElement.dataset.theme;
+  });
+
+  describe("left out", () => {
+    // Runs 407 to 412: run 407 sealed 46 hours before the fire was first seen, run 412 after its last pass.
+    const RUN_407 = { run: 407, sealedAt: Date.parse("2026-10-11T19:37:00Z") / 1000 };
+    const RUN_412 = { run: 412, sealedAt: Date.parse("2026-10-15T21:47:00Z") / 1000 };
+    const WHOLE: LeftOutCheck = { first: RUN_407, last: RUN_412, records: 9412, beforeRuns: false, missing: [], unmatched: [] };
+    const METHOD =
+      "Fire Watch sent all 9,412 records these runs sealed. Your browser rebuilt each run's root from them and compared it with FireRuns. The runs start 48 hours before this fire was first seen and end at the pack's cut.";
+    const NONE_JOINED = "No run holds a detection that the fire rule joins to this fire and this pack leaves out.";
+    const JOINED =
+      "The fire rule joins each detection below to this fire, through detections at most 1 km and 48 hours apart, but this pack leaves it out. Each one sits in a run whose root matches FireRuns.";
+    const SEAL_NOTE =
+      "Your browser worked out each detection's fingerprint and checked it on Base Sepolia, a test network. An older detection has a seal of its own on FireRecords. A newer one is under its recorder run's root on FireRuns. Fire Watch's server chose which records to send.";
+    // Pass 3's detections at 2.8428°S, 112.7215°E, 200 m outside 0332, and 2.8422°S, 112.71781°E, which the
+    // server leaves out.
+    const DROPPED = [
+      { lat_e5: -284280, lon_e5: 11272150 },
+      { lat_e5: -284220, lon_e5: 11271781 },
+    ];
+
+    /** The 0332 fire's pack with `runs` in its window, less the `dropped` detections, and its left-out check. */
+    function withRuns(leftOut: () => Promise<LeftOutCheck>, runs = { first: 407, last: 412 }, dropped: typeof DROPPED = []) {
+      const pack = packOf(FIRES.outside);
+      const gone = (h: HotspotRecord) => dropped.some((d) => d.lat_e5 === h.lat_e5 && d.lon_e5 === h.lon_e5);
+      const served = { ...pack, hotspots: pack.hotspots.filter((h) => !gone(h)), runs };
+      const source: PackSource = { ...sourceOf(served), leftOut: vi.fn(leftOut) };
+      return { source, left: pack.hotspots.filter(gone).map((h) => ({ ...h, run: 411 })) };
+    }
+
+    const panel = (name: string) => screen.findByRole("region", { name });
+
+    it("reads Checking until the runs are checked", async () => {
+      const { source } = withRuns(() => new Promise<never>(() => {}));
+      render(<ComplaintPack source={source} packRef={refOf(FIRES.outside)} />);
+
+      const checking = await panel("Checking runs 407 to 412 for a detection left out");
+      expect(within(checking).getByText("Checking")).toBeInTheDocument();
+      expect(
+        within(checking).getByText(
+          "Your browser reads every record these runs sealed and rebuilds each root, so this can take a few seconds.",
+        ),
+      ).toBeInTheDocument();
+      expect(within(checking).queryByRole("button")).toBeNull();
+    });
+
+    it("reads that nothing is left out of runs 407 to 412, with their seal times", async () => {
+      const { source } = withRuns(async () => WHOLE);
+      render(<ComplaintPack source={source} packRef={refOf(FIRES.outside)} />);
+
+      const whole = await panel("No detection of this fire is left out of runs 407 to 412");
+      expect(within(whole).getByText("Nothing left out")).toBeInTheDocument();
+      expect(within(whole).getByText(METHOD)).toBeInTheDocument();
+      expect(within(whole).getByText(NONE_JOINED)).toBeInTheDocument();
+      expect(within(whole).queryByText(/each have a seal of their own/)).toBeNull();
+      expect(within(whole).queryByRole("table")).toBeNull();
+      expect(kv("Runs checked")).toBe("407 to 412, with 9,412 records");
+      expect(kv("First run sealed")).toBe("2026-10-11 19:37 UTC");
+      expect(kv("Last run sealed")).toBe("2026-10-15 21:47 UTC");
+      expect(screen.queryByText("Not matching", { selector: "dt" })).toBeNull();
+    });
+
+    it("names the one run it checked and its seal time", async () => {
+      const { source } = withRuns(async () => ({ ...WHOLE, first: RUN_412, records: 1 }), { first: 412, last: 412 });
+      render(<ComplaintPack source={source} packRef={refOf(FIRES.outside)} />);
+
+      await panel("No detection of this fire is left out of run 412");
+      expect(kv("Runs checked")).toBe("412, with 1 record");
+      expect(kv("Run sealed")).toBe("2026-10-15 21:47 UTC");
+      expect(screen.queryByText("First run sealed", { selector: "dt" })).toBeNull();
+      expect(screen.queryByText("Last run sealed", { selector: "dt" })).toBeNull();
+    });
+
+    it("lists the detection the server left out, with its time, place and run", async () => {
+      const { source, left } = withRuns(async () => ({ ...WHOLE, missing: left }), undefined, DROPPED.slice(0, 1));
+      render(<ComplaintPack source={source} packRef={refOf(FIRES.outside)} />);
+
+      const leftOut = await panel("1 detection of this fire is left out of this pack");
+      expect(within(leftOut).getByText("Left out")).toBeInTheDocument();
+      expect(within(leftOut).getByText(METHOD)).toBeInTheDocument();
+      expect(within(leftOut).getByText(JOINED)).toBeInTheDocument();
+      expect(within(leftOut).queryByText(NONE_JOINED)).toBeNull();
+      const [head, ...rows] = within(leftOut).getAllByRole("row");
+      expect([...head.children].map((c) => c.textContent)).toEqual(["Detected (UTC)", "Where", "Sealed in"]);
+      expect(rows.map((r) => [...r.children].map((c) => c.textContent))).toEqual([
+        ["14 Oct 17:20", "Outside, 200 m2.8428°S, 112.7215°E", "Run 411"],
+      ]);
+      expect(screen.getByRole("heading", { name: "18 of 18 detections match the chain" })).toBeInTheDocument();
+    });
+
+    it("says 2 detections are left out", async () => {
+      const { source, left } = withRuns(async () => ({ ...WHOLE, missing: left }), undefined, DROPPED);
+      render(<ComplaintPack source={source} packRef={refOf(FIRES.outside)} />);
+
+      const leftOut = await panel("2 detections of this fire are left out of this pack");
+      expect(within(leftOut).getAllByRole("row").slice(1)).toHaveLength(2);
+    });
+
+    it("can't say nothing is left out when run 411's records don't rebuild its root", async () => {
+      const { source } = withRuns(async () => ({ ...WHOLE, unmatched: [411] }));
+      render(<ComplaintPack source={source} packRef={refOf(FIRES.outside)} />);
+
+      const cantSay = await panel("Can't show that nothing is left out of runs 407 to 412");
+      expect(within(cantSay).getByText("Does not match the chain")).toBeInTheDocument();
+      expect(within(cantSay).getByText(METHOD)).toBeInTheDocument();
+      expect(
+        within(cantSay).getByText(
+          "Fire Watch's records for run 411 don't rebuild its root on FireRuns. A record was removed or changed after its run was sealed, or Fire Watch holds no list for that root. So this pack can't show that nothing is left out.",
+        ),
+      ).toBeInTheDocument();
+      expect(within(cantSay).queryByText(NONE_JOINED)).toBeNull();
+      expect(kv("Not matching")).toBe("411");
+      // Each detection keeps its own check.
+      expect(screen.getByRole("heading", { name: "19 of 19 detections match the chain" })).toBeInTheDocument();
+    });
+
+    it("names both runs whose records don't rebuild their roots", async () => {
+      const runs = { first: 21, last: 40 };
+      const check = { ...WHOLE, first: { ...RUN_407, run: 21 }, last: { ...RUN_412, run: 40 }, unmatched: [31, 33] };
+      const { source } = withRuns(async () => check, runs);
+      render(<ComplaintPack source={source} packRef={refOf(FIRES.outside)} />);
+
+      const cantSay = await panel("Can't show that nothing is left out of runs 21 to 40");
+      expect(
+        within(cantSay).getByText(
+          "Fire Watch's records for runs 31 and 33 don't rebuild their roots on FireRuns. A record was removed or changed after its run was sealed, or Fire Watch holds no list for that root. So this pack can't show that nothing is left out.",
+        ),
+      ).toBeInTheDocument();
+      expect(kv("Not matching")).toBe("31, 33");
+    });
+
+    it("says left out, with both notes, when a detection is left out and a run doesn't match", async () => {
+      const { source, left } = withRuns(async () => ({ ...WHOLE, missing: left, unmatched: [411] }), undefined, DROPPED.slice(0, 1));
+      render(<ComplaintPack source={source} packRef={refOf(FIRES.outside)} />);
+
+      const leftOut = await panel("1 detection of this fire is left out of this pack");
+      expect(within(leftOut).getByText("Left out")).toBeInTheDocument();
+      expect(within(leftOut).queryByText("Does not match the chain")).toBeNull();
+      expect(within(leftOut).getByText(JOINED)).toBeInTheDocument();
+      expect(within(leftOut).getByText(/^Fire Watch's records for run 411 don't rebuild its root on FireRuns\./)).toBeInTheDocument();
+      expect(kv("Not matching")).toBe("411");
+    });
+
+    it("says it couldn't check the runs, and Check again reruns only this check", async () => {
+      const { source } = withRuns(async () => WHOLE);
+      vi.mocked(source.leftOut!).mockRejectedValueOnce(new Error("runs unreachable"));
+      render(<ComplaintPack source={source} packRef={refOf(FIRES.outside)} />);
+
+      const failed = await panel("Couldn't check runs 407 to 412 for a detection left out");
+      expect(within(failed).getByText("Couldn't read the runs from Fire Watch's server or Base Sepolia.")).toBeInTheDocument();
+      expect(failed.querySelector(".fw-chip")).toBeNull();
+      expect(screen.getAllByRole("button", { name: "Check again" })).toHaveLength(1);
+
+      fireEvent.click(within(failed).getByRole("button", { name: "Check again" }));
+      expect(await panel("No detection of this fire is left out of runs 407 to 412")).toBeInTheDocument();
+      expect(source.leftOut).toHaveBeenCalledTimes(2);
+      expect(source.sealsOf).toHaveBeenCalledTimes(1);
+    });
+
+    it("says detections sealed before run 1 each have a seal of their own on FireRecords", async () => {
+      const check = { ...WHOLE, first: { run: 1, sealedAt: RUN_1_AT }, last: { run: 2, sealedAt: RUN_2_AT }, beforeRuns: true };
+      const { source } = withRuns(async () => check, { first: 1, last: 2 });
+      render(<ComplaintPack source={source} packRef={refOf(FIRES.outside)} />);
+
+      const whole = await panel("No detection of this fire is left out of runs 1 to 2");
+      expect(
+        within(whole).getByText(
+          "Detections sealed before 2026-10-15 08:02 UTC each have a seal of their own on FireRecords. The chain holds no list of them, so NASA FIRMS's public archive is the way to find one left out.",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it.each([null, undefined])("shows no panel for a pack with runs %s, and keeps the FIRMS line", async (runs) => {
+      const pack = { ...packOf(FIRES.outside), runs };
+      const source: PackSource = { ...sourceOf(pack), leftOut: vi.fn(async () => WHOLE) };
+      render(<ComplaintPack source={source} packRef={refOf(FIRES.outside)} />);
+
+      await screen.findByRole("heading", { name: "19 of 19 detections match the chain" });
+      expect(screen.getByText(`${SEAL_NOTE} NASA FIRMS's public archive shows whether one is missing.`)).toBeInTheDocument();
+      expect(screen.queryByRole("region", { name: /left out/ })).toBeNull();
+      expect(source.leftOut).not.toHaveBeenCalled();
+    });
+
+    it("says the check below shows whether the server left one out", async () => {
+      const { source } = withRuns(async () => WHOLE);
+      render(<ComplaintPack source={source} packRef={refOf(FIRES.outside)} />);
+
+      await panel("No detection of this fire is left out of runs 407 to 412");
+      expect(screen.getByText(`${SEAL_NOTE} The check below shows whether it left one out.`)).toBeInTheDocument();
+      expect(screen.queryByText(/NASA FIRMS's public archive shows whether one is missing/)).toBeNull();
+    });
+
+    it("asks for the left-out check only after the seal checks", async () => {
+      const { source } = withRuns(async () => WHOLE);
+      let answer = () => {};
+      const seals = vi.mocked(source.sealsOf);
+      const chain = seals.getMockImplementation()!;
+      seals.mockImplementationOnce((records) => new Promise<void>((done) => (answer = done)).then(() => chain(records)));
+      render(<ComplaintPack source={source} packRef={refOf(FIRES.outside)} />);
+
+      expect(await screen.findByRole("heading", { name: "Checking 19 detections against the chain" })).toBeInTheDocument();
+      expect(screen.getByRole("region", { name: "Checking runs 407 to 412 for a detection left out" })).toBeInTheDocument();
+      expect(source.leftOut).not.toHaveBeenCalled();
+
+      await act(async () => answer());
+      expect(await panel("No detection of this fire is left out of runs 407 to 412")).toBeInTheDocument();
+      expect(source.leftOut).toHaveBeenCalledOnce();
+      expect(vi.mocked(source.leftOut!).mock.calls[0][0].hotspots).toHaveLength(19);
+    });
   });
 });
