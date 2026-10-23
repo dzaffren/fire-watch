@@ -32,6 +32,13 @@
     "stayed_out": 0,
     "median_hours_off": 11.7
   },
+  "v2_candidate": {
+    "warned": 115,
+    "missed": 20,
+    "did_not_come_in": 2893,
+    "stayed_out": 16967,
+    "median_hours_off": 11.7
+  },
   "picked_on": {
     "v2_candidate": {
       "warned": 52,
