@@ -3,13 +3,22 @@ import { expect, test, type Page } from "@playwright/test";
 import { API_URL, WEB_URL } from "./env";
 
 const FAKE_GOOGLE_MAPS = fileURLToPath(new URL("./fake-google-maps.js", import.meta.url));
+const CASE_COPY = fileURLToPath(new URL("../public/case/pack-0332.json", import.meta.url));
 const LIST_NOTE = "4 concessions, ranked by hotspots inside.";
-// The e2e's API has no example fire, so the pack link is checked by its address: 0332's fire first seen outside,
-// cut at 17 Oct 2026 09:00 UTC (D111).
+// The e2e's API has no example fire, so the pack's API call is answered from the committed copy (D137): 0332's fire
+// first seen outside, cut at 17 Oct 2026 09:00 UTC (D111).
 const EXAMPLE_PACK =
   "/?pack=ID-WOOD-CONCESSION-0332&fire=0x13b417c6f54dd95c7c418b5df3f34963cf00f46555d5cae74693cdffbb1d1cf7&as_of=1792227600";
 
 const HEADLINE = "When a company says a fire spread in from outside its land, show where satellites first saw it.";
+const LEDE =
+  "Fire Watch is built for the watchdog groups that report plantation fires to the companies that buy from the plantation. It shows where satellites first saw a fire and how it spread, on records the buyer checks in their own browser.";
+const GLOBE_CAPTION =
+  "Every dot is one detection by the NOAA-20 satellite on 14 Oct 2026: 62,489 worldwide, 9,923 of them in and around Indonesia.";
+const FIRST_STOP =
+  "From 12 Oct to 17 Oct 2026, the NOAA-20 satellite saw this fire on 8 passes, 283 detections in all, near ID-WOOD-CONCESSION-0332, in Central Kalimantan.";
+const PACK_FOOT =
+  "This pack holds this fire as Fire Watch had stored it by 2026-10-17 09:00 UTC. Passes after that are not in it.";
 
 // Puts a step of the real case across the reading line, 60% down the screen.
 async function toStep(page: Page, step: number) {
@@ -26,7 +35,7 @@ async function fakeMaps(page: Page) {
   );
 }
 
-test("a newcomer reads the landing, walks the real case to its seals, then opens the tool and comes back", async ({
+test("a newcomer reads the landing, walks the real case to its seals, opens the tool, comes back and opens the example pack", async ({
   page,
 }) => {
   await fakeMaps(page);
@@ -39,8 +48,10 @@ test("a newcomer reads the landing, walks the real case to its seals, then opens
 
   await page.goto("/");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(HEADLINE);
+  await expect(page.locator(".landing-lede")).toHaveText(LEDE);
+  await expect(page.getByText(/watchdog groups use Fire Watch/i)).toHaveCount(0);
   await expect(page.getByText(/^Today it watches Indonesia's pulpwood concessions, the first map loaded\./)).toBeVisible();
-  await expect(page.getByText(/62,489 worldwide, 9,923 of them in and around Indonesia/)).toBeVisible();
+  await expect(page.locator(".landing-globe figcaption p")).toHaveText(GLOBE_CAPTION);
   await expect(page.getByRole("region", { name: "Words used here" }).getByRole("term")).toHaveText([
     "Concession",
     "Hotspot",
@@ -67,6 +78,8 @@ test("a newcomer reads the landing, walks the real case to its seals, then opens
   const mapBox = (await page.locator(".case-map").boundingBox())!;
   const stepsBox = (await page.locator(".case-steps").boundingBox())!;
   expect(mapBox.x + mapBox.width).toBeLessThanOrEqual(stepsBox.x);
+  await toStep(page, 0);
+  await expect(steps.nth(0)).toContainText(FIRST_STOP);
   await toStep(page, 2);
   await expect(steps.nth(2)).toContainText("outside the concession and 3,100 m from its edge");
   await toStep(page, 3);
@@ -93,6 +106,16 @@ test("a newcomer reads the landing, walks the real case to its seals, then opens
   await page.getByRole("link", { name: "About Fire Watch" }).click();
   await expect(page).toHaveURL(`${WEB_URL}/`);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(HEADLINE);
+
+  await page.route(`${API_URL}/api/concessions/ID-WOOD-CONCESSION-0332/fires/**`, (route) =>
+    route.fulfill({ path: CASE_COPY, contentType: "application/json" }),
+  );
+  await toStep(page, 11);
+  await steps.nth(11).getByRole("link", { name: "See its complaint pack" }).click();
+  await expect(page).toHaveURL(`${WEB_URL}${EXAMPLE_PACK}`);
+  await expect(page.getByRole("heading", { name: "283 of 283 detections match the chain" })).toBeVisible();
+  await expect(page.locator(".pack-foot p").first()).toHaveText(PACK_FOOT);
+  await expect(page.getByText(/every detection of this fire/i)).toHaveCount(0);
 });
 
 test("on a phone the flat map shows without the 3D code, and every control is at least 44 px to tap", async ({
