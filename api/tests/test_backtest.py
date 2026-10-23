@@ -144,7 +144,7 @@ def test_totals_count_every_forecast_in_the_csv(cut):
     rows = rows_of(out)
     totals = json.loads((out / "2023.json").read_text())
 
-    def counted(said):
+    def counted(said, rows=rows):
         return {
             "warned": sum(r["outcome"] == "seen_inside" and r[said] != "" for r in rows),
             "missed": sum(r["outcome"] == "seen_inside" and r[said] == "" for r in rows),
@@ -161,18 +161,32 @@ def test_totals_count_every_forecast_in_the_csv(cut):
         ("ends_after_2023", "ends_after_2023"),
     ]:
         assert totals[total] == sum(r["outcome"] == outcome for r in rows)
-    for method in ("rule", "downwind", "near_edge", "next_pass"):
+    for method in ("rule", "downwind", "near_edge", "next_pass", "v2_candidate"):
         assert {
             k: v for k, v in totals[method].items() if k != "median_hours_off"
         } == counted(f"{method}_inside_by")
     assert totals["rule"]["missed"] >= 1 and totals["rule"]["did_not_come_in"] >= 1
     assert totals["rule"]["median_hours_off"] is not None
+    # The cut runs from 20 Sep to 20 Oct, so each part holds forecasts.
+    for part, rows_in in [
+        ("picked_on", [r for r in rows if r["made_at"] < "2023-10-01"]),
+        ("judged_on", [r for r in rows if r["made_at"] >= "2023-10-01"]),
+    ]:
+        assert totals[part] == {
+            method: counted(f"{method}_inside_by", rows_in)
+            for method in ("v2_candidate", "near_edge", "rule")
+        }
+        assert totals[part]["near_edge"]["did_not_come_in"] >= 1
+    judged = totals["judged_on"]
     assert stdout.startswith(
         f"replayed year=2023 detections=625 forecasts={len(rows)}"
         f" arrivals={totals['rule']['warned'] + totals['rule']['missed']}"
         f" rule_warned={totals['rule']['warned']} downwind_warned={totals['downwind']['warned']}"
         f" near_edge_warned={totals['near_edge']['warned']}"
-        f" next_pass_warned={totals['next_pass']['warned']} seconds="
+        f" next_pass_warned={totals['next_pass']['warned']}"
+        f" v2_candidate_warned={totals['v2_candidate']['warned']}"
+        f" judged_v2_candidate={judged['v2_candidate']['warned']}"
+        f" judged_near_edge={judged['near_edge']['warned']} seconds="
     )
 
 
