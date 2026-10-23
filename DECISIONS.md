@@ -1407,3 +1407,32 @@ October to December (spends the hold-out, D133), the result in the spec only (a 
 forecast never sees it).
 Source: docs/specs/forecast-v2-trial.md
 Status: active
+
+## D135 · 2026-10-23 · Lead the landing with the answer a company gives to a fire grievance
+
+Why: a reader on 2026-10-23 had to read the example to see why Fire Watch matters. Companies answer
+grievances by saying a fire came from outside their land (the first shape's O3), and the tool shows
+where satellites first saw it.
+Rejected: the heading that says only what the tool does (the reason waits for the example), the
+company's words "the fire started outside" (honest-claims' guard bans "fire started" on the landing,
+D26).
+Source: docs/specs/claim-fixes.md
+Status: active
+
+## D136 · 2026-10-23 · A pack's footer says what it holds at its cut, and leaves completeness to the left-out check
+
+Why: the footer said every pack "holds every detection" of its fire, which nothing checks on a pack
+with no runs. The check panel already says whether a detection was left out, or that it can't tell.
+Rejected: a footer that changes with the check's result (says it twice), keeping "every detection"
+on packs with runs (true only when the check passes).
+Source: docs/specs/claim-fixes.md
+Status: active
+
+## D137 · 2026-10-23 · Answer the example pack's API call in the landing e2e from the committed copy
+
+Why: the e2e's API holds no example fire, and the committed copy is the API's own answer (D90),
+whose 283 seals global setup already writes on anvil (D92).
+Rejected: storing the example fire in the e2e's database (adds 283 detections to 0332 for every
+other spec), a separate pack e2e for the footer (two tests for one walk).
+Source: docs/specs/claim-fixes.md
+Status: active
