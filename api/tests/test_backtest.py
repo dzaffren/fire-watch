@@ -308,6 +308,25 @@ def test_committed_guesses_say_yes_only_where_the_rule_does():
         assert [r for r in rows if r[said] and not r["rule_inside_by"]] == []
 
 
+def test_committed_v2_candidate_missed_0273_and_0349():
+    # Lone detections, which the full replay holds and the cut doesn't.
+    rows = rows_of(CUT)
+    for concession_id, after_pass_at, near_edge, seen in [
+        ("ID-WOOD-CONCESSION-0273", "2023-10-23T17:19Z", "2023-10-24T05:19Z", "2023-10-25T05:39Z"),
+        ("ID-WOOD-CONCESSION-0349", "2023-11-02T04:50Z", "2023-11-02T16:50Z", "2023-11-02T17:30Z"),
+    ]:
+        r = row(rows, concession_id, after_pass_at)
+        assert (
+            r["near_edge_inside_by"], r["v2_candidate_inside_by"], r["outcome"], r["seen_inside_at"]
+        ) == (near_edge, "", "seen_inside", seen)
+
+
+def test_committed_v2_candidate_is_the_near_edge_time_or_none():
+    rows = rows_of(CUT)
+    assert {r["v2_candidate_inside_by"] in ("", r["near_edge_inside_by"]) for r in rows} == {True}
+    assert sum(r["v2_candidate_inside_by"] != "" for r in rows) > 0
+
+
 def test_two_runs_write_the_same_bytes(cut, database_url, tmp_path):
     out, _ = cut
     result = run_backtest(database_url, tmp_path)
