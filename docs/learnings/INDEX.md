@@ -48,3 +48,4 @@
 - Write a spike's method into its ledger row; its code is deleted, and `/build` may need to explain a gap — [spike-method-in-the-ledger](spike-method-in-the-ledger.md)
 - Never name a scratch script after a stdlib module; run scratch Python with `-I` — [scratch-script-names](scratch-script-names.md)
 - Scope a pack test's damage figures to the first `dl`; the pack's working repeats the labels — [pack-repeats-damage-labels](pack-repeats-damage-labels.md)
+- Count a cut's matched detections before writing a test the plan described — [count-the-cut-before-a-test-case](count-the-cut-before-a-test-case.md)
