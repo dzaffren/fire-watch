@@ -1,6 +1,6 @@
 # Damage check
 
-**Version:** v1 · **Status:** Draft · **Type:** Enhancement · **Project type:** Web UI
+**Version:** v1 · **Status:** Refined · **Type:** Enhancement · **Project type:** Web UI
 
 **Shape doc:** docs/specs/judge-review/shape.md
 **Depends on:** damage-estimate, season-backtest
@@ -211,7 +211,7 @@ gives the exact figures at `/build`, and the page takes them from its output.
 | The fire loading, or the server not answering | The fire view's and the pack's own states, as today |
 | An answer without `damage` | No panel and no section, as today |
 
-**Motion tier:** 1. The panel enters with the fire view, and the disclosure opens as today. The new
+**Motion tier:** 1, chosen 2026-10-23. The panel enters with the fire view, and the disclosure opens as today. The new
 row and table have no motion of their own.
 
 **Components used:** `fw-kv` with `sub` lines, `fw-help`, `table-box` with `fw-table` and row
@@ -228,11 +228,199 @@ the disclosure open, no state scrolls sideways. Six unit tests in `Damage.test.t
 `ComplaintPack.test.tsx` fail, because they check the old figures. `/build` changes them, and
 proves each one with a mutant.
 
-## Decisions to record
+## Technical plan
 
-Drafted at pause 1. `/build` appends them to `DECISIONS.md`.
+### Approach
 
-### D126 · 2026-10-23 · Count a fire's ground as its joined 375 m squares, and scale it by the 2023 MODIS shares for what likely burned
+`damage-check-2023` takes 2023's detections near concessions as `backtest-2023` matches them. It
+joins their squares in PostGIS, splits the join by the peat cut, and measures the part inside
+MODIS's 2023 burned pixels. It writes `fixtures/damage/2023-check.json`. The page bundles that
+file, as it bundles the replay's totals (D59), and scales each fire's four parts by the two
+shares. The API, the database and Neon don't change.
+
+Relies on: D52, D57, D59, D62, D69, D70, D71, and the drafted D126 to D131
+
+```mermaid
+flowchart TB
+    subgraph operator["operator, once, on the compose db"]
+        F[("FIRMS 2023 file, sha256 pinned")] -- "concessions.download" --> K[damage-check-2023]
+        T[("Trase map v2026-02-20")] -- "concessions.load" --> K
+        P[("fixtures/peat cut")] -- "peat.load" --> K
+        M[("12 MODIS files in --modis dir, sha256 pinned")] -- "burned in 2023, as polygons" --> K
+        K -- "writes" --> J[("fixtures/damage/2023-check.json")]
+    end
+    J -- "bundled by Vite" --> W["Damage.tsx estimate()"]
+    A["API fire route, unchanged"] -- "four hectare parts" --> W
+    W -- "pixels, likely burned, CO2, cost, the check" --> V["fire view and pack"]
+```
+
+The operator runs the check once and commits its output. The page multiplies the API's four parts
+by the committed shares.
+
+```mermaid
+sequenceDiagram
+    participant O as operator
+    participant K as damage-check-2023
+    participant D as compose PostGIS
+    O->>K: --modis /home/…/modis-2023
+    K->>K: sha256 of the FIRMS file and the 12 MODIS files
+    K->>D: migrate.up(), concessions.load(), peat.load(committed())
+    K->>D: backtest.detections(): 42,682 within 5 km, each once
+    K->>D: COPY detections and burned polygons into temp tables
+    K->>D: CHECK: squares, join, patches, peat and burned areas
+    D-->>K: hectares for large patches and for all ground
+    K->>O: writes 2023-check.json, prints "checked year=2023 …"
+```
+
+The command checks every input's sha256, loads what the match needs, and lets PostGIS measure the
+areas in one query.
+
+```mermaid
+flowchart LR
+    U[("UMD SFTP, MCD64A1 C6.1 window 19, public login")] -- "12 GeoTIFFs, 66 MB, by curl" --> O["operator's disk"]
+    O -- "--modis dir, sha256 checked" --> K[damage-check-2023]
+    N[("FIRMS archive")] -- "HTTPS, sha256 checked" --> K
+    K -- "2023-check.json, about 300 bytes" --> G[("git: fixtures/damage")]
+    G -- "Vite bundle" --> B["visitor's browser"]
+```
+
+MODIS crosses two boundaries. It reaches the operator over UMD's public SFTP, and the command
+accepts only the 12 pinned files. Only the small output reaches git and the page.
+
+**The check, so anyone can redo it** (written into `damage_check.py`'s docstring):
+
+1. Take every 2023 detection within 5 km of a concession, as `backtest-2023` matches them. Count
+   each detection once.
+2. Draw each detection's square as the damage estimate does: 187.5 m each way in its UTM zone.
+3. Join the squares. A patch is one connected piece of the join. A large patch holds more than 20
+   squares, counted by their centres.
+4. Burned ground is every MODIS pixel with a 2023 burn date in any of the 12 monthly files.
+5. For the large patches and for all ground, measure the area, its peat, its burned part and its
+   burned peat, on the WGS 84 ellipsoid. Round each to whole hectares.
+6. Each share is the burned part over the area, rounded to three places. Peat and other ground
+   use the large patches. All ground uses every patch.
+
+The output, `fixtures/damage/2023-check.json`:
+
+```json
+{
+  "year": 2023,
+  "detections": 42682,
+  "large_patch_squares": 21,
+  "peat": { "ha": 31915, "burned_ha": 19500, "share": 0.611 },
+  "other": { "ha": 25535, "burned_ha": 10622, "share": 0.416 },
+  "all": { "ha": 456345, "burned_ha": 67688, "share": 0.148 }
+}
+```
+
+The values above are the spike's. The `burned_ha` for peat and other ground are worked out from
+its rounded shares. The command writes the exact figures.
+
+The 12 pinned files, all `MCD64monthly.A2023<day>.Win19.061.burndate.tif`:
+
+| Day | sha256 |
+| --- | ------ |
+| 001 | `e6081bd99a37381ca8845fc919f52f312de5ab6c3fea07e47aee770f62eb59c1` |
+| 032 | `a554db1adb76aa3c74630566ff55952affc4d3410cacfdb2b1bed9d5aaef27b0` |
+| 060 | `2c007e1d3efff7a6f3a664719d80cb5d9d896cab200bb4ea977f67035209eff9` |
+| 091 | `4e3c8a85144821e48118a6503ea54326798a7987c86d91e0c88c05d2cf832a52` |
+| 121 | `63f9ed51896395f1649cd78a607ec80b6b74e2f49863b41d3d6f13bd81f37722` |
+| 152 | `e085f32a8cf9ef8baa973071c91f1a81cc28297878d97688e9e650bb739acc74` |
+| 182 | `64d964e08fab259591210c00788f4d70340120d49f130e21957498f62c6a42b1` |
+| 213 | `c51cc0aaf458f17b3d1660488bf1b94c9ed6602a34de11a6ca855ed4382ccc10` |
+| 244 | `ce48779f90e1b5e496820cd2d6da6eabcd428ba477fbe04775d7808a3091f0d0` |
+| 274 | `f75aa4d4459f68254989bb5172d2d369905fdd46652ef1149547cd11693e6a2d` |
+| 305 | `dffd9188f5526d3dd72d03d3acbd5bc44459680eef736e28167807ae6d23565a` |
+| 335 | `7d96755ab8922330f8ed10b54887941bc58af831a7105c1aadfab95439b15792` |
+
+Fetched twice on 2026-10-23, with the same bytes each time. In each file, -2 is water, 0 is
+unburned, and 1 to 366 is the burn day. None of the 12 has a -1, unmapped, pixel over the
+detections' bounds.
+
+### Changes
+
+| File | What changes | Why |
+| ---- | ------------ | --- |
+| `api/src/firewatch/damage_check.py` (new) | The check in the docstring. `MODIS_FILES`, the 12 names with their sha256. `CHECK`, the query. `burned(dir, bounds)` reads each file over the detections' bounds with rasterio, joins the months with burn date > 0, and turns the pixels into polygons in raster order. `main()`: `--modis <dir>` (required), `--firms <path>`, `--map <path>`, `--out <dir>`, as `backtest-2023` has them | Scenarios 3, 5 |
+| `api/pyproject.toml:17` | The script `damage-check-2023`. No new dependency: rasterio is in the `cut` and `dev` groups | Scenario 5 |
+| `fixtures/damage/2023-check.json` (new) | The command's output, run on the compose db | Scenarios 1–5 |
+| `api/tests/test_damage_check.py` (new) | Runs on `fixtures/backtest/2023-cut.csv`, `trase-cut.geojson` and `peat-cut.geojson.gz`, with a GeoTIFF that the test writes. Checks the hectares and shares for known burned pixels, the same bytes twice, and a refusal for a changed or missing file | Scenario 5 |
+| `web/src/Damage.tsx:16` | `CHECK_2023` comes from the bundled JSON, not from typed numbers | Scenarios 1–4 |
+| `web/src/Damage.test.tsx` | The new figures for the 0332, B and 0540 fires, the "Likely burned" row, the check table, its paragraph and the two new links | Scenarios 1–3 |
+| `web/src/ComplaintPack.test.tsx` | The pack's damage section, with the new figures and the check in full | Scenario 4 |
+| `web/e2e/damage-estimate.spec.ts:15` | Reads "About 130 ha", "About 75,000 t" and the "Peat, in large patches" row with 61.1%, in the fire view and the pack. The tap check at `:60` already covers every `.damage` link, so it covers the two new ones | All |
+| `README.md:78`, `docs/ARCHITECTURE.md:54`, `CHANGELOG.md` | How to redo the check, with the fetch line. The component row and an edge in the diagram. One changelog line | Operators |
+
+Reusing: `concessions.download()` for the FIRMS file, `backtest.hotspots()` and
+`backtest.detections()` for the match, `backtest.FIRMS_URL` and `FIRMS_SHA256`, `concessions.load()`,
+`peat.load()` with `peat.committed()`, the square from `peat.DAMAGE`, and `migrate.up()`. The page
+reads the JSON as `api.ts:2` reads `2023.json`. `Damage.tsx` and its preview exist from pause 2.
+
+The README's fetch line, with real values:
+
+```sh
+mkdir -p ~/modis-2023 && cd ~/modis-2023 && for d in 001 032 060 091 121 152 182 213 244 274 305 335; do f=MCD64monthly.A2023$d.Win19.061.burndate.tif; curl -su fire:burnt -o $f sftp://fuoco.geog.umd.edu/data/MODIS/C61/MCD64A1/TIFF/Win19/2023/$f; done
+```
+
+### Earn-it
+
+| Added | Triggered by |
+| ----- | ------------ |
+| `damage_check.py` and the `damage-check-2023` script | Scenario 5: anyone can redo the shares from pinned files (D130, D131) |
+| `fixtures/damage/2023-check.json` | Scenarios 1–4: the page needs the shares and the check's hectares, from one place (D59) |
+| `test_damage_check.py` | Scenario 5 |
+
+### Non-functionals
+
+|                      |                                                                               |
+| -------------------- | ----------------------------------------------------------------------------- |
+| **Load**             | The page bundles about 300 more bytes. There is no new request, and the API is unchanged. The command runs once, in about 2 minutes on the compose db: the spike took 57 s for the match, 4 s for MODIS and 9 s for the areas |
+| **Breaks first**     | The page: nothing new. The command, at 10 times the detections: the join, which took 5.8 s. Expect about a minute |
+| **Security surface** | No new route and no secret. UMD publishes its SFTP login. The command accepts only files that match their pinned sha256. It writes to `DATABASE_URL`: it loads the same concession map and peat cut that are already there, and uses temporary tables for the rest. The README points it at the compose db |
+| **Proof it works**   | The command prints `checked year=2023 detections=42682 squares_ha=456345 burned_ha=67688 peat_share=0.611 other_share=0.416 seconds=…`. On the live site, the 0332 fire reads "Likely burned: About 130 ha", and the e2e reads it on every push |
+| **Rollout**          | No flag. The merge deploys the page (D21). There is no API deploy and no migration. Rollback: revert the merge |
+
+### Test plan
+
+| Scenario | Test | Command |
+| -------- | ---- | ------- |
+| 1. A peat fire, scaled | `Damage.test.tsx` | `cd web && pnpm test Damage` |
+| 2. Off peat, scaled | `Damage.test.tsx` | the same |
+| 3. "How this is worked out" | `Damage.test.tsx` | the same |
+| 4. The pack | `ComplaintPack.test.tsx` | `cd web && pnpm test ComplaintPack` |
+| 5. Anyone can redo it | `test_damage_check.py` | `cd api && uv run pytest tests/test_damage_check.py` |
+
+Pause 2 already wrote the page code, so each new or changed web test is first run against a broken
+copy of the code, to see it fail.
+
+**E2E:** `web/e2e/damage-estimate.spec.ts`. It opens the ID-WOOD-CONCESSION-0332 fire from
+`fire-origin.csv`, reads "About 130 ha" and "About 75,000 t". It opens "How this is worked out" and
+reads the "Peat, in large patches" row with 61.1%. It makes a complaint pack and reads the same.
+`cd web && pnpm e2e damage-estimate`.
+
+Run one API suite at a time, because every worktree shares `firewatch_test`.
+
+### Chunks
+
+Single chunk. The page reads the file that the command writes, so the command goes first, then the
+page.
+
+### Risks
+
+| Risk | Mitigation |
+| ---- | ---------- |
+| The shares come from 2023, an El Niño year with large fires. In a wetter year, fires may burn a different part of their pixels | The page names 2023 in the figure line and in the check. The command can check a later year once MODIS maps it |
+| MODIS misses small burns, so a small fire's "Likely burned" may still be high | The check's paragraph says so (O8, D127) |
+| UMD takes its SFTP copy down | The committed JSON stays. LP DAAC's HDF tiles are a different format, so a later check would need new pins |
+| A different GEOS or PROJ version moves an area | Whole hectares and three-place shares. The README names the compose db's PostGIS 3.5, as for `backtest-2023` |
+| An older PDF of a pack shows the old figures | Accepted (O6, D129) |
+
+### Decisions to record
+
+`/build` appends these to `DECISIONS.md`. D126 supersedes D63, so `/build` also sets D63's Status
+to `superseded by D126`.
+
+#### D126 · 2026-10-23 · Count a fire's ground as its joined 375 m squares, and scale it by the 2023 MODIS shares for what likely burned
 
 Why: ground seen on several passes counts once, so the 0332 fire covers 209.8 ha, not 267.2.
 MODIS mapped only 14.8% of 2023's 456,345 ha of joined squares near concessions as burned, far
@@ -244,7 +432,7 @@ Supersedes: D63
 Source: docs/specs/damage-check.md
 Status: active
 
-### D127 · 2026-10-23 · Take the shares from 2023's pieces of more than 20 joined squares: 61.1% on peat, 41.6% on other ground
+#### D127 · 2026-10-23 · Take the shares from 2023's pieces of more than 20 joined squares: 61.1% on peat, 41.6% on other ground
 
 Why: MODIS's 500 m pixels miss small burns. A lone square showed 6.4%, and pieces of more than
 20 squares 52.5%. Peat and other ground differ, 61.1% against 41.6%, and their CO₂ differs 9
@@ -255,7 +443,7 @@ for all ground (peat and other ground differ by 19.5 points).
 Source: docs/specs/damage-check.md
 Status: active
 
-### D128 · 2026-10-23 · Check the squares against MODIS near concessions only, not against the ministry's national total
+#### D128 · 2026-10-23 · Check the squares against MODIS near concessions only, not against the ministry's national total
 
 Why: the estimate covers only ground within 5 km of a concession, and MODIS in the same place is
 like for like.
@@ -264,12 +452,29 @@ estimate never covers).
 Source: docs/specs/damage-check.md
 Status: active
 
-### D129 · 2026-10-23 · Every pack, old or new, shows the current estimate method
+#### D129 · 2026-10-23 · Every pack, old or new, shows the current estimate method
 
 Why: no buyer has a pack yet, and "How this is worked out" names the 2023 check, so a reader with
 an older PDF sees why the figures differ.
 Rejected: a method version in the pack link, with the old factors kept for old links (more code
 for packs that nobody has sent).
+Source: docs/specs/damage-check.md
+Status: active
+
+#### D130 · 2026-10-23 · Read the 12 MODIS files from the operator's disk, each checked by its pinned sha256
+
+Why: UMD serves the GeoTIFFs only over SFTP, with a public login, and httpx has no SFTP. Only the
+command reads the files, and the page reads the command's 300-byte output.
+Rejected: a committed MODIS cut (one more committed file and a --cut path, for reruns only), the
+command fetching over SFTP (paramiko, one more dependency to audit).
+Source: docs/specs/damage-check.md
+Status: active
+
+#### D131 · 2026-10-23 · Run the check as its own command, damage-check-2023
+
+Why: it shares only the FIRMS file and the match with the replay, and it writes one file. The
+forecast replay and its outputs stay as they are.
+Rejected: a --damage flag on backtest-2023 (ties the check to the forecast replay's module and run).
 Source: docs/specs/damage-check.md
 Status: active
 
@@ -285,6 +490,8 @@ Status: active
 | O6 | The page applies the factors (D71), so a pack made before this ships shows the new figures when opened. A PDF printed earlier keeps the old ones | flag | spec p1 | user | Accepted risk | 2026-10-23: every pack uses the current method, and "How this is worked out" names the 2023 check. No buyer has a pack yet (judge-review shape O3) |
 | O7 | At what share the figures stay unchanged | question | spec p1 | user | Resolved | 2026-10-23: at 80% or more. A gap under a fifth sits inside the CO₂ range the page already gives |
 | O8 | The share follows fire size more than peat. A lone square: 6.4%. Joined ground of more than 20 squares: 52.5%, 61.1% on peat and 41.6% on other ground. MODIS's 500 m pixels miss small burns, so a small fire's low share is partly MODIS's blind spot. Which share scales the estimate? | question | spike | user | Resolved | 2026-10-23: the shares of 2023's pieces of more than 20 joined squares, 61.1% on peat and 41.6% on other ground, for every fire. The page says a small fire may have burned less |
+| O9 | How the command gets the 12 MODIS files, which UMD serves only over SFTP | question | spec p3 | user | Resolved | 2026-10-23: the operator fetches them with one curl line, and the command checks each file's pinned sha256 (D130) |
+| O10 | Whether the check is its own command or a flag on backtest-2023 | question | spec p3 | user | Resolved | 2026-10-23: its own command, damage-check-2023 (D131) |
 
 _Never delete this section or its rows. See references/ledger.md._
 
@@ -298,3 +505,12 @@ _Never delete this section or its rows. See references/ledger.md._
 - **Spike** — a short, throwaway test that answers one question before the plan relies on it.
 - **sha256** — a fingerprint of a file. Any change to the file changes it.
 - **e2e** — end-to-end: one test that walks the whole slice as a user would.
+- **Patch** — one connected piece of the joined squares. A large patch holds more than 20 squares.
+- **SFTP** — a way to copy files over SSH. UMD serves the MODIS GeoTIFFs this way, with a public login.
+- **UMD** — the University of Maryland, which makes MCD64A1 and serves copies in map-ready tiles.
+- **LP DAAC** — NASA's archive for land data, which hosts MCD64A1's official HDF tiles.
+- **GeoTIFF** — an image file whose pixels carry map positions.
+- **rasterio** — a Python library that reads GeoTIFFs and turns pixels into polygons.
+- **El Niño** — a Pacific weather pattern that dries out Indonesia. 2023 was an El Niño year.
+- **GEOS, PROJ** — the geometry and projection libraries under PostGIS; versions can differ by host.
+- **Vite** — the tool that builds the page; it can bundle a JSON file into it.
