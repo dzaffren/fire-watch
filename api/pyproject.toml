@@ -17,6 +17,7 @@ load-concessions = "firewatch.concessions:main"
 backtest-2023 = "firewatch.backtest:main"
 load-peat = "firewatch.peat:main"
 globe-day = "firewatch.globe_day:main"
+damage-check-2023 = "firewatch.damage_check:main"
 
 [dependency-groups]
 cut = [

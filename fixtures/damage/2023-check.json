@@ -1,0 +1,20 @@
+{
+  "year": 2023,
+  "detections": 42682,
+  "large_patch_squares": 21,
+  "peat": {
+    "ha": 31915,
+    "burned_ha": 19722,
+    "share": 0.618
+  },
+  "other": {
+    "ha": 25536,
+    "burned_ha": 10781,
+    "share": 0.422
+  },
+  "all": {
+    "ha": 456345,
+    "burned_ha": 68826,
+    "share": 0.151
+  }
+}
