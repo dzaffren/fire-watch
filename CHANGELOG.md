@@ -41,6 +41,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Fixed
 
 - Play in a fire's replay no longer jumps almost straight to the last pass; the built page read its 600 ms step as 0.6 ms.
+- The landing opens with the answer a company gives to a fire grievance, and says who Fire Watch is built for, not who uses it. The globe counts detections, not fires, and the real case gives 8 passes and 283 detections. A complaint pack no longer says it holds every detection of its fire. The README's sha256 for the example pack matches the API's answer again.
 
 ### Security
 
