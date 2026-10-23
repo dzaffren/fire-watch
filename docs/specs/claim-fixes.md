@@ -1,6 +1,6 @@
 # Claim fixes
 
-**Version:** v1 · **Status:** Draft · **Type:** Bug · **Project type:** Web UI
+**Version:** v1 · **Status:** Refined · **Type:** Bug · **Project type:** Web UI
 
 **Shape doc:** docs/specs/judge-review/shape.md
 **Depends on:** None
@@ -37,7 +37,7 @@ outside their land, or that the complaint names no site, date or basis. The land
 | Check                         | Result |
 | ----------------------------- | ------ |
 | Cuts every layer it needs     | yes: the page copy in `web/src`, the committed example pack in `web/public/case`, and the README. The API, the recorder and the chain don't change |
-| One e2e test walks it         | yes: the landing e2e reads the heading, the globe caption and the real case, then follows "See its complaint pack" and reads the footer |
+| One e2e test walks it         | yes: the landing e2e reads the heading, the globe caption and the real case, then opens the example pack and reads its footer. The e2e's API holds no example fire, so the test answers the pack's one API call from the committed copy |
 | Worth shipping alone          | yes: a judge reads no claim on the landing or the pack that the chain or the data doesn't back, and reads why it matters first |
 | Fits (≤5 scenarios, ≤2 areas) | yes: 5 scenarios; two areas, the landing and the complaint pack, plus the README |
 
@@ -174,6 +174,155 @@ sideways. The pack preview does, by 43 px and 73 px, but the cause is the previe
 satellite data". This heading names the answer a company gives, from the first shape's O3, and the
 one thing the tool shows against it. Next to Stripe's documentation, the reference for D2, it says
 what the reader can do in plain words, with no selling.
+
+## Technical plan
+
+### Approach
+
+The copy changed at pause 2 in `Landing.tsx`, `RealCase.tsx` and `ComplaintPack.tsx`, with their
+tests. This plan adds the rest. The README's curl line fetches the example pack again, which adds
+`"runs": null`, and the README gives its new sha. A unit test holds the committed copy to that sha.
+The landing e2e reads every new sentence, then opens the example pack and reads its footer. The API,
+the recorder and the chain don't change.
+
+Relies on: D26, D33, D72, D88, D90, D92, D98, D125, D135, D136, D137.
+
+```mermaid
+flowchart TB
+    subgraph web["web/"]
+        L["Landing.tsx: h1, landing-lede, figcaption"] -- "renders" --> RC["RealCase.tsx: the fire step"]
+        RC -- "reads" --> C[("public/case/pack-0332.json")]
+        P["ComplaintPack.tsx: pack-foot"]
+        T["case.test.ts: sha check"] -- "sha256 of" --> C
+        E["e2e/landing-page.spec.ts"] -- "answers the pack's API call with" --> C
+    end
+    R["README.md: curl line and sha"] -- "redoes" --> C
+    T -- "reads the sha in" --> R
+    E -- "opens EXAMPLE_PACK" --> P
+```
+
+The landing and its real case read the committed copy. The README's curl line redoes that copy, and
+a unit test keeps the README's sha and the copy in step. The e2e opens the example pack with its API
+answer taken from the same copy.
+
+```mermaid
+sequenceDiagram
+    participant J as judge's browser
+    participant S as Static Web Apps
+    participant A as API
+    participant C as Base Sepolia
+    J->>S: GET / (landing, new heading and paragraph)
+    J->>S: GET /case/pack-0332.json (real case: 8 passes, 283 detections)
+    J->>C: one Multicall3 read of the 283 seals, at the seal step
+    J->>A: GET .../fires/0x13b4…?as_of=1792227600 (See its complaint pack)
+    A-->>J: the pack, runs null
+    J->>C: the pack's seal check
+    J-->>J: footer: "This pack holds this fire as Fire Watch had stored it by 2026-10-17 09:00 UTC."
+```
+
+A judge reads the landing and its real case from static files, then opens the example pack from the
+API. In the e2e, the API's part is answered from the committed copy, and the seals are on anvil.
+
+### Changes
+
+| File | What | Why |
+| ---- | ---- | --- |
+| `web/public/case/pack-0332.json` | Fetched again by the README's curl line. It gains `"runs": null` and nothing else: 163,544 bytes, sha256 `33037b98adedebb862c94dc110d5a13b4c562cfb5b19349898d42323f38728fa`, the same on two fetches on 2026-10-23 | Scenario 5; D90 |
+| `README.md:182` | The sha256 becomes `33037b98…f38728fa` | Scenario 5 |
+| `web/src/case.test.ts:74` | A test after "names no company": the sha256 of `public/case/pack-0332.json` equals the one in the README's "Redo the real case's data" section, read from `../README.md`, by `node:crypto` | Scenario 5 |
+| `web/e2e/landing-page.spec.ts:29` | The walk reads the paragraph, the globe caption in full and the real case's first stop. At its end it opens `EXAMPLE_PACK`, answers the fire route with `public/case/pack-0332.json` through `page.route`, reads "283 of 283" and the footer, and finds no "every detection of this fire". The title becomes "a newcomer reads the landing, walks the real case to its seals, opens the tool, comes back and opens the example pack" | E2E; scenarios 1–4 |
+| `docs/ARCHITECTURE.md:60` | The landing row says "who it is for", not "who uses it" | Scenario 2 |
+
+Done at pause 2 and kept: `web/src/Landing.tsx`, `RealCase.tsx`, `ComplaintPack.tsx`, their tests,
+and the e2e's `HEADLINE`.
+
+Reusing: the README's curl line, `EXAMPLE_PACK` and `fakeMaps()` in the landing e2e, global setup's
+seals of the 283 records on anvil (D92), and `case.test.ts`'s `resolve("public/case/pack-0332.json")`.
+
+### Earn-it
+
+| Added | Triggered by |
+| ----- | ------------ |
+| The sha test in `case.test.ts` | Scenario 5: the README's sha went stale once without any test noticing |
+| The `page.route` for the fire route in the landing e2e | Scenario 1 in the same walk: the e2e's API holds no example fire (`landing-page.spec.ts:7`) |
+
+Cut: a footer that changes with the left-out check's result (the check panel already says it, D136),
+storing the example fire in the e2e's database (it would change other specs' counts, D137), and a
+change to the CHANGELOG's past landing line.
+
+### Non-functionals
+
+|                      |                                                                               |
+| -------------------- | ----------------------------------------------------------------------------- |
+| **Load**             | None new. The committed copy grows by 12 bytes, to 163,544 |
+| **Breaks first**     | Nothing at 10×. The README's sha goes stale whenever the API adds a field to a pack; the sha test catches a copy that no longer matches the README, and the curl line is checked by hand |
+| **Security surface** | No new route, input or secret. The committed copy is public data with concession IDs and no company names (`case.test.ts` "names no company") |
+| **Proof it works**   | After Deploy, the live bundle holds "When a company says a fire spread in from outside its land" and "This pack holds this fire as Fire Watch had stored it by". The README's curl line gives `33037b98…f38728fa` |
+| **Rollout**          | No flag, as D81. Merge to main; Deploy ships the page. Rollback: revert the merge |
+
+### Test plan
+
+| Scenario | Test | Command |
+| -------- | ---- | ------- |
+| 1. The pack footer | `ComplaintPack.test.tsx` "reads the site, dates and basis of the 0332 fire"; the landing e2e | `cd web && pnpm test && pnpm e2e landing-page` |
+| 2. The landing top | `Landing.test.tsx` "says why Fire Watch matters, who it is for, and that Indonesia is the first map"; the landing e2e | as above |
+| 3. The globe caption | `Landing.test.tsx` "gives the tool's four steps, the dated facts and the four words"; the landing e2e | as above |
+| 4. The real case | `RealCase.test.tsx` "tells the fire, the claim, …"; the landing e2e | as above |
+| 5. The README's sha | `case.test.ts`, the new sha test; the curl line by hand | `cd web && pnpm test` |
+| Earlier slices | the full suites | `cd api && uv run pytest`; `cd web && pnpm test && pnpm e2e` |
+
+The e2e needs `docker compose up -d --wait db` and `~/.foundry/bin` on `PATH`.
+
+**E2E:** `web/e2e/landing-page.spec.ts` "a newcomer reads the landing, walks the real case to its
+seals, opens the tool, comes back and opens the example pack". It reads the heading, the paragraph,
+the globe caption and the real case's first stop. It then opens the example pack, with its API answer
+taken from the committed copy, and reads the footer.
+
+### Chunks
+
+Single chunk. The copy is done; the rest is one file fetched again, one sha, one unit test and one
+e2e.
+
+### Risks
+
+| Risk | Mitigation |
+| ---- | ---------- |
+| The 0332 pack gains runs once FireRuns seals them, and its bytes change again | Its window ends at its cut, 2026-10-17 09:00 UTC, and FireRuns sealed nothing before 2026-10-23. D123 ends a pack's runs at the newest run holding a detection stored by the cut, so `runs` stays null |
+| A judge reads the new heading as Fire Watch saying the company is wrong | It says what Fire Watch shows: where satellites first saw the fire. The real case's second stop already frames the company's answer the same way |
+| The e2e's fulfilled API answer hides a real API change | The sha test and the README's curl line tie the committed copy to the live API's bytes, and `test_app.py` covers the fire route |
+
+### Decisions to record
+
+`/build` appends these to `DECISIONS.md`. None supersedes an entry.
+
+#### D135 · 2026-10-23 · Lead the landing with the answer a company gives to a fire grievance
+
+Why: a reader on 2026-10-23 had to read the example to see why Fire Watch matters. Companies answer
+grievances by saying a fire came from outside their land (the first shape's O3), and the tool shows
+where satellites first saw it.
+Rejected: the heading that says only what the tool does (the reason waits for the example), the
+company's words "the fire started outside" (honest-claims' guard bans "fire started" on the landing,
+D26).
+Source: docs/specs/claim-fixes.md
+Status: active
+
+#### D136 · 2026-10-23 · A pack's footer says what it holds at its cut, and leaves completeness to the left-out check
+
+Why: the footer said every pack "holds every detection" of its fire, which nothing checks on a pack
+with no runs. The check panel already says whether a detection was left out, or that it can't tell.
+Rejected: a footer that changes with the check's result (says it twice), keeping "every detection"
+on packs with runs (true only when the check passes).
+Source: docs/specs/claim-fixes.md
+Status: active
+
+#### D137 · 2026-10-23 · Answer the example pack's API call in the landing e2e from the committed copy
+
+Why: the e2e's API holds no example fire, and the committed copy is the API's own answer (D90),
+whose 283 seals global setup already writes on anvil (D92).
+Rejected: storing the example fire in the e2e's database (adds 283 detections to 0332 for every
+other spec), a separate pack e2e for the footer (two tests for one walk).
+Source: docs/specs/claim-fixes.md
+Status: active
 
 ## Open items
 
