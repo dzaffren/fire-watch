@@ -89,6 +89,7 @@ test("replays a cut of 2023 and shows the committed result on the 0332 fire", as
     downwind_inside_by: "",
     near_edge_inside_by: "",
     next_pass_inside_by: "2023-09-27T18:05Z",
+    v2_candidate_inside_by: "",
     outcome: "seen_inside",
     seen_inside_at: "2023-09-28T05:46Z",
   });
@@ -96,13 +97,21 @@ test("replays a cut of 2023 and shows the committed result on the 0332 fire", as
     rule_inside_by: "",
     near_edge_inside_by: "",
     next_pass_inside_by: "2023-10-14T17:46Z",
+    v2_candidate_inside_by: "",
     outcome: "seen_inside",
     seen_inside_at: "2023-10-16T05:08Z",
+  });
+  expect(forecast("0332", "2023-10-13T06:05Z -2.87451 112.73898", "2023-10-14T05:46Z")).toMatchObject({
+    rule_inside_by: "2023-10-15T05:46Z",
+    near_edge_inside_by: "2023-10-14T17:46Z",
+    v2_candidate_inside_by: "2023-10-14T17:46Z",
+    outcome: "not_seen_inside",
   });
   expect(forecast("0264", "2023-09-28T05:46Z -3.75798 116.28809", "2023-09-28T18:28Z")).toMatchObject({
     rule_inside_by: "2023-09-29T06:28Z",
     near_edge_inside_by: "",
     next_pass_inside_by: "2023-09-29T06:28Z",
+    v2_candidate_inside_by: "",
     outcome: "not_seen_inside",
     seen_inside_at: "",
   });
