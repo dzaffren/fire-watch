@@ -91,8 +91,9 @@ test("makes a pack of the 0332 fire and every detection matches the chain", asyn
     await expect(basis.locator("dt:has-text('Passes') + dd")).toHaveText("4, with 19 detections");
 
     await expect(pack.getByRole("heading", { name: "19 of 19 detections match the chain" })).toBeVisible();
-    // Every seal in one read through Multicall3 (D38).
-    expect(chainReads).toHaveLength(1);
+    await expect(pack.getByRole("heading", { name: /^Checking runs/ })).toHaveCount(0);
+    // Every seal in one read through Multicall3 (D38), then the runs' roots in one more.
+    expect(chainReads).toHaveLength(2);
   } finally {
     await buyer.close();
   }
@@ -105,9 +106,10 @@ test("a pack printed while the chain doesn't answer has no buttons on it", async
     await buyer.route((u) => u.href.startsWith(RPC_URL), (route) => route.abort());
     const { page: pack } = await openAsBuyer(buyer, url);
     await expect(pack.getByRole("heading", { name: "Couldn't check 19 of 19 detections" })).toBeVisible();
+    await expect(pack.getByRole("heading", { name: "Couldn't check runs 1 to 4 for a detection left out" })).toBeVisible();
     await pack.getByRole("row").filter({ hasText: "Outside, 950 m" }).getByRole("button").click();
     const checkAgain = pack.getByRole("button", { name: "Check again" });
-    await expect(checkAgain).toHaveCount(2);
+    await expect(checkAgain).toHaveCount(3);
 
     await pack.emulateMedia({ media: "print" });
     await expect(checkAgain).toHaveCount(0);
@@ -154,7 +156,7 @@ test("a buyer reads a detection's seal time from the chain, and who chose the re
     const { page: pack } = await openAsBuyer(buyer, url);
     await expect(pack.getByRole("heading", { name: "19 of 19 detections match the chain" })).toBeVisible();
     await expect(pack.getByRole("region", { name: "19 of 19 detections match the chain" })).toContainText(
-      "Fire Watch's server chose which records to send. NASA FIRMS's public archive shows whether one is missing.",
+      "Fire Watch's server chose which records to send. The check below shows whether it left one out.",
     );
     await expect(pack.locator("body")).not.toContainText("never changes");
 
