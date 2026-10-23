@@ -5,8 +5,9 @@
 **Shape doc:** docs/specs/judge-review/shape.md
 **Depends on:** damage-estimate, season-backtest
 
-The damage estimate's method shows how its joined 375 m squares compare with NASA's MODIS burned
-area for 2023. If MODIS maps much less of that ground as burned, the estimate is corrected.
+The damage estimate scales its ground by the share that NASA's MODIS mapped as burned in 2023:
+61.1% on peat and 41.6% on other ground. It comes now because a company can call the unchecked
+375 m squares too high, and the O1 spike shows they are.
 
 ## Problem
 
@@ -55,7 +56,7 @@ and partly ground that did not burn. The spike cannot separate the two.
 | Cuts every layer it needs     | yes: a command redoes the 2023 comparison from pinned files (`api/`), and the damage estimate in the fire view and the pack shows it and applies it (`web/`) |
 | One e2e test walks it         | yes: open the 0332 fire, read its estimate and the 2023 check under "How this is worked out", make a pack, and read the same in the pack |
 | Worth shipping alone          | yes: a buyer sees the ground figure checked against NASA's burned-area map, and a company can't call it unchecked |
-| Fits (≤5 scenarios, ≤2 areas) | yes: 4 scenarios; two areas: the 2023 replay data (`api/`, `fixtures/`) and the damage estimate (`web/`) |
+| Fits (≤5 scenarios, ≤2 areas) | yes: 5 scenarios; two areas: the 2023 replay data (`api/`, `fixtures/`) and the damage estimate (`web/`) |
 
 **Path:** full. It adds a pinned input and a new command, and it can change the figures on two
 screens.
@@ -71,50 +72,74 @@ burned-area map, so that a company can't dismiss the figures as unchecked.
 flowchart LR
     R[("2023 replay: 42,682 detections near concessions")] -- "joined 375 m squares, peat or not" --> K[damage-check-2023]
     M[("MODIS MCD64A1 2023, sha256 pinned")] -- "500 m pixels burned in 2023" --> K
-    K -- "share of the squares MODIS mapped burned" --> S[("committed 2023 check")]
-    S -- "the share and its totals" --> E[damage estimate]
+    K -- "peat and other shares, pieces over 20 squares" --> S[("committed 2023 check")]
+    S -- "61.1% and 41.6%, with their totals" --> E[damage estimate]
     I((investigator)) -- "opens a fire" --> E
-    E -- "figures, and the 2023 check under How this is worked out" --> V[fire view]
+    E -- "pixels, likely burned, CO2 and cost, and the 2023 check" --> V[fire view]
     V -- "Make complaint pack" --> P[pack, with the same]
     P -- "its link" --> B((buyer))
 ```
 
-A command joins the 2023 squares and measures how much of them MODIS mapped as burned. The share
-goes into the damage estimate, which shows the check in the fire view and the pack.
+A command joins the 2023 squares and measures how much of them MODIS mapped as burned. The two
+shares scale the damage estimate, which shows the check in the fire view and the pack.
+
+How each number is made now:
+
+| Number | Peat ground | Other ground |
+| ------ | ----------- | ------------ |
+| Ground in its pixels | The joined squares, as today (D63) | The same |
+| Likely burned | The squares' peat × 61.1% | The squares' other ground × 41.6% |
+| CO₂ | Likely burned peat × 600.6 t per ha, likely 289.2 to 911.9 | Likely burned other ground × 66.7 t per ha |
+| Cost | All likely burned ground × US$6,192 per ha | The same |
 
 ## Acceptance criteria
 
-The figures in these scenarios wait for the spike (O1). Each `Then` below says what the page
-reads, and the spike gives the numbers before pause 1 is approved.
-
 ```gherkin
-Scenario: The fire view checks a peat fire's ground against 2023
+Scenario: The fire view scales a peat fire's ground by the 2023 shares
   Given the ID-WOOD-CONCESSION-0332 fire of fire-origin scenario 1: 19 VIIRS NOAA-20 detections
     whose squares join into 59.21 ha inside on peat, 144.31 ha outside on peat and 6.30 ha
-    outside off peat
-  And the 2023 check, in which MODIS mapped a share of the squares near concessions as burned
+    outside on other ground
   When the investigator opens the fire
-  Then its damage estimate still reads "Ground in its pixels: About 210 ha"
-  And the CO₂ and the cost follow the answer to O3
+  Then its damage estimate reads "Ground in its pixels: About 210 ha"
+  And "Likely burned: About 130 ha", with "36 ha of it inside the concession."
+  And "CO₂ released: About 75,000 t", with "Likely 36,000 to 110,000 t. 22,000 t of it inside
+    the concession."
+  And "Cost: About US$790,000", with "US$220,000 of it inside the concession."
+
+Scenario: A fire off peat scales by the other-ground share
+  Given hotspot B of fire-record scenario 1, 2026-10-14 06:18 UTC, 370 m outside
+    ID-WOOD-CONCESSION-0377, whose square is 14.06 ha with no peat
+  When the investigator opens its fire from ID-WOOD-CONCESSION-0377
+  Then its damage estimate reads "Ground in its pixels: About 14 ha" and "Likely burned: About
+    5.8 ha"
+  And "CO₂ released: About 390 t", with no range
+  And "Cost: About US$36,000"
 
 Scenario: "How this is worked out" gives the 2023 check
   Given the 0332 fire from scenario 1
   When the investigator opens "How this is worked out"
-  Then it gives the 2023 squares' ground, the part of it MODIS mapped as burned, and the share
-  And it says that MODIS misses fires much smaller than its 500 m pixel
+  Then it says that MODIS mapped 61.1% of the peat and 41.6% of the other ground as burned, in
+    2023's 57,450 ha of joined squares in pieces of more than 20 squares near concessions
+  And it says that MODIS mapped 14.8% of all 456,345 ha, because its 500 m pixels miss small
+    burns, so a small fire may have burned less than its share
   And it links MODIS MCD64A1 Collection 6.1 and the command that redoes the check
 
-Scenario: The pack carries the same check
+Scenario: The pack carries the same figures and the check in full
   Given the pack for the 0332 fire made at 2026-10-17 09:00 UTC, as in complaint-pack scenario 1
   When anyone opens the pack
-  Then its damage estimate gives the same figures and the 2023 check in full
+  Then its damage estimate reads "About 210 ha", "About 130 ha" and "About 75,000 t"
+  And the 2023 check from scenario 3 is shown in full, so a printed pack carries it
 
 Scenario: Anyone can redo the 2023 check
-  Given the pinned 2023 FIRMS file, the Trase map v2026-02-20, the WRI peat cut and the pinned
-    MODIS tiles
+  Given the pinned 2023 FIRMS file, the Trase map v2026-02-20, the WRI peat cut and the 12
+    pinned MODIS burn-date files of 2023
   When an operator runs damage-check-2023
-  Then it writes the committed 2023 check byte for byte
+  Then it writes the committed 2023 check byte for byte, with 61.1% on peat and 41.6% on other
+    ground
 ```
+
+The figures come from the spike's shares and the parts that the damage estimate's tests use. The
+page rounds each to two significant figures, as today.
 
 ## Scope
 
@@ -123,18 +148,69 @@ Scenario: Anyone can redo the 2023 check
 - One comparison over 2023's detections within 5 km of a concession, as the 2023 replay takes
   them (D52, D57): their joined 375 m squares against MODIS MCD64A1's 2023 burned pixels.
 - MODIS MCD64A1 Collection 6.1, the tiles over Indonesia, each pinned by sha256.
-- One fixed 2023 share applied to every fire. MODIS arrives months late, so a live fire can't be
-  checked against its own burned pixels.
+- Two fixed 2023 shares applied to every fire: 61.1% for peat and 41.6% for other ground. Each is
+  the part MODIS mapped burned in 2023's pieces of more than 20 joined squares (O8). MODIS arrives
+  months late, so a live fire can't be checked against its own burned pixels.
+- "Ground in its pixels" stays as the ceiling. "Likely burned" is new, and the CO₂ and the cost
+  follow it (O3).
+- Every pack, old or new, shows the scaled figures when opened (O6).
 - The check in the damage estimate's "How this is worked out", in the fire view and the pack (D64).
 - A command that redoes the check from pinned files, as `backtest-2023` redoes the replay (D52).
 
 **Out:**
 
 - MODIS for each fire: not planned. It arrives two to three months late.
+- A share for each fire size: not planned. It would put MODIS's small-fire blind spot into each
+  small fire (O8).
 - Other years than 2023: not planned.
 - Burned area from Landsat or Sentinel-2: not planned. Each needs a pipeline of its own.
 - The real size of each VIIRS pixel: not planned, as in damage-estimate.
 - Methane and carbon monoxide: still left out (D68).
+
+## Decisions to record
+
+Drafted at pause 1. `/build` appends them to `DECISIONS.md`.
+
+### D126 · 2026-10-23 · Count a fire's ground as its joined 375 m squares, and scale it by the 2023 MODIS shares for what likely burned
+
+Why: ground seen on several passes counts once, so the 0332 fire covers 209.8 ha, not 267.2.
+MODIS mapped only 14.8% of 2023's 456,345 ha of joined squares near concessions as burned, far
+under the 80% at which the figures would stay. The squares stay as the ceiling.
+Rejected: detections times 14.06 ha (counts the same ground again on each pass), the squares
+alone as burned ground (MODIS shows that most of them did not burn), a range from the MODIS share
+up to the squares (stacks on the peat factor's range), the check alone with no figure changed.
+Supersedes: D63
+Source: docs/specs/damage-check.md
+Status: active
+
+### D127 · 2026-10-23 · Take the shares from 2023's pieces of more than 20 joined squares: 61.1% on peat, 41.6% on other ground
+
+Why: MODIS's 500 m pixels miss small burns. A lone square showed 6.4%, and pieces of more than
+20 squares 52.5%. Peat and other ground differ, 61.1% against 41.6%, and their CO₂ differs 9
+times.
+Rejected: the shares of all 2023 ground, 35.8% and 8.5% (mostly MODIS's blind spot, which favours
+the company), a share for each size band (puts the blind spot into each small fire), one share
+for all ground (peat and other ground differ by 19.5 points).
+Source: docs/specs/damage-check.md
+Status: active
+
+### D128 · 2026-10-23 · Check the squares against MODIS near concessions only, not against the ministry's national total
+
+Why: the estimate covers only ground within 5 km of a concession, and MODIS in the same place is
+like for like.
+Rejected: a national line against the ministry's 1.16 Mha (a different map, over ground the
+estimate never covers).
+Source: docs/specs/damage-check.md
+Status: active
+
+### D129 · 2026-10-23 · Every pack, old or new, shows the current estimate method
+
+Why: no buyer has a pack yet, and "How this is worked out" names the 2023 check, so a reader with
+an older PDF sees why the figures differ.
+Rejected: a method version in the pack link, with the old factors kept for old links (more code
+for packs that nobody has sent).
+Source: docs/specs/damage-check.md
+Status: active
 
 ## Open items
 
@@ -147,7 +223,7 @@ Scenario: Anyone can redo the 2023 check
 | O5 | Whether the check also compares all of Indonesia's 2023 squares with the ministry's 1.16 Mha | question | spec p1 | user | Resolved | 2026-10-23: no. Only the ground within 5 km of a concession, against MODIS in the same place |
 | O6 | The page applies the factors (D71), so a pack made before this ships shows the new figures when opened. A PDF printed earlier keeps the old ones | flag | spec p1 | user | Accepted risk | 2026-10-23: every pack uses the current method, and "How this is worked out" names the 2023 check. No buyer has a pack yet (judge-review shape O3) |
 | O7 | At what share the figures stay unchanged | question | spec p1 | user | Resolved | 2026-10-23: at 80% or more. A gap under a fifth sits inside the CO₂ range the page already gives |
-| O8 | The share follows fire size more than peat. A lone square: 6.4%. Joined ground of more than 20 squares: 52.5%, 61.1% on peat and 41.6% on other ground. MODIS's 500 m pixels miss small burns, so a small fire's low share is partly MODIS's blind spot. Which share scales the estimate? | question | spike | user | Open | — |
+| O8 | The share follows fire size more than peat. A lone square: 6.4%. Joined ground of more than 20 squares: 52.5%, 61.1% on peat and 41.6% on other ground. MODIS's 500 m pixels miss small burns, so a small fire's low share is partly MODIS's blind spot. Which share scales the estimate? | question | spike | user | Resolved | 2026-10-23: the shares of 2023's pieces of more than 20 joined squares, 61.1% on peat and 41.6% on other ground, for every fire. The page says a small fire may have burned less |
 
 _Never delete this section or its rows. See references/ledger.md._
 
