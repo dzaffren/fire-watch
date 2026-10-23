@@ -499,4 +499,5 @@ _Never delete this section or its rows. See references/ledger.md._
 - **Haversine**: the distance between two points on a sphere, as `fires.py` measures it.
 - **Store time**: when Fire Watch stored a record (`created_at`). Only the server knows it.
 - **Yield**: hand control back to the page between pieces of work, so it stays responsive.
+- **Lockfile**: the file that pins the exact version of every dependency. This slice changes none.
 - **e2e**: end-to-end: one test that walks the whole slice as a user would.
