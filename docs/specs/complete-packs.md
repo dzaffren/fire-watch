@@ -1,6 +1,6 @@
 # Complete packs
 
-**Version:** v1 · **Status:** Draft · **Type:** Enhancement · **Project type:** Web UI
+**Version:** v1 · **Status:** Refined · **Type:** Enhancement · **Project type:** Web UI
 
 **Shape doc:** docs/specs/judge-review/shape.md
 **Depends on:** run-roots, complaint-pack
@@ -215,11 +215,177 @@ A printed pack carries the panel, as it does the seal-check panel. Check again d
 
 ## Technical plan
 
-_(the rest is added at pause 3)_
+### Approach
+
+The fire route gives a pack its window as a range of FireRuns runs. A new read-only route sends
+every record of those runs. After the seal checks, the browser rebuilds each run's root from those
+records, reads the roots and their times from FireRuns in one Multicall3 call, and checks the
+range's ends against the chain. Then it follows the fire rule's 1 km and 48 hours from the pack's
+detections through the concession's other detections, and lists any it reaches. No contract,
+recorder or schema change.
+
+Relies on: D7, D10, D31, D37, D38, D97, D98, D103, D108, D110, D119, D120, D121, D122, D123, D124,
+D125
+
+```mermaid
+flowchart TB
+    DB[(Neon: roots, hotspots, forecasts)] -- "window's first and last run" --> FR["GET /api/concessions/:id/fires/:key?as_of"]
+    DB -- "every record of runs F to L" --> RR["GET /api/runs?first&last (new)"]
+    FR -- "pack with runs" --> CP[ComplaintPack]
+    CP -- "after seal checks" --> LO[leftOut.ts]
+    RR -- "records, 100 runs a request" --> LO
+    LO -- "runOf F-1 to L+1" --> MC[(Multicall3 to FireRuns)]
+    LO -- "first, last, records, beforeRuns, missing, unmatched" --> CP
+```
+
+The API sends the range and the records. The page gets the roots from the chain, and `leftOut.ts`
+decides.
+
+```mermaid
+sequenceDiagram
+    participant P as pack page
+    participant A as API
+    participant C as FireRuns via Multicall3
+    P->>A: GET fire with as_of
+    A-->>P: pack, runs F to L
+    P->>C: seal checks, as today
+    P->>A: GET /api/runs, F to L, in steps of 100
+    A-->>P: every detection and forecast of those runs
+    P->>C: runOf(F-1 ... L+1)
+    C-->>P: root and seal time of each
+    P->>P: rebuild each root, yielding between runs
+    P->>P: check the ends, then follow 1 km and 48 h from the pack
+    P-->>P: LeftOutPanel shows the result
+```
+
+The seal checks finish first. Then one more API read and one chain read give the browser all it
+needs.
+
+```mermaid
+flowchart LR
+    A[API, not trusted] -- "range, records, store times" --> B[reader's browser]
+    C[(FireRuns, trusted)] -- "roots, seal times, next and previous run" --> B
+    B -- "Nothing left out only if every root rebuilds and the ends hold" --> U((reader))
+```
+
+The browser trusts the chain. It takes the API's store time only for a record in a run sealed
+after the pack's cut (D123, O7).
+
+**The rules `leftOut.ts` applies,** in order:
+
+1. Each run from F to L must rebuild its root on FireRuns from the records sent for it. A run with
+   no records sent, or a zero root, fails too. A failed run goes in `unmatched`, and its records
+   are not used.
+2. When F is more than 1, run F−1 must be sealed before 48 hours before the pack's first detection.
+   Otherwise run F−1 goes in `unmatched`.
+3. Run L+1 must not exist, or must be sealed after the pack's cut. Otherwise it goes in
+   `unmatched`.
+4. Each of the pack's detections with a run must have a run from F to L. Otherwise that run goes
+   in `unmatched`.
+5. The candidates are the detections in the matching runs that match the pack's concession and are
+   not in the pack. In a run sealed after the cut, one that the API says was stored after the cut
+   is left out of the candidates.
+6. A candidate is left out when it is at most 1,000 m and 48 hours from a pack detection or from
+   another left-out candidate. Distance is `fires.py`'s haversine.
+7. `beforeRuns` is true when F is 1 and run 1 was sealed after 48 hours before the first detection.
+
+The API's window: F is the first run sealed at or after 48 hours before the fire's first
+detection. L is the newest run holding a detection stored by the cut. No run, or F after L, gives
+`null`.
+
+### Changes
+
+| File | What changes | Why |
+| ---- | ------------ | --- |
+| `api/src/firewatch/app.py:25`, `:262`, `:308` | `MAX_RUNS = 100`. A `WINDOW_RUNS` query gives F and L, and the pack (a request with `as_of`) adds `runs`, or `null`. The log line adds `runs=F-L` | 1, 4, 5 |
+| `api/src/firewatch/app.py` | New `GET /api/runs?first=&last=`: every hotspot of the sealed runs with `_record`, its `run` and `stored_unix`, and every forecast with `record_id`, `forecast_fields` and `run`. 422 when `first` is under 1, `last` is under `first`, or the range is over 100 runs. Logs `served runs first= last= hotspots= forecasts=` | 1, 2, 3 |
+| `api/tests/test_app.py` | The pack's `runs`: the window's start, the cut, `null` with no root, none on the fire view. The run route: records with their runs and store times, sealed runs only, each 422 | 1–5 |
+| `fixtures/join-vectors.json` | New. Pairs of real detections from `fixtures/firms/fire-origin.csv` on both sides of 1,000 m and 48 hours, with `fires.distance_m` and the join answer | 2 |
+| `api/tests/test_fires.py` | Reads the join vectors against `distance_m` and the 1 km and 48 hour limits | 2 |
+| `web/src/merkle.ts` | Adds `rootOf(leaves)`, as `merkle.py`'s `tree` gives the root (D108) | 1, 3 |
+| `web/src/chain.ts:51` | Adds `runsOf(runs)`: each run's root and seal time through `readAll` | 1, 3 |
+| `web/src/leftOut.ts` | New. `distanceM` as `fires.distance_m`, and `checkRuns(pack, sent, chain)`, which applies the seven rules and returns `LeftOutCheck`. It yields to the page between runs | 1–5 |
+| `web/src/api.ts:192`, `:225` | Adds `runRecords(first, last)` in steps of 100 runs. `packSource.leftOut` reads the records and `runsOf(F-1 … L+1)`, then calls `checkRuns` | 1–3 |
+| `web/src/ComplaintPack.tsx` | Pause 2's panel, unchanged. `LeftOutCheck` moves to `leftOut.ts` | 1–5 |
+| `web/src/*.test.ts(x)` | `leftOut.test.ts`, `merkle.test.ts`, `chain.test.ts`, `api.test.ts`, `ComplaintPack.test.tsx`: below | 1–5 |
+| `web/e2e/complete-packs.spec.ts` | New: the slice's e2e, below | 2, 3, 4 |
+| `web/e2e/complaint-pack.spec.ts:157` | 0332's pack now has runs, so its note ends "The check below shows whether it left one out." | 4 |
+
+Reusing: `_record` and `forecast_fields` for the run route, `_range`'s 422 pattern, `readAll` and
+its 500-read chunks, `leaf` and the merkle vectors, `fingerprint` and `forecastFingerprint`, the
+e2e's `makePack`, `openAsBuyer` and `sql` helpers from `run-roots.spec.ts`, and its runs 1 to 4.
+
+### Earn-it
+
+| Added | Triggered by |
+| ----- | ------------ |
+| `GET /api/runs` | Scenarios 1 to 3: the browser needs every record of each run (D122) |
+| `runs` on the pack | Scenarios 1, 4 and 5: the browser must know which runs the window covers |
+| `MAX_RUNS` and the steps of 100 | The risk of one request reading the whole table from an open API (D122) |
+| `stored_unix` on each run record | The risk of a detection stored after the cut reading as left out (D123) |
+| `rootOf`, `runsOf` | Scenarios 1 and 3: rebuild a root and read it from the chain |
+| `leftOut.ts` | Scenarios 1 to 5: the rules and the 1 km and 48 hour join (D124) |
+| `fixtures/join-vectors.json` | The risk that Python and TypeScript disagree on a pair near 1,000 m, so a detection reads as left out wrongly |
+| The yield between runs | A week's window takes about 3 s of hashing on this machine (below), which would freeze the page |
+
+No new dependency, table, column or index.
+
+### Non-functionals
+
+|                      |                                                                               |
+| -------------------- | ----------------------------------------------------------------------------- |
+| **Load**             | One run read per pack open, after the seal checks. About 6 roots a day, so a 4-day window is about 25 runs and 9,000 records, near 1 MB gzipped. 20,000 version 2 fingerprints and their leaves took 2.8 s, and the tree 0.3 s, in Node on this machine (23 Oct 2026). A phone is slower |
+| **Breaks first**     | At 10×, a week is 20 MB gzipped and half a minute of hashing. Then a list per concession goes inside each root (the rejected option in D122). The run route reads `hotspots` without an index on `root_id`; add one when it shows in the log's timing |
+| **Security surface** | `GET /api/runs`: anyone, read-only, two whole numbers, 100 runs at most. No secret, nothing stored. The browser trusts FireRuns' roots and times. It trusts the API's store time only in a run sealed after the cut (O7) |
+| **Proof it works**   | The API's `served runs first=12 last=31 hotspots=8812 forecasts=402` after a pack opens, and `runs=12-31` on its fire line. A pack in prod reads "No detection of this fire is left out of runs 12 to 31" |
+| **Rollout**          | No flag, as D81. Merge, and Deploy ships the API and the page. The panel shows only for a pack with runs, so nothing changes until the job seals roots (O2). Rollback: revert the merge; nothing is stored |
+
+### Test plan
+
+| Scenario | Test | Command |
+| -------- | ---- | ------- |
+| 1, 4, 5 | `api/tests/test_app.py`: the pack's `runs` from the window's start to the cut; `null` with no root | `cd api && PATH=$HOME/.foundry/bin:$PATH uv run pytest tests/test_app.py` |
+| 1, 2, 3 | the same file: the run route's records, runs and store times; sealed runs only; each 422 | the same |
+| 2 | `api/tests/test_fires.py` and `web/src/leftOut.test.ts`: the join vectors | the same, with `tests/test_fires.py`; `cd web && pnpm test src/leftOut.test.ts` |
+| 1–5 | `web/src/leftOut.test.ts`: whole; left out through a chain of two; a root that doesn't rebuild; a run with no records; run F−1 sealed inside the window; run L+1 sealed before the cut; a pack detection past L; a store time after the cut skipped only in a run sealed after it; `beforeRuns` | `cd web && pnpm test src/leftOut.test.ts` |
+| 1, 3 | `web/src/merkle.test.ts`: `rootOf` gives each vector's root | `cd web && pnpm test src/merkle.test.ts` |
+| 1 | `web/src/chain.test.ts`, `web/src/api.test.ts`: `runsOf` in one `aggregate3`; `runRecords` for 250 runs in 3 requests | `cd web && pnpm test` |
+| 1–5 | `web/src/ComplaintPack.test.tsx`: each state in the Interface table, and the note. Each test is seen to fail against a broken panel first, as the pause 2 lesson says | `cd web && pnpm test src/ComplaintPack.test.tsx` |
+
+**E2E:** `web/e2e/complete-packs.spec.ts`, on the e2e's anvil with runs 1 to 4. It makes 0332's
+pack from the tool and opens it as a buyer. It reads "No detection of this fire is left out of runs
+1 to 4", the note on detections sealed before run 1, and the panel in print. It dates one detection
+of run 2 after the pack's cut, reopens the link, and reads "1 detection of this fire is left out of
+this pack" with its row in run 2. It deletes one detection of run 3 with its matches, and reads
+"Can't show that nothing is left out of runs 1 to 4" and "Not matching 3". It blocks
+`/api/runs`, reads "Couldn't check", and taps Check again at 390 px. It puts each row back in a
+`finally`. Command: `cd web && pnpm e2e e2e/complete-packs.spec.ts`; the whole suite with `pnpm e2e`.
+
+### Chunks
+
+| Chunk | Scenarios | Files owned |
+| ----- | --------- | ----------- |
+| A | 1–5 (API) | `api/`, `fixtures/join-vectors.json` |
+| B | 1–5 (page) and the e2e | `web/` |
+
+A, then B: B's tests read A's join vectors, and its e2e calls A's run route. Only A runs the API
+suite. No lockfile changes.
+
+### Risks
+
+| Risk | Mitigation |
+| ---- | ---------- |
+| The deadline is 25 Oct 2026, and no root exists until the operator switches the job (O2) | The page shows no panel without runs, so the slice can merge before the switch |
+| A phone hashes a long window slowly | The check yields between runs, and the panel says it can take a few seconds. Over 100 runs, the page asks in steps |
+| A detection stored after the cut, sealed with a failed run's records, reads as left out | The run route sends each store time, and the browser skips one stored after the cut in a run sealed after it (D123) |
+| The server hides a detection of the newest pass by dating it after the cut | Accepted (O7). The panel names its last run and that run's seal time |
+| The server sends no range, so no panel shows | Accepted (O6). The pack then claims only what it claims today (D125) |
+| Python and TypeScript disagree on a pair near 1,000 m | Both suites read `fixtures/join-vectors.json` |
+| The e2e's changes to runs 2 and 3 leak into other serial specs | Each change is put back in a `finally`, as `run-roots.spec.ts` does |
 
 ### Decisions to record
 
-Drafted at pause 1. `/build` appends them to `DECISIONS.md` and flips D24's Status line to
+Drafted at pauses 1 and 3. `/build` appends them to `DECISIONS.md` and flips D24's Status line to
 `superseded by D119`.
 
 ```markdown
@@ -256,6 +422,51 @@ downloads every record of each run in the window: about 1 MB gzipped for 4 days,
 Rejected: a button the reader taps (a print made without the tap has no result).
 Source: docs/specs/complete-packs.md
 Status: active
+
+## D122 · 2026-10-23 · Send every record of a pack's runs from a run route, at most 100 runs a request
+
+Why: the browser can rebuild a run's root only from all of its records (D108). A week's window
+held 19,398 detections and 890 forecasts, 2.0 MB gzipped (measured 23 Oct 2026). A route of its own
+keeps the pack's first answer as fast as today, and the check starts after the seal checks (D121).
+The cap bounds what one request to the open API reads, and the page asks in steps of 100 runs.
+Rejected: the records inside the fire route (every pack waits for megabytes before it shows), a
+list per concession inside each root (a new tree format and a recorder change two days before the
+deadline), a route per pack that works out its own window (the fire is grouped twice).
+Source: docs/specs/complete-packs.md
+Status: active
+
+## D123 · 2026-10-23 · End a pack's runs at the newest run holding a detection stored by the cut, and trust the server's store time only in runs sealed after the cut
+
+Why: the newest pass's run is sealed minutes after the pack's cut (D37), so a range of runs sealed
+by the cut would never check it. A run sealed before the cut holds only records stored before it,
+so there the browser ignores the server's store time. The browser refuses a range whose next run
+was sealed before the cut, or that misses a run holding one of the pack's detections.
+Rejected: only runs sealed by the cut (the newest pass is never checked), the server's store time
+in every run (it could date a detection after the cut to drop it), no store time at all (a
+detection stored after the cut, sealed with a failed run's records, would read as left out).
+Source: docs/specs/complete-packs.md
+Status: active
+
+## D124 · 2026-10-23 · Find a detection left out by the fire rule's 1 km and 48 hours alone, chained from the pack's detections
+
+Why: a detection belongs in the fire when a chain of pairs at most 1,000 m and 48 hours apart links
+it to the pack's detections (`fires.py`, step 2). Only that step decides which fire a detection is
+in. The page keeps `fires.py`'s haversine and limits, and both test suites read shared pairs.
+Rejected: all ten steps of the fire rule again in TypeScript (a second copy of the reading, to
+answer which detections are in the fire), the concession's other detections counted without the
+rule (a buyer can't tell which fire they belong to).
+Source: docs/specs/complete-packs.md
+Status: active
+
+## D125 · 2026-10-23 · Leave a pack that the API gives no runs as it reads today
+
+Why: the API gives no runs to a pack whose window holds no FireRuns run. A server that withholds
+them only takes the check away. The pack then says that the server chose its records and that
+FIRMS's archive shows a missing one (D98), and claims nothing more.
+Rejected: reading FireRuns' run 1 for every pack to catch a withheld range (a state and copy
+beyond the approved interface, for a case with no false claim).
+Source: docs/specs/complete-packs.md
+Status: active
 ```
 
 ## Open items
@@ -267,6 +478,8 @@ Status: active
 | O3 | FireRecords' seals have no list on the chain, and the public RPC reads 200 blocks of logs at a time. What does a pack say about detections sealed before run roots? | question | spec p1 | user | Resolved | 2026-10-23: check the runs only, and say plainly that the older detections can't be checked. FIRMS's archive shows whether one is missing (D120) |
 | O4 | The check needs every record of each run in the window: 2.0 MB gzipped for a week. Does it run when the pack opens, or when the reader asks? | question | spec p1 | user | Resolved | 2026-10-23: when the pack opens, after the seal checks, so a print always carries the result (D121) |
 | O5 | Which motion tier the new panel uses | question | spec p2 | user | Resolved | 2026-10-23: tier 1. The panel enters with the pack's existing `enter`, and nothing else moves |
+| O6 | A server can send a pack no runs. Then no panel shows, and the pack reads as today | flag | spec p3 | user | Accepted risk | 2026-10-23: the pack then makes no false claim; it only loses the check, and keeps D98's lines. A chain read of run 1 for every pack would add a state beyond the approved interface (D125) |
+| O7 | In a run sealed after the cut, the browser takes the server's store time. A server can drop a detection of the newest pass by dating it after the cut | flag | spec p3 | user | Accepted risk | 2026-10-23: the panel names its last run and that run's seal time, and every run sealed before the cut is checked on chain facts alone. Checking only runs sealed by the cut would never check the newest pass (D123) |
 
 _Never delete this section or its rows. See references/ledger.md._
 
@@ -282,4 +495,8 @@ _Never delete this section or its rows. See references/ledger.md._
 - **RPC**: the server a browser asks to read the chain.
 - **`eth_getLogs`**: the RPC call that lists a contract's events, such as each seal.
 - **gzip**: the compression the API already applies to its answers.
+- **Multicall3**: a contract that answers many chain reads in one call (D38).
+- **Haversine**: the distance between two points on a sphere, as `fires.py` measures it.
+- **Store time**: when Fire Watch stored a record (`created_at`). Only the server knows it.
+- **Yield**: hand control back to the page between pieces of work, so it stays responsive.
 - **e2e**: end-to-end: one test that walks the whole slice as a user would.
