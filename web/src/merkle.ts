@@ -16,3 +16,10 @@ const pair = (a: Hex, b: Hex): Hex => {
 export function rootFrom(leafHash: Hex, proof: readonly Hex[]): Hex {
   return proof.reduce(pair, leafHash);
 }
+
+/** The root of a run's leaves: sorted, each pair hashed, an odd node at the end of a level moved up unchanged. */
+export function rootOf(leaves: Hex[]): Hex {
+  let level = [...leaves].sort();
+  while (level.length > 1) level = level.flatMap((n, i) => (i % 2 ? [] : [i + 1 < level.length ? pair(n, level[i + 1]) : n]));
+  return level[0];
+}
