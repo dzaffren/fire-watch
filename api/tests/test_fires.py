@@ -2,7 +2,11 @@ import json
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+import pytest
+
 from firewatch.fires import (
+    JOIN_M,
+    JOIN_TIME,
     RULE_VERSION,
     Detection,
     FirstSeen,
@@ -16,6 +20,8 @@ ROOT = Path(__file__).parents[2]
 SCENARIOS = json.loads((ROOT / "fixtures" / "fires" / "scenarios.json").read_text())
 # The landing's example fire as its pack stands at 17 Oct 2026 09:00 UTC: 283 detections.
 PACK_0332 = json.loads((ROOT / "web" / "public" / "case" / "pack-0332.json").read_text())
+# Real fire-origin.csv pairs on both sides of 1 km and 48 hours; leftOut.test.ts reads them too.
+JOIN_VECTORS = json.loads((ROOT / "fixtures" / "join-vectors.json").read_text())
 STARTED = datetime.fromisoformat(SCENARIOS["recording_started"])
 T0 = datetime(2026, 10, 13, 6, 0, tzinfo=timezone.utc)
 # One degree of latitude on the 6,371,008.8 m sphere is 111,195.08 m.
@@ -150,6 +156,27 @@ def test_joins_at_999_m_not_at_1001_m():
 def test_joins_at_47_h_not_at_49_h():
     assert len(group([det(1), det(2, minutes=47 * 60)], None)) == 1
     assert len(group([det(1), det(2, minutes=49 * 60)], None)) == 2
+
+
+def vector_detection(n, point):
+    return Detection(
+        record_id=bytes([n]) * 32,
+        lat_e5=point["lat_e5"],
+        lon_e5=point["lon_e5"],
+        acquired_at=datetime.fromtimestamp(point["acquired_unix"], timezone.utc),
+        inside=True,
+        edge_m=0,
+    )
+
+
+@pytest.mark.parametrize("vector", JOIN_VECTORS, ids=[v["name"] for v in JOIN_VECTORS])
+def test_join_vectors(vector):
+    a, b = vector_detection(1, vector["a"]), vector_detection(2, vector["b"])
+    distance = distance_m(a, b)
+    assert distance == vector["distance_m"]
+    assert (distance <= JOIN_M and abs(b.acquired_at - a.acquired_at) <= JOIN_TIME) is vector[
+        "joins"
+    ]
 
 
 def test_new_pass_after_more_than_30_minutes():
