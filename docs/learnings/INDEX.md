@@ -45,3 +45,6 @@
 - Prove each test for pause 2 code with a mutant; it passes the first time it runs — [pause-2-code-needs-mutants](pause-2-code-needs-mutants.md)
 - Stage an old FireRecords seal before the run root that would hold it; never pull a row out of a sealed root — [never-move-rows-out-of-a-sealed-root](never-move-rows-out-of-a-sealed-root.md)
 - Put back every e2e database edit in a `finally`; a later spec's pack checks whole runs — [e2e-edits-must-be-put-back](e2e-edits-must-be-put-back.md)
+- Write a spike's method into its ledger row; its code is deleted, and `/build` may need to explain a gap — [spike-method-in-the-ledger](spike-method-in-the-ledger.md)
+- Never name a scratch script after a stdlib module; run scratch Python with `-I` — [scratch-script-names](scratch-script-names.md)
+- Scope a pack test's damage figures to the first `dl`; the pack's working repeats the labels — [pack-repeats-damage-labels](pack-repeats-damage-labels.md)
