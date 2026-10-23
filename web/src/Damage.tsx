@@ -1,3 +1,6 @@
+// NASA's MODIS MCD64A1 C6.1 over 2023's detection pixels near concessions: the ground it found
+// burned, in patches of more than 20 joined squares and in all, from damage-check-2023 (D126, D127).
+import check2023 from "../../fixtures/damage/2023-check.json";
 import type { Damage, FireDetail } from "./api";
 import { count } from "./format";
 import { ExternalIcon } from "./icons";
@@ -12,14 +15,6 @@ const CO2_PER_C = 44 / 12;
 // The World Bank's "The Cost of Fire" (2016): Indonesia's 2015 fires (D61).
 const COST_USD = 16.1e9;
 const COST_HA = 2.6e6;
-
-// NASA's MODIS MCD64A1 C6.1 over 2023's detection pixels near concessions: the ground it found
-// burned, in patches of more than 20 joined squares and in all (D126, D127).
-const CHECK_2023 = {
-  peat: { ha: 31915, share: 0.611 },
-  other: { ha: 25535, share: 0.416 },
-  all: { ha: 456345, share: 0.148 },
-};
 
 const peatCo2 = (dm: number) => ((dm * PEAT_CO2_C) / 1000) * CO2_PER_C;
 const OTHER_CO2_HA = (OTHER_DM * OTHER_CO2) / 1000;
@@ -44,10 +39,10 @@ export function estimate(d: Damage) {
   const other = d.inside_other_ha + d.outside_other_ha;
   const inside = d.inside_peat_ha + d.inside_other_ha;
   // The CO2 and the cost follow the ground that likely burned, not the whole pixels (D126).
-  const peatBurned = peat * CHECK_2023.peat.share;
-  const otherBurned = other * CHECK_2023.other.share;
-  const insidePeatBurned = d.inside_peat_ha * CHECK_2023.peat.share;
-  const insideOtherBurned = d.inside_other_ha * CHECK_2023.other.share;
+  const peatBurned = peat * check2023.peat.share;
+  const otherBurned = other * check2023.other.share;
+  const insidePeatBurned = d.inside_peat_ha * check2023.peat.share;
+  const insideOtherBurned = d.inside_other_ha * check2023.other.share;
   const co2 = (dm: number, peatHa: number, otherHa: number) => peatHa * peatCo2(dm) + otherHa * OTHER_CO2_HA;
   return {
     peat,
@@ -100,7 +95,7 @@ function DamageFigures({ d }: { d: Damage }) {
         <dd>
           <span className="damage-value">About {ha(e.burned)}</span>
           <span className="sub">
-            At NASA's 2023 shares: {percent(CHECK_2023.peat.share)} of peat, {percent(CHECK_2023.other.share)} of other
+            At NASA's 2023 shares: {percent(check2023.peat.share)} of peat, {percent(check2023.other.share)} of other
             ground.{inside(ha(e.burnedInside))}
           </span>
         </dd>
@@ -179,18 +174,18 @@ function DamageMethod({ d, labelledBy }: { d: Damage; labelledBy: string }) {
           <tbody>
             <tr>
               <th scope="row">Peat, in large patches</th>
-              <td className="num">{count(CHECK_2023.peat.ha)} ha</td>
-              <td className="num">{percent(CHECK_2023.peat.share, 1)}</td>
+              <td className="num">{count(check2023.peat.ha)} ha</td>
+              <td className="num">{percent(check2023.peat.share, 1)}</td>
             </tr>
             <tr>
               <th scope="row">Other ground, in large patches</th>
-              <td className="num">{count(CHECK_2023.other.ha)} ha</td>
-              <td className="num">{percent(CHECK_2023.other.share, 1)}</td>
+              <td className="num">{count(check2023.other.ha)} ha</td>
+              <td className="num">{percent(check2023.other.share, 1)}</td>
             </tr>
             <tr>
               <th scope="row">All ground</th>
-              <td className="num">{count(CHECK_2023.all.ha)} ha</td>
-              <td className="num">{percent(CHECK_2023.all.share, 1)}</td>
+              <td className="num">{count(check2023.all.ha)} ha</td>
+              <td className="num">{percent(check2023.all.share, 1)}</td>
             </tr>
           </tbody>
         </table>
@@ -202,7 +197,7 @@ function DamageMethod({ d, labelledBy }: { d: Damage; labelledBy: string }) {
       <dl className="fw-kv">
         <dt>Likely burned</dt>
         <dd>
-          {percent(CHECK_2023.peat.share, 1)} of the peat and {percent(CHECK_2023.other.share, 1)} of the other ground in
+          {percent(check2023.peat.share, 1)} of the peat and {percent(check2023.other.share, 1)} of the other ground in
           its pixels.
         </dd>
         <dt>CO₂ on peat</dt>

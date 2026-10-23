@@ -11,8 +11,9 @@ const OFF_PEAT: Damage = { inside_peat_ha: 0, inside_other_ha: 0, outside_peat_h
 const STILL: Damage = { inside_peat_ha: 58.25, inside_other_ha: 0, outside_peat_ha: 0, outside_other_ha: 0 };
 
 const NOT_MEASURED =
-  "An estimate, not a measurement. A detection means fire somewhere in its 375 m pixel, so less ground may have burned.";
+  "An estimate, not a measurement. A detection means fire somewhere in its 375 m pixel, not that the whole pixel burned.";
 const NEVER_SPREAD = "This fire never spread. If it is a fixed heat source, such as a mill, little or nothing here burned.";
+const SHARES = "At NASA's 2023 shares: 62% of peat, 42% of other ground.";
 
 // Hotspot B of fire-record scenario 1: one detection, 371 m outside ID-WOOD-CONCESSION-0377.
 const B: FireSummary = {
@@ -56,16 +57,19 @@ describe("amount", () => {
 });
 
 describe("estimate", () => {
-  it("works out the 0332 fire's ground, CO2 and cost, whole and inside", () => {
+  it("works out the 0332 fire's ground, what likely burned at the 2023 shares, and its CO2 and cost", () => {
     const e = estimate(PEAT_FIRE);
     expect(e.ha).toBeCloseTo(209.82, 2);
     expect(e.haInside).toBeCloseTo(59.21, 2);
-    expect(Math.round(e.co2)).toBe(122648);
-    expect(Math.round(e.co2Low)).toBe(59283);
-    expect(Math.round(e.co2High)).toBe(186013);
-    expect(Math.round(e.co2Inside)).toBe(35560);
-    expect(Math.round(e.cost)).toBe(1299270);
-    expect(Math.round(e.costInside)).toBe(366647);
+    // 203.52 ha of peat at 61.8% and 6.30 ha of other ground at 42.2%.
+    expect(e.burned).toBeCloseTo(128.43, 2);
+    expect(e.burnedInside).toBeCloseTo(36.59, 2);
+    expect(Math.round(e.co2)).toBe(75714);
+    expect(Math.round(e.co2Low)).toBe(36555);
+    expect(Math.round(e.co2High)).toBe(114874);
+    expect(Math.round(e.co2Inside)).toBe(21976);
+    expect(Math.round(e.cost)).toBe(795303);
+    expect(Math.round(e.costInside)).toBe(226588);
   });
 });
 
@@ -74,34 +78,37 @@ describe("DamagePanel", () => {
     render(<DamagePanel fire={fireOf(summaryOf(FIRES.outside), PEAT_FIRE)} />);
 
     expect(figure("Ground in its pixels")).toEqual(["About 210 ha", "59 ha of it inside the concession."]);
-    expect(figure("CO₂ released")).toEqual(["About 120,000 t", "Likely 59,000 to 190,000 t. 36,000 t of it inside the concession."]);
+    expect(figure("Likely burned")).toEqual(["About 130 ha", `${SHARES} 37 ha of it inside the concession.`]);
+    expect(figure("CO₂ released")).toEqual(["About 76,000 t", "Likely 37,000 to 110,000 t. 22,000 t of it inside the concession."]);
     expect(figure("Cost")).toEqual([
-      "About US$1.3 million",
-      "At Indonesia's 2015 average of US$6,192 a hectare. US$370,000 of it inside the concession.",
+      "About US$800,000",
+      "At Indonesia's 2015 average of US$6,192 a hectare. US$230,000 of it inside the concession.",
     ]);
     // A number keeps its unit on its line.
     expect(panel().textContent).toContain("About 210 ha");
-    expect(panel().textContent).toContain("About US$1.3 million");
+    expect(panel().textContent).toContain("About 130 ha");
     expect(within(panel()).getByText(NOT_MEASURED)).toBeInTheDocument();
     expect(within(panel()).queryByText(/of this ground is inside the concession\.$/)).toBeNull();
     expect(within(panel()).queryByText(NEVER_SPREAD)).toBeNull();
   });
 
-  it("counts a fire off peat as burned vegetation, with no range", () => {
+  it("scales a fire off peat by the other-ground share, with no range", () => {
     render(<DamagePanel fire={fireOf(B, OFF_PEAT)} />);
 
     expect(figure("Ground in its pixels")).toEqual(["About 14 ha"]);
-    expect(figure("CO₂ released")).toEqual(["About 940 t"]);
-    expect(figure("Cost")).toEqual(["About US$87,000", "At Indonesia's 2015 average of US$6,192 a hectare."]);
+    expect(figure("Likely burned")).toEqual(["About 5.9 ha", SHARES]);
+    expect(figure("CO₂ released")).toEqual(["About 400 t"]);
+    expect(figure("Cost")).toEqual(["About US$37,000", "At Indonesia's 2015 average of US$6,192 a hectare."]);
     expect(within(panel()).getByText("None of this ground is inside the concession.")).toBeInTheDocument();
-    expect(panel().textContent).not.toMatch(/Likely|of it inside/);
+    expect(panel().textContent).not.toMatch(/Likely \d|of it inside/);
   });
 
   it("puts the never-spread caveat above a fire's figures", () => {
     render(<DamagePanel fire={fireOf(summaryOf(FIRES.still), STILL)} />);
 
     expect(figure("Ground in its pixels")).toEqual(["About 58 ha"]);
-    expect(figure("CO₂ released")).toEqual(["About 35,000 t", "Likely 17,000 to 53,000 t."]);
+    expect(figure("Likely burned")).toEqual(["About 36 ha", SHARES]);
+    expect(figure("CO₂ released")).toEqual(["About 22,000 t", "Likely 10,000 to 33,000 t."]);
     expect(within(panel()).getByText("All of this ground is inside the concession.")).toBeInTheDocument();
     const caveat = within(panel()).getByText(NEVER_SPREAD);
     expect(caveat.compareDocumentPosition(panel().querySelector("dl")!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
@@ -117,6 +124,24 @@ describe("DamagePanel", () => {
       ["Inside the concession", "59.21 ha", "0.00 ha"],
       ["Outside", "144.31 ha", "6.30 ha"],
     ]);
+    expect(
+      within(panel()).getByText(/The ground that likely burned is each part at the share NASA found burned in 2023, below\.$/),
+    ).toBeInTheDocument();
+
+    const check = within(panel()).getByRole("table", { name: /^In 2023, NASA's MODIS burned-area map checked the squares/ });
+    expect(within(check).getAllByRole("row").map((r) => [...r.children].map((c) => c.textContent))).toEqual([
+      ["", "Ground in its pixels", "Found burned"],
+      ["Peat, in large patches", "31,915 ha", "61.8%"],
+      ["Other ground, in large patches", "25,536 ha", "42.2%"],
+      ["All ground", "456,345 ha", "15.1%"],
+    ]);
+    expect(
+      within(panel()).getByText(
+        "A large patch is more than 20 squares that touch. MODIS's 500 m pixels miss small burns, so the shares come from large patches, which it can see. A small fire may have burned less than these shares.",
+      ),
+    ).toBeInTheDocument();
+    const factors = within(panel()).getAllByText("Likely burned", { selector: "dt" })[1];
+    expect(factors.nextElementSibling?.textContent).toBe("61.8% of the peat and 42.2% of the other ground in its pixels.");
     expect(within(panel()).getByText("CO₂ on peat", { selector: "dt" }).nextElementSibling?.textContent).toMatch(
       /^600\.6 t a hectare, likely 289\.2 to 911\.9\./,
     );
@@ -125,7 +150,7 @@ describe("DamagePanel", () => {
     );
     expect(
       within(panel()).getByText(
-        "Methane and carbon monoxide are left out. This estimate is not sealed. Its detections are sealed, and the map and the factors are pinned, so anyone can redo it.",
+        "Methane and carbon monoxide are left out. This estimate is not sealed. Its detections are sealed, and the maps, the 2023 check and the factors are pinned, so anyone can redo it.",
       ),
     ).toBeInTheDocument();
     expect(within(panel()).getAllByRole("link").map((a) => [a.textContent, a.getAttribute("href")])).toEqual([
@@ -140,6 +165,11 @@ describe("DamagePanel", () => {
       ["World Bank, The Cost of Fire (2016)", "https://openknowledge.worldbank.org/entities/publication/391e19f4-18f7-56c2-8c28-bb89cc9e7d6f"],
       ["WRI Global Peatlands, v20230315, CC BY 4.0", "https://data.globalforestwatch.org/datasets/gfw::global-peatlands/about"],
       ["The peat map's tiles and their sha256", "https://github.com/dzaffren/fire-watch/blob/main/api/src/firewatch/peat.py"],
+      ["NASA MODIS Burned Area, MCD64A1 Collection 6.1", "https://lpdaac.usgs.gov/products/mcd64a1v061/"],
+      [
+        "The 2023 check, its files and their sha256",
+        "https://github.com/dzaffren/fire-watch/blob/main/api/src/firewatch/damage_check.py",
+      ],
     ]);
   });
 
