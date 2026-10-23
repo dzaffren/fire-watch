@@ -418,16 +418,34 @@ def _method(made: list[Replayed], outcomes: list[str], said: list[datetime | Non
     return {**counts, "median_hours_off": round(statistics.median(off), 1) if off else None}
 
 
+def _part(
+    made: list[Replayed], outcomes: list[str], said: list[datetime | None], judged: bool
+) -> dict:
+    """A method's counts on the forecasts made before JUDGED_FROM, or from it, with no hours off."""
+    kept = [i for i, r in enumerate(made) if (r.forecast.made_at >= JUDGED_FROM) == judged]
+    counts = _method([made[i] for i in kept], [outcomes[i] for i in kept], [said[i] for i in kept])
+    del counts["median_hours_off"]
+    return counts
+
+
 def totals(made: list[Replayed], guesses: dict[str, list[datetime | None]]) -> dict:
     outcomes = [outcome_of(r) for r in made]
+    rule = [r.forecast.inside_by_at for r in made]
+    split = {
+        "v2_candidate": guesses["v2_candidate"], "near_edge": guesses["near_edge"], "rule": rule,
+    }
     return {
         "rule_version": forecast.RULE_VERSION,
         "forecasts": len(made),
         "joined": outcomes.count("joined"),
         "seen_before_made": outcomes.count("seen_before_made"),
         "ends_after_2023": outcomes.count("ends_after_2023"),
-        "rule": _method(made, outcomes, [r.forecast.inside_by_at for r in made]),
+        "rule": _method(made, outcomes, rule),
         **{name: _method(made, outcomes, said) for name, said in guesses.items()},
+        **{
+            part: {name: _part(made, outcomes, said, judged) for name, said in split.items()}
+            for part, judged in (("picked_on", False), ("judged_on", True))
+        },
     }
 
 
@@ -457,7 +475,9 @@ def forecasts_csv(made: list[Replayed], guesses: dict[str, list[datetime | None]
 def main(argv: list[str] | None = None, client: httpx.Client | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="backtest-2023",
-        description="Replay 2023 with forecast rule version 1 and three guesses.",
+        description=(
+            "Replay 2023 with forecast rule version 1, three guesses and the rule version 2 tried."
+        ),
     )
     parser.add_argument("--firms", type=Path, help="a FIRMS CSV, read as is")
     parser.add_argument("--map", type=Path, help="a Trase GeoJSON map, read as is")
@@ -507,13 +527,16 @@ def main(argv: list[str] | None = None, client: httpx.Client | None = None) -> i
     args.out.mkdir(parents=True, exist_ok=True)
     (args.out / "2023.json").write_text(json.dumps(result, indent=2) + "\n")
     (args.out / "2023-forecasts.csv").write_text(forecasts_csv(made, guesses))
-    rule = result["rule"]
+    rule, judged = result["rule"], result["judged_on"]
     print(
         f"replayed year=2023 detections={len({d.record_id for ds in found.values() for d in ds})}"
         f" forecasts={len(made)} arrivals={rule['warned'] + rule['missed']}"
         f" rule_warned={rule['warned']} downwind_warned={result['downwind']['warned']}"
         f" near_edge_warned={result['near_edge']['warned']}"
         f" next_pass_warned={result['next_pass']['warned']}"
+        f" v2_candidate_warned={result['v2_candidate']['warned']}"
+        f" judged_v2_candidate={judged['v2_candidate']['warned']}"
+        f" judged_near_edge={judged['near_edge']['warned']}"
         f" seconds={round(time.perf_counter() - began)}"
     )
     return 0
