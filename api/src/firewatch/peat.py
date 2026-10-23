@@ -78,15 +78,16 @@ SELECT %(map_version)s, (ST_Dump(ST_Subdivide(ST_SetSRID(ST_GeomFromGeoJSON(geom
 FROM peat_cut
 """
 HAS_PEAT = "SELECT EXISTS (SELECT 1 FROM peat) AS found"
-DAMAGE = """
+# Step 2, from a row's lat_e5 and lon_e5.
+POINT = "ST_SetSRID(ST_MakePoint(lon_e5 / 1e5, lat_e5 / 1e5), 4326)"
+SQUARE = f"""ST_Transform(ST_Expand(ST_Transform(
+    {POINT},
+    CASE WHEN lat_e5 >= 0 THEN 32600 ELSE 32700 END + floor((lon_e5 / 1e5 + 180) / 6)::integer + 1
+), 187.5), 4326)"""
+DAMAGE = f"""
 WITH squares AS (
-    SELECT ST_Union(ST_Transform(ST_Expand(ST_Transform(point, zone), 187.5), 4326)) AS geom
-    FROM (
-        SELECT ST_SetSRID(ST_MakePoint(lon_e5 / 1e5, lat_e5 / 1e5), 4326) AS point,
-               CASE WHEN lat_e5 >= 0 THEN 32600 ELSE 32700 END
-                   + floor((lon_e5 / 1e5 + 180) / 6)::integer + 1 AS zone
-        FROM hotspots WHERE record_id = ANY(%(record_ids)s)
-    ) AS d
+    SELECT ST_Union({SQUARE}) AS geom
+    FROM hotspots WHERE record_id = ANY(%(record_ids)s)
 ), parts AS (
     SELECT ST_Intersection(s.geom, c.boundary) AS inside,
            ST_Difference(s.geom, c.boundary) AS outside
