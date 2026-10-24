@@ -41,3 +41,10 @@ export const PauseIcon = () => (
     <rect x="14" y="4" width="4" height="16" rx="1" />
   </svg>
 );
+// The Clasp logo's small cut (docs/design/logo/fire-watch-symbol-small.svg): the ring takes the text colour, the square the fire colour.
+export const LogoMark = () => (
+  <svg className="logo-mark" width="24" height="24" viewBox="0 0 256 256" aria-hidden="true">
+    <path fill="currentColor" d="M204.98 56.22A112 112 0 1 0 204.98 199.78L174.27 174.14A72 72 0 1 1 174.27 81.86Z" />
+    <path className="logo-fire" d="M173 90h76v76h-76Z" />
+  </svg>
+);

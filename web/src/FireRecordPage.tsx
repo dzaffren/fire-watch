@@ -9,7 +9,7 @@ import { FireMap } from "./FireMap";
 import { ForecastPanel, type ForecastCheck } from "./ForecastPanel";
 import { fireArea, fireDots, FireView, passTimes, Replay, type FireLoad } from "./FireView";
 import { count, detectedShort, location } from "./format";
-import { ChevronLeftIcon, ExternalIcon } from "./icons";
+import { ChevronLeftIcon, ExternalIcon, LogoMark } from "./icons";
 import { checkSeal, LoadErrorPanel, LoadingPanel, RecordPanel, type SealCheck } from "./RecordPanel";
 
 /** Where the page gets its data; the preview passes fixtures, the app passes the API and the chain. */
@@ -203,7 +203,7 @@ export function FireRecordPage({ source, today, initialView, initialDates, now =
   return (
     <div className="app">
       <header className="app-top">
-        <span className="app-name">Fire Watch</span>
+        <span className="app-name"><LogoMark />Fire Watch</span>
         <div className="app-top-end">
           <p className="fw-help">Records are sealed on Base Sepolia, a test network</p>
           {aboutHref && <a className="fw-link" href={aboutHref}>About Fire Watch</a>}

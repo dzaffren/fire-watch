@@ -2,6 +2,7 @@ import { Fragment, useState } from "react";
 import { FireGlobe } from "./FireGlobe";
 import { count } from "./format";
 import { DAY_DETECTIONS, DAY_DETECTIONS_INDONESIA } from "./globe";
+import { LogoMark } from "./icons";
 import { RealCase, type CaseSource } from "./RealCase";
 
 // The tool at its own link (D74), and the example fire's complaint pack, cut at 17 Oct 2026 09:00 UTC: 283 sealed
@@ -34,7 +35,7 @@ export function Landing({ caseSource }: { caseSource: CaseSource }) {
   return (
     <div className="landing">
       <header className="app-top">
-        <span className="app-name">Fire Watch</span>
+        <span className="app-name"><LogoMark />Fire Watch</span>
         <a className="fw-link" href={TOOL_HREF}>Open the tool</a>
       </header>
       <main className="landing-main">

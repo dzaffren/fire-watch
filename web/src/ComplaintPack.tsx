@@ -6,7 +6,7 @@ import { DamageSection } from "./Damage";
 import { FireMap } from "./FireMap";
 import { fireArea, fireDots, JoinedTable, MissedNote, OriginMethod, OriginNotes, passTimes, RecordsBegin, Replay, SideFrom, where } from "./FireView";
 import { count, detected, detectedShort, distance, firstSeenLine, location, plural, shortHash } from "./format";
-import { AlertIcon, BadIcon, ExternalIcon, OkIcon } from "./icons";
+import { AlertIcon, BadIcon, ExternalIcon, LogoMark, OkIcon } from "./icons";
 import { checkSeal, checkTitle, Chip, overall, RecordPanel, type Check, type SealCheck } from "./RecordPanel";
 
 /** A run's root on FireRuns: its number, and its seal time by the chain's clock. */
@@ -207,7 +207,7 @@ export function ComplaintPack({ source, packRef, initialOpen = null }: Props) {
   return (
     <div className="app">
       <header className="app-top">
-        <span className="app-name">Fire Watch</span>
+        <span className="app-name"><LogoMark />Fire Watch</span>
         <p className="fw-help">Records are sealed on Base Sepolia, a test network</p>
       </header>
       <main className="app-main app-main--pack">
