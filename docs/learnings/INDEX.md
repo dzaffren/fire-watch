@@ -57,3 +57,4 @@
 - Split a joined pair's shared pass before measuring from one fire of the two — [joined-fire-own-detections](joined-fire-own-detections.md)
 - Read the records-begin note on the example pack; the e2e's 0332 fire has none — [e2e-0332-no-records-begin](e2e-0332-no-records-begin.md)
 - Rerun the web unit suite before blaming a branch for a FireMap or left-out timing failure — [two-web-unit-flakes](two-web-unit-flakes.md)
+- Fire `beforeprint` before print media in an e2e; print tokens swap only the grounds — [print-needs-beforeprint](print-needs-beforeprint.md)

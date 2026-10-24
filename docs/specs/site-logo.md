@@ -1,6 +1,6 @@
 # Site logo
 
-**Version:** v1 · **Status:** Refined · **Type:** Enhancement · **Project type:** Web UI
+**Version:** v1 · **Status:** Built · **Type:** Enhancement · **Project type:** Web UI
 
 **Depends on:** None
 
@@ -218,7 +218,7 @@ theme and print token blocks in `docs/design/design-system/tokens/colors.css`, a
 **E2E:** `site-logo.spec.ts` opens `/` in light, checks the header's accessible name, and checks the
 ring and square fills against `--fw-ink` and `--fw-fire`. It switches to dark and checks again,
 then opens `/?tool` and checks the same mark there. It fetches the three icon links, then opens the
-example pack and checks the fills in print media. The colours are read from the tokens and not
+example pack, fires `beforeprint` as a browser does before it prints, and checks the fills in print media. The colours are read from the tokens and not
 written as hex, as `docs/learnings/no-hex-in-tests.md` says. The pause-2 code passed before this
 test existed, so each check is proven with a mutant, as `docs/learnings/pause-2-code-needs-mutants.md` says.
 
