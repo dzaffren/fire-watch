@@ -235,14 +235,7 @@ Single chunk.
 
 ### Decisions to record
 
-## D148 · 2026-10-24 · The logo's square is the one use of the fire colour away from the map
-
-Why: the Clasp mark's square stands for a fire, so ember there obeys the rule that fire colour is
-for fire marks. The design-system readme names the logo, so nobody reads it as a breach.
-Rejected: an ink-only mark in the app with ember only in the favicon (two versions of one mark, and
-the app's mark loses the fire it stands for).
-Source: docs/specs/site-logo.md
-Status: active
+Recorded as D148.
 
 ## Open items
 
