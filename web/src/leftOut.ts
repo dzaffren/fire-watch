@@ -1,35 +1,17 @@
 import { zeroHash, type Hex } from "viem";
 import type { HotspotRecord, PackDetail } from "./api";
 import type { LeftOutCheck } from "./ComplaintPack";
-import { fingerprint, forecastFingerprint, type ForecastFields, type Point } from "./fingerprint";
+import { fingerprint, forecastFingerprint, type ForecastFields } from "./fingerprint";
 import { leaf, rootOf } from "./merkle";
+import { JOIN_S, joins, type Detection } from "./sameFire";
 
-// The fire rule's step 2, as api/src/firewatch/fires.py has it (D124).
-export const JOIN_M = 1000;
-export const JOIN_S = 48 * 3600;
-const EARTH_RADIUS_M = 6371008.8;
-
-const radians = (degrees: number) => degrees * (Math.PI / 180);
-
-/** Haversine metres between two points, in fires.py's distance_m's order of operations, so both give the same float. */
-export function distanceM(a: Point, b: Point): number {
-  const [latA, latB] = [radians(a.lat_e5 / 1e5), radians(b.lat_e5 / 1e5)];
-  const dLat = latB - latA;
-  const dLon = radians((b.lon_e5 - a.lon_e5) / 1e5);
-  const h = Math.sin(dLat / 2) ** 2 + Math.cos(latA) * Math.cos(latB) * Math.sin(dLon / 2) ** 2;
-  return 2 * EARTH_RADIUS_M * Math.asin(Math.sqrt(h));
-}
+export { distanceM, JOIN_M, JOIN_S } from "./sameFire";
 
 /** Every record of a range of FireRuns runs, as the API's run route sends it, with each detection's store time. */
 export interface RunRecords {
   hotspots: (HotspotRecord & { run: number; stored_unix: number })[];
   forecasts: (ForecastFields & { record_id: Hex; run: number })[];
 }
-
-type Detection = Point & { acquired_unix: number };
-
-const joins = (a: Detection, b: Detection) =>
-  distanceM(a, b) <= JOIN_M && Math.abs(a.acquired_unix - b.acquired_unix) <= JOIN_S;
 
 /** Checks a pack's runs against FireRuns' roots and seal times, and lists each detection the fire rule
  *  joins to the pack that the pack lacks (D119, D123, D124). Yields to the page between runs. */

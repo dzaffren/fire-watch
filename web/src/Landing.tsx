@@ -41,12 +41,12 @@ export function Landing({ caseSource }: { caseSource: CaseSource }) {
         <div className="landing-hero">
           <section className="landing-intro" aria-labelledby="h-landing">
             <h1 id="h-landing">
-              When a company says a fire spread in from outside its land, show where satellites first saw it.
+              When a company says a fire spread in from outside its land, show where the satellite first saw it.
             </h1>
             <p className="landing-lede">
               Fire Watch is built for the watchdog groups that report plantation fires to the companies that buy from
-              the plantation. It shows where satellites first saw a fire and how it spread, on records the buyer checks
-              in their own browser.
+              the plantation. It shows where NASA's NOAA-20 satellite first saw a fire and how it spread, on records the
+              buyer checks in their own browser.
             </p>
             <div className="landing-actions">
               <a className="fw-btn" href="#case">Walk through a real case</a>
@@ -63,15 +63,16 @@ export function Landing({ caseSource }: { caseSource: CaseSource }) {
             <figcaption>
               {arrived ? (
                 <p>
-                  A fire in ID-WOOD-CONCESSION-0332, Central Kalimantan, on 14 Oct 2026. The satellite first saw it on
-                  12 Oct as one detection, 3,100 m outside the concession. On 14 Oct it joined a second fire, first seen
-                  the day before on both sides of the edge.{" "}
+                  A fire in ID-WOOD-CONCESSION-0332, Central Kalimantan, on 14 Oct 2026. Fire Watch's records first show
+                  it on 12 Oct as one detection, 3,100 m outside the concession. On 14 Oct it joined a second fire, first
+                  recorded the day before on both sides of the edge.{" "}
                   <a className="fw-link" href={EXAMPLE_PACK_HREF}>See its complaint pack</a>
                 </p>
               ) : (
                 <p>
-                  Every dot is one detection by the NOAA-20 satellite on 14 Oct 2026: {count(DAY_DETECTIONS)}{" "}
-                  worldwide, {count(DAY_DETECTIONS_INDONESIA)} of them in and around Indonesia.
+                  Each dot is a square about 1 km across where the NOAA-20 satellite detected fire on 14 Oct 2026, and
+                  near the example fire, one detection. That day it made {count(DAY_DETECTIONS)} detections worldwide,{" "}
+                  {count(DAY_DETECTIONS_INDONESIA)} of them in and around Indonesia.
                 </p>
               )}
               {!atFire && (

@@ -4,7 +4,7 @@ import type { HotspotRecord, PackDetail, PackRef } from "./api";
 import type { Seal } from "./chain";
 import { DamageSection } from "./Damage";
 import { FireMap } from "./FireMap";
-import { fireArea, fireDots, JoinedTable, MissedNote, OriginMethod, OriginNotes, passTimes, Replay, where } from "./FireView";
+import { fireArea, fireDots, JoinedTable, MissedNote, OriginMethod, OriginNotes, passTimes, Replay, SideFrom, where } from "./FireView";
 import { count, detected, detectedShort, distance, firstSeenLine, location, plural, shortHash } from "./format";
 import { AlertIcon, BadIcon, ExternalIcon, OkIcon } from "./icons";
 import { checkSeal, checkTitle, Chip, overall, RecordPanel, type Check, type SealCheck } from "./RecordPanel";
@@ -331,13 +331,17 @@ export function ComplaintPack({ source, packRef, initialOpen = null }: Props) {
                   {pack.inside_from_unix !== null && pack.first_seen.reading !== "inside" && (
                     <>
                       <dt>Seen inside from</dt>
-                      <dd>{detected(pack.inside_from_unix)}</dd>
+                      <dd>
+                        <SideFrom fire={pack} id={pack.concession_id} inside />
+                      </dd>
                     </>
                   )}
                   {pack.outside_from_unix !== null && pack.first_seen.reading !== "outside" && (
                     <>
                       <dt>Seen outside from</dt>
-                      <dd>{detected(pack.outside_from_unix)}</dd>
+                      <dd>
+                        <SideFrom fire={pack} id={pack.concession_id} inside={false} />
+                      </dd>
                     </>
                   )}
                   <dt>Last seen</dt>

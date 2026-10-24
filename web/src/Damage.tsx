@@ -102,8 +102,9 @@ function DamageFigures({ d }: { d: Damage }) {
         <dd>
           <span className="damage-value">About {ha(e.burned)}</span>
           <span className="sub">
-            At NASA's 2023 shares: {percent(check2023.peat.share)} of peat, {percent(check2023.other.share)} of other
-            ground.{inside(ha(e.burnedInside))}
+            At the shares Fire Watch measured on NASA's 2023 burned-area map, in large patches:{" "}
+            {percent(check2023.peat.share)} of peat, {percent(check2023.other.share)} of other ground.
+            {inside(ha(e.burnedInside))}
           </span>
         </dd>
         <dt>CO₂ released</dt>
@@ -149,7 +150,8 @@ function DamageMethod({ d, labelledBy }: { d: Damage; labelledBy: string }) {
       <p className="fw-help">
         Each detection stands for a 375 m square of ground around it. Where squares from different passes overlap, the
         ground counts once. The ground is split at the concession's edge, and by WRI's Global Peatlands map into peat
-        and other ground. The ground that likely burned is each part at the share NASA found burned in 2023, below.
+        and other ground. The ground that likely burned is each part at the share that Fire Watch found burned on
+        NASA's 2023 map, below.
       </p>
       <div className="table-box">
         <table className="fw-table" aria-labelledby={labelledBy}>
@@ -171,7 +173,8 @@ function DamageMethod({ d, labelledBy }: { d: Damage; labelledBy: string }) {
         </table>
       </div>
       <p className="fw-help" id="damage-check-2023">
-        In 2023, NASA's MODIS burned-area map checked the squares of every detection within 5 km of a concession:
+        Fire Watch checked the squares of every 2023 detection within 5 km of a concession against NASA's MODIS
+        burned-area map:
       </p>
       <div className="table-box">
         <table className="fw-table" aria-labelledby="damage-check-2023">
@@ -226,7 +229,9 @@ function DamageMethod({ d, labelledBy }: { d: Damage; labelledBy: string }) {
       </dl>
       <p className="fw-help">
         The CO₂ range is IPCC's 95% interval for the peat a fire burns. Other ground is at IPCC's average, since its
-        interval reaches zero. IPCC gives no interval for peat's {PEAT_CO2_C} g, which comes from one study.
+        interval reaches zero. IPCC gives no interval for peat's {PEAT_CO2_C} g, which comes from one study. Fire Watch
+        treats all peat as drained, since WRI's map doesn't say which is, and IPCC gives no figure for a wildfire on
+        undrained tropical peat.
       </p>
       <p className="fw-help">
         Methane and carbon monoxide are left out. This estimate is not sealed. Its detections are sealed, and the maps,
