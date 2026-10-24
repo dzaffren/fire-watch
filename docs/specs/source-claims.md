@@ -136,6 +136,68 @@ The exact words come at pause 2. The 0332 fire of scenario 3 is the e2e's own re
 - The forecast panel's claims the review found weak, "Every one stays listed here" and a
   forecast shown with no skill note: not planned. The panel already shows 3,751 of 3,874.
 
+## Interface
+
+Copy changes in the real components, and one line that names a joined fire. Nothing is added,
+moved or restyled.
+
+```mermaid
+flowchart LR
+    SJ["sameFire.ts: sideJoin(fire, id, inside)"] -- "joined fire, or null" --> SF["FireView.tsx: SideFrom"]
+    SF -- "Seen inside from" --> FV["FireView.tsx: Reading dl"]
+    SF -- "Seen inside from" --> PK["ComplaintPack.tsx: Dates dl"]
+    LO["leftOut.ts"] -- "imports joins" --> SJ
+    LD["Landing.tsx: h1, lede, globe caption"] -- "NOAA-20, squares" --> J((judge))
+    RC["RealCase.tsx: BEFORE_RECORDS, SECOND_BEFORE"] -- "records begin, 11 Oct and 10 Oct" --> J
+    DM["Damage.tsx: Likely burned, method"] -- "Fire Watch's measure, drained peat" --> FV
+    DM -- "the same" --> PK
+```
+
+`sideJoin` replays the fire rule's pair test, which `leftOut.ts` already shares with the API through
+`fixtures/join-vectors.json`, over the fire's detections pass by pass. It finds the pass whose
+detection first put the fire more than 375 m on a side. When that detection wasn't joined to the
+fire's first detection yet, it names the join that brought it in. The pair test moves from
+`leftOut.ts` to `sameFire.ts`, so the fire view can use it without loading the chain code.
+
+| Where | Was | Now |
+| ----- | --- | --- |
+| Landing h1 | …show where satellites first saw it. | …show where the satellite first saw it. |
+| Landing lede | It shows where satellites first saw a fire and how it spread… | It shows where NASA's NOAA-20 satellite first saw a fire and how it spread… |
+| Hero caption, at the fire | The satellite first saw it on 12 Oct as one detection, 3,100 m outside the concession. On 14 Oct it joined a second fire, first seen the day before on both sides of the edge. | Fire Watch's records first show it on 12 Oct as one detection, 3,100 m outside the concession. On 14 Oct it joined a second fire, first recorded the day before on both sides of the edge. |
+| Globe caption | Every dot is one detection by the NOAA-20 satellite on 14 Oct 2026: 62,489 worldwide, 9,923 of them in and around Indonesia. | Each dot is a square about 1 km across where the NOAA-20 satellite detected fire on 14 Oct 2026, and near the example fire, one detection. That day it made 62,489 detections worldwide, 9,923 of them in and around Indonesia. |
+| "Where it was first seen" | The satellite first saw it on 12 Oct 05:16 UTC as one detection, outside the concession and 3,100 m from its edge. It didn't see the fire again for 25 hours, so that detection may be a separate fire. The satellite can miss fire… Scroll on… | Fire Watch's records first show it on 12 Oct 05:16 UTC as one detection, outside the concession and 3,100 m from its edge. The satellite didn't see the fire again for 25 hours, so that detection may be a separate fire. The satellite can miss fire… Fire Watch's records begin 1 hour before this detection and read only NASA's NOAA-20 satellite. In NASA's archive, NOAA-20 saw fire under 1 km from here on 11 Oct, before recording began, also outside the concession. Scroll on… |
+| Pass 2 of 8 | …These include another fire, first seen on this pass more than 1 km from the first, on both sides of the edge. | The same, then: In NASA's archive, other satellites saw fire on that ground on 10 Oct, also on both sides of the edge. |
+| "Seen inside from", fire view and pack, joined | 2026-10-13 06:37 UTC | 2026-10-13 06:37 UTC, by the fire joined to this one on 14 Oct 17:20 UTC |
+| "Seen inside from", no join, or this fire's own | 2026-10-15 18:43 UTC | 2026-10-15 18:43 UTC |
+| "Likely burned" line | At NASA's 2023 shares: 62% of peat, 42% of other ground. | At the shares Fire Watch measured on NASA's 2023 burned-area map, in large patches: 62% of peat, 42% of other ground. |
+| Damage method, first paragraph | …at the share NASA found burned in 2023, below. | …at the share that Fire Watch found burned on NASA's 2023 map, below. |
+| Damage method, check table | In 2023, NASA's MODIS burned-area map checked the squares of every detection within 5 km of a concession: | Fire Watch checked the squares of every 2023 detection within 5 km of a concession against NASA's MODIS burned-area map: |
+| Damage method, CO₂ range | …which comes from one study. | …which comes from one study. Fire Watch treats all peat as drained, since WRI's map doesn't say which is, and IPCC gives no figure for a wildfire on undrained tropical peat. |
+
+The pass 2 line is in this pause's draft, not in O1's answer. It tells the second fire's dates as
+O1 tells the first's. The 11 Oct and 10 Oct facts are dated constants beside `SEALED_WHEN`, from the
+committed copy's cut (D84, D85). IPCC's Table 2.6 lists "Tropical, Wildfire (undrained peat): No
+literature found", read on 2026-10-24.
+
+**Motion tier:** none new. The notes and panels enter as they do now (tier 1).
+
+**Components used:** the landing's `h1`, `landing-lede` and `figcaption`, the real case's step, the
+fire view's and the pack's `fw-kv`, and the damage panel's `fw-kv` with `sub`, `fw-help` and the
+check `fw-table`. There is no new component, no new token and no CSS change.
+
+**Design system:** Fire Watch, `docs/design/design-system/` (D2).
+
+**Preview:** real components in `web/src`, after `cd web && pnpm dev`:
+`http://localhost:5173/?preview=origin-confidence` (states: the 0332 fire and its pack with the
+joined fire's inside time, the firm 0356 fire with no join, and the landing) and
+`?preview=damage-estimate` (the peat fire). The drift check passed over the 7 files changed.
+`tsc -b` is clean, and all 329 web unit tests pass. At 390 px every state is 390 px wide once the
+preview's State picker is hidden.
+
+**Craft checks:** a one-line prompt would add a "Data sources" footnote or an info icon. This puts
+each source in the sentence that rests on it, with no new component. Next to Stripe's documentation,
+the reference for D2, each figure says where it comes from at the point of use.
+
 ## Open items
 
 | ID | What | Type | Raised at | Owner | Status | Answer |
