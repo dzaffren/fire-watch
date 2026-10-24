@@ -35,7 +35,7 @@ describe("Landing", () => {
     expect(document.body.textContent).not.toMatch(/fire started/);
     expect(
       screen.getByText(
-        "Fire Watch is built for the watchdog groups that report plantation fires to the companies that buy from the plantation. It shows where NASA's NOAA-20 satellite first saw a fire and how it spread, on records the buyer checks in their own browser.",
+        "Fire Watch is built for the watchdog groups that report plantation fires to the companies that buy from the plantation. It reads NOAA's NOAA-20 satellite through NASA's FIRMS service. It shows where the satellite first saw a fire and how it spread, on records the buyer checks in their own browser.",
       ),
     ).toBeInTheDocument();
     expect(document.body.textContent).not.toMatch(/groups use Fire Watch/);

@@ -4,7 +4,7 @@ import type { HotspotRecord, PackDetail, PackRef } from "./api";
 import type { Seal } from "./chain";
 import { DamageSection } from "./Damage";
 import { FireMap } from "./FireMap";
-import { fireArea, fireDots, JoinedTable, MissedNote, OriginMethod, OriginNotes, passTimes, Replay, SideFrom, where } from "./FireView";
+import { fireArea, fireDots, JoinedTable, MissedNote, OriginMethod, OriginNotes, passTimes, RecordsBegin, Replay, SideFrom, where } from "./FireView";
 import { count, detected, detectedShort, distance, firstSeenLine, location, plural, shortHash } from "./format";
 import { AlertIcon, BadIcon, ExternalIcon, OkIcon } from "./icons";
 import { checkSeal, checkTitle, Chip, overall, RecordPanel, type Check, type SealCheck } from "./RecordPanel";
@@ -488,7 +488,6 @@ export function ComplaintPack({ source, packRef, initialOpen = null }: Props) {
 function Caveats({ pack }: { pack: PackDetail }) {
   const { reading } = pack.first_seen;
   const unclear = reading === "edge" || reading === "both";
-  const hours = pack.recorded_before_h;
   return (
     <div className="fire-notes pack-caveats">
       {unclear && <p className="fw-help">The satellite record can't say which side this fire started on.</p>}
@@ -499,12 +498,7 @@ function Caveats({ pack }: { pack: PackDetail }) {
           peat smouldering in place.
         </p>
       )}
-      {hours !== null && (
-        <p className="fw-help">
-          Fire Watch's records begin {hours < 1 ? "less than an hour" : plural(hours, "hour", "hours")} before this fire
-          was first seen, so it may have been burning earlier.
-        </p>
-      )}
+      <RecordsBegin fire={pack} />
       <MissedNote />
     </div>
   );

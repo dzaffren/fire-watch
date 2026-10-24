@@ -45,8 +45,8 @@ export function Landing({ caseSource }: { caseSource: CaseSource }) {
             </h1>
             <p className="landing-lede">
               Fire Watch is built for the watchdog groups that report plantation fires to the companies that buy from
-              the plantation. It shows where NASA's NOAA-20 satellite first saw a fire and how it spread, on records the
-              buyer checks in their own browser.
+              the plantation. It reads NOAA's NOAA-20 satellite through NASA's FIRMS service. It shows where the satellite
+              first saw a fire and how it spread, on records the buyer checks in their own browser.
             </p>
             <div className="landing-actions">
               <a className="fw-btn" href="#case">Walk through a real case</a>
