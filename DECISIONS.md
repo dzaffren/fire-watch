@@ -1508,3 +1508,23 @@ fetching again after Deploy), a page check on `first_seen_unix` alone (misses a 
 inside after its first pass).
 Source: docs/specs/source-claims.md
 Status: active
+
+## D145 · 2026-10-24 · Back the landing's earlier sightings with a pinned FIRMS cut and a test
+
+Why: the 11 Oct and 10 Oct lines were a hand reading of FIRMS, with no file a reader could check.
+Every other figure on the landing has one (D85, D90). Four FIRMS files of 10 kB hold them, and two
+fetches on 2026-10-24 gave the same bytes.
+Rejected: dropping the two lines (undoes D141, and hides what NASA's archive shows).
+Source: docs/specs/pack-claims.md
+Status: active
+
+## D146 · 2026-10-24 · Name only the example fire's earlier sightings in its view and pack, from the pinned cut
+
+Why: a buyer reads the pack, not the landing, and the example's pack didn't say what the landing
+says about 11 Oct. Every other fire gets the general note that NASA's archive may hold earlier
+detections.
+Rejected: a FIRMS lookup for every pack (puts the FIRMS key on the public, read-only API, spends
+FIRMS quota on each open, and a pack would change with FIRMS's answer, against D33), the general
+note alone (the example's pack would still leave out what the landing names).
+Source: docs/specs/pack-claims.md
+Status: active
