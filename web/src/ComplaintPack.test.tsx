@@ -22,7 +22,7 @@ const RUN_2_AT = Date.parse("2026-10-15T21:03:00Z") / 1000;
 const RULE_URL = "https://github.com/dzaffren/fire-watch/blob/main/api/src/firewatch/fires.py";
 const CANT_TELL = "The satellite record can't say which side this fire started on.";
 const MISSED =
-  "The satellite can miss fire under cloud or thick tree canopy, and peat that smoulders below the surface. This fire may have burned unseen before it was first seen, inside or outside the concession.";
+  "The satellite can miss fire under cloud, heavy smoke or thick tree canopy, and peat that smoulders with too little heat to show. This fire may have burned unseen before it was first seen, inside or outside the concession.";
 const NEVER_SPREAD =
   "Seen on 5 passes without spreading. This can be a fixed heat source, such as a mill, or peat smouldering in place.";
 // Scenario 3's detection, first sealed at 14.48 MW.
@@ -421,6 +421,9 @@ describe("ComplaintPack", () => {
       within(basis).getByText(
         "A detection's position can be off as well. Straight below the satellite, NOAA-20 places almost every detection within 400 m of the fire, and most within 200 m (Blonski and others, 2023, doi 10.1117/1.JRS.17.034506). The 375 m margin doesn't allow for this. Concession edges come from Trase's map, which gives no accuracy for its lines.",
       ),
+    ).toBeInTheDocument();
+    expect(
+      within(basis).getByText(/^NOAA-20 passes about twice a day, so a fire may burn for hours before it is first seen\. NASA FIRMS names cloud, heavy smoke and tree canopy/),
     ).toBeInTheDocument();
     expect(within(basis).getByRole("link", { name: "Version 2, in full" })).toHaveAttribute("href", RULE_URL);
     expect(within(basis).queryByText(/fires joined to this one$/)).toBeNull();

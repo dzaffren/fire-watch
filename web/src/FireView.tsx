@@ -85,7 +85,8 @@ export function OriginNotes({ fire, listed }: { fire: FireDetail; listed: string
 }
 
 /** What the satellite can miss, so any fire may have burned before it was first seen (D139). */
-export const MISSED = "The satellite can miss fire under cloud or thick tree canopy, and peat that smoulders below the surface.";
+export const MISSED =
+  "The satellite can miss fire under cloud, heavy smoke or thick tree canopy, and peat that smoulders with too little heat to show.";
 
 /** The note every fire carries, after the notes on its own record. */
 export function MissedNote() {
@@ -138,8 +139,10 @@ export function OriginMethod() {
         lines.
       </p>
       <p className="fw-help">
-        NOAA-20 passes about twice a day, so a fire may burn for hours before it is first seen.
-        Each detection is sealed, so anyone can redo this from the chain and NASA FIRMS's public archive.
+        NOAA-20 passes about twice a day, so a fire may burn for hours before it is first seen. NASA FIRMS names cloud,
+        heavy smoke and tree canopy among the reasons a fire goes unseen. Smouldering peat is hard to see from space, as
+        its heat is low and its area small (Sofan and others, 2019, doi 10.3390/rs11040465). Each detection is sealed,
+        so anyone can redo this from the chain and NASA FIRMS's public archive.
       </p>
     </>
   );

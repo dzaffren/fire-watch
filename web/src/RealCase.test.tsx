@@ -83,7 +83,7 @@ describe("RealCase", () => {
     );
     expect(steps[1]).toHaveTextContent("The company that holds it can answer that the fire started outside its land and spread in.");
     expect(steps[2]).toHaveTextContent(
-      "The satellite first saw it on 12 Oct 05:16 UTC as one detection, outside the concession and 3,100 m from its edge. It didn't see the fire again for 25 hours, so that detection may be a separate fire. The satellite can miss fire under cloud or thick tree canopy, and peat that smoulders below the surface. Scroll on to see what came next, one satellite pass at a time.",
+      "The satellite first saw it on 12 Oct 05:16 UTC as one detection, outside the concession and 3,100 m from its edge. It didn't see the fire again for 25 hours, so that detection may be a separate fire. The satellite can miss fire under cloud, heavy smoke or thick tree canopy, and peat that smoulders with too little heat to show. Scroll on to see what came next, one satellite pass at a time.",
     );
     expect(steps[3]).toHaveTextContent(
       "13 Oct 06:37 UTC · 35 detections, 6 inside the concession. These include another fire, first seen on this pass more than 1 km from the first, on both sides of the edge.",
