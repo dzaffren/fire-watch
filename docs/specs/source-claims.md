@@ -332,46 +332,7 @@ the docs.
 
 ### Decisions to record
 
-`/build` appends these to `DECISIONS.md`. None supersedes an entry.
-
-#### D141 · 2026-10-24 · Name NOAA-20, when the records begin, and the earlier sightings on the landing
-
-Why: the landing said "satellites first saw it" on 12 Oct. The recorder reads NOAA-20 alone, its
-records begin an hour before, and FIRMS shows NOAA-20 saw the ground under 1 km away on 11 Oct. The
-sides hold with every satellite's detections, so the example stays (D111).
-Rejected: the records' limits only (hides what the archive shows), swapping the example (the sides
-hold, and a new pack and its seals don't fit the deadline).
-Source: docs/specs/source-claims.md
-Status: active
-
-#### D142 · 2026-10-24 · Say when a fire's first inside sighting came from a fire joined to it
-
-Why: the example pack's "Seen inside from 13 Oct 06:37" is the joined fire's first sighting. Read
-under "First seen outside", it tells the company's story.
-Rejected: hiding the time on a joined fire (drops a true time), both times on two lines (needs a new
-API field).
-Source: docs/specs/source-claims.md
-Status: active
-
-#### D143 · 2026-10-24 · Credit the burned shares to Fire Watch's own measure of NASA's map, in large patches
-
-Why: "NASA's 2023 shares" reads as a figure NASA published. Fire Watch measured them on MODIS
-MCD64A1, over large patches only (D127).
-Rejected: showing the 15.1% all-ground share as the low end (supersedes D127, which chose large
-patches because MODIS misses small burns).
-Source: docs/specs/source-claims.md
-Status: active
-
-#### D144 · 2026-10-24 · Work out a joined fire's side in the page, from the rule's shared pair test
-
-Why: the page has every detection with its pass, and the pair test it shares with `fires.py`
-through `join-vectors.json`. The API and the committed pack stay as they are, and so does the
-README's sha for it (D90).
-Rejected: a new API field (the committed pack must be the API's own answer, so it would need
-fetching again after Deploy), a page check on `first_seen_unix` alone (misses a joined fire that went
-inside after its first pass).
-Source: docs/specs/source-claims.md
-Status: active
+Recorded as D141, D142, D143, D144.
 
 ## Open items
 
