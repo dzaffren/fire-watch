@@ -9,7 +9,9 @@
   padding: var(--fw-space-3) var(--fw-space-6);
   background: var(--fw-surface); border-bottom: var(--fw-border) solid var(--fw-line);
 }
-.app-name { font-weight: var(--fw-weight-semibold); }
+.app-name { display: inline-flex; align-items: center; gap: var(--fw-space-2); font-weight: var(--fw-weight-semibold); }
+.logo-mark { flex: none; }
+.logo-fire { fill: var(--fw-fire); }
 .app-top .fw-help { margin: 0; }
 .app-top-end { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--fw-space-2) var(--fw-space-5); }
 .app-main { display: grid; grid-template-columns: minmax(360px, 440px) minmax(0, 1fr); min-height: 0; }
