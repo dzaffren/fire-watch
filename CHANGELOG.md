@@ -6,6 +6,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-10-24
+
 ### Added
 
 - A complaint pack checks in your browser, against the recorder runs sealed on Base Sepolia, that Fire Watch's server left no detection of the fire out, and lists any it did; it says plainly that detections sealed before the runs began can't be checked.
@@ -62,3 +64,6 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - The API and the hourly recorder no longer use certifi 2026.7.22, which has advisory PYSEC-2026-4320; they take 2026.10.19.
 - When FIRMS answers with an error, the hourly recorder no longer stores or prints the FIRMS map key in its run record and log.
 - Released without pentest: backfilled on 2026-10-24 for the code as it stood on 2026-10-22.
+
+[unreleased]: https://github.com/dzaffren/fire-watch/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/dzaffren/fire-watch/compare/v1.0.0...v1.1.0

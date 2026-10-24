@@ -1,6 +1,6 @@
 # ClimateChain hackathon entry
 
-**Status:** Active · **Updated:** 2026-10-24 by /ship pack-claims
+**Status:** Active · **Release:** v1.1.0 · **Updated:** 2026-10-24 by /ship pack-claims
 
 Fire Watch, an entry for the IEEE ClimateChain Global Hackathon (deadline 2026-10-25). It shows
 satellite fire hotspots with on-chain proof that each record hasn't changed since it was sealed,
