@@ -52,3 +52,5 @@
 - Answer a cross-origin API call with `route.fulfill` and no CORS header — [fulfil-api-without-cors-header](fulfil-api-without-cors-header.md)
 - Grep the lazy chunks, not `index-<hash>.js`, to confirm a deploy — [live-bundle-lazy-chunks](live-bundle-lazy-chunks.md)
 - Wait for the real case's 12 steps before `toStep` on a fresh landing; they render after the pack loads — [real-case-steps-wait-for-pack](real-case-steps-wait-for-pack.md)
+- Unroute the example pack's API answer before opening a 0332 fire in the tool — [unroute-example-pack](unroute-example-pack.md)
+- Run `tsc -b` after a new unit test; vitest doesn't check types — [vitest-skips-types](vitest-skips-types.md)
