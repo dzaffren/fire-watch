@@ -27,7 +27,7 @@ const ONE_PASS = { id: "ID-WOOD-CONCESSION-0332", key: "0x08fb9ad47abd958004db92
 const CANT_TELL = "The satellite record can't say which side this fire started on.";
 const ALONE = "The satellite didn't see this fire again for 25 hours, so that detection may be a separate fire.";
 const MISSED =
-  "The satellite can miss fire under cloud or thick tree canopy, and peat that smoulders below the surface. This fire may have burned unseen before it was first seen, inside or outside the concession.";
+  "The satellite can miss fire under cloud, heavy smoke or thick tree canopy, and peat that smoulders with too little heat to show. This fire may have burned unseen before it was first seen, inside or outside the concession.";
 const JOINED_ONE =
   "Fire Watch joined another fire to this one on 14 Oct 17:20 UTC, when they came within 1 km. First seen above is the older of the two. The other was first seen on 13 Oct 06:37 UTC, on both sides of the edge.";
 const JOINED_MANY =
@@ -229,7 +229,11 @@ describe("FireView", () => {
         "A detection's position can be off as well. Straight below the satellite, NOAA-20 places almost every detection within 400 m of the fire, and most within 200 m (Blonski and others, 2023, doi 10.1117/1.JRS.17.034506). The 375 m margin doesn't allow for this. Concession edges come from Trase's map, which gives no accuracy for its lines.",
       ),
     ).toBeInTheDocument();
-    expect(within(how).getByText(/NOAA-20 passes about twice a day, so a fire may burn for hours/)).toBeInTheDocument();
+    expect(
+      within(how).getByText(
+        "NOAA-20 passes about twice a day, so a fire may burn for hours before it is first seen. NASA FIRMS names cloud, heavy smoke and tree canopy among the reasons a fire goes unseen. Smouldering peat is hard to see from space, as its heat is low and its area small (Sofan and others, 2019, doi 10.3390/rs11040465). Each detection is sealed, so anyone can redo this from the chain and NASA FIRMS's public archive.",
+      ),
+    ).toBeInTheDocument();
   });
 
   it("links to a pack in a new tab", () => {
