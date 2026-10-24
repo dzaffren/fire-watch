@@ -54,3 +54,5 @@
 - Wait for the real case's 12 steps before `toStep` on a fresh landing; they render after the pack loads — [real-case-steps-wait-for-pack](real-case-steps-wait-for-pack.md)
 - Unroute the example pack's API answer before opening a 0332 fire in the tool — [unroute-example-pack](unroute-example-pack.md)
 - Run `tsc -b` after a new unit test; vitest doesn't check types — [vitest-skips-types](vitest-skips-types.md)
+- Split a joined pair's shared pass before measuring from one fire of the two — [joined-fire-own-detections](joined-fire-own-detections.md)
+- Read the records-begin note on the example pack; the e2e's 0332 fire has none — [e2e-0332-no-records-begin](e2e-0332-no-records-begin.md)
