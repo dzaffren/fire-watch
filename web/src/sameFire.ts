@@ -39,9 +39,20 @@ export function sideJoin(fire: FireDetail, id: string, inside: boolean): JoinedF
     const m = h.concessions.find((c) => c.id === id);
     return pass(i) === sidePass && m && m.inside === inside && m.edge_m > EDGE_DOUBT_M ? [i] : [];
   });
+  // On the side pass, the fire's own detection reaches its first through the fire's earlier detections and that
+  // pass's, not through a fire the pass joins to it.
+  const ownSide = (start: number) => {
+    const earlier = hs.flatMap((_, j) => (j < start && root(j) === root(0) ? [j] : []));
+    const reached = [...onSide];
+    for (const k of reached)
+      for (let m = start; m < hs.length && pass(m) === sidePass; m++)
+        if (!reached.includes(m) && joins(hs[k], hs[m])) reached.push(m);
+    return reached.some((k) => k === 0 || earlier.some((j) => joins(hs[k], hs[j])));
+  };
   let start = 0;
   for (let i = 0; i < hs.length; i++) {
     if (pass(i) !== pass(start)) start = i;
+    if (i === start && pass(i) === sidePass && ownSide(start)) return null;
     // Oldest first, so only the 48 hours before can join.
     for (let j = i - 1; j >= 0 && hs[i].acquired_unix - hs[j].acquired_unix <= JOIN_S; j--)
       if (joins(hs[i], hs[j])) parent[root(i)] = root(j);
@@ -49,7 +60,7 @@ export function sideJoin(fire: FireDetail, id: string, inside: boolean): JoinedF
     if (!last || pass(i) < sidePass || !onSide.some((k) => root(k) === root(0))) continue;
     // A join is dated by its pass's first detection, as fires.py's step 10 dates it.
     const at = hs[start].acquired_unix;
-    return pass(i) === sidePass ? null : (joined.find((f) => f.at_unix === at) ?? null);
+    return joined.find((f) => f.at_unix === at) ?? null;
   }
   return null;
 }

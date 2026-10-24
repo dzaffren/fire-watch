@@ -43,6 +43,22 @@ describe("sideJoin", () => {
     expect(sideJoin(fire([at(0, 0, 1, false, 3100), at(12, 300, 2, true, 500), OTHER_INSIDE, BRIDGE]), ID, true)).toBeNull();
   });
 
+  it("names the join when only the other fire's detections link the inside one to this fire, on the pass that joins them", () => {
+    const outsideB = at(12, 1600, 2, false, 2000);
+    const join = { ...JOIN, at_unix: T + 24 * H, first_seen: { reading: "outside" as const, inside: false, edge_m: 2000 } };
+    // The bridge joins this fire to B; the inside detection is 800 m from B and 1.6 km from the bridge.
+    const hotspots = [at(0, 0, 1, false, 3100), outsideB, BRIDGE, at(24, 2400, 3, true, 800)];
+    expect(sideJoin({ ...fire(hotspots), inside_from_unix: T + 24 * H, joined: [join] }, ID, true)).toEqual(join);
+  });
+
+  it("gives null when the inside detection links to this fire through the same pass's detections", () => {
+    const outsideB = at(12, 1600, 2, false, 2000);
+    const join = { ...JOIN, at_unix: T + 24 * H, first_seen: { reading: "outside" as const, inside: false, edge_m: 2000 } };
+    // The inside detection is 900 m from the bridge, which is 800 m from this fire's first detection.
+    const hotspots = [at(0, 0, 1, false, 3100), outsideB, BRIDGE, at(24, 1700, 3, true, 800)];
+    expect(sideJoin({ ...fire(hotspots), inside_from_unix: T + 24 * H, joined: [join] }, ID, true)).toBeNull();
+  });
+
   it("gives null for a fire with no join", () => {
     expect(sideJoin({ ...pack, joined: [] }, ID, true)).toBeNull();
   });
