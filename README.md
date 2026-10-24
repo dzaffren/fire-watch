@@ -8,12 +8,12 @@
 ## What it does
 
 Fire Watch, an entry for the IEEE ClimateChain Global Hackathon (deadline 2026-10-25). It shows
-satellite fire hotspots with on-chain proof that each record hasn't changed since it was written,
+satellite fire hotspots with on-chain proof that each record hasn't changed since it was sealed,
 for watchdog investigators who file grievances over fires on plantation land.
 
 ## Features
 
-- See the latest fire hotspot on a map, with a check that its record still matches the seal on Base Sepolia.
+- The first path from a hotspot to its seal on Base Sepolia and back to a check in the browser. The fire record page replaced its latest-hotspot page.
 - Pick dates, see which pulpwood concessions had hotspots, and check any hotspot's sealed record.
 - See a concession's fires, where each was first seen against its edge, and its passes in order, from sealed detections.
 - Turn one fire into a pack with its own link, which anyone's browser checks against the chain, and print it to PDF.
@@ -26,10 +26,10 @@ for watchdog investigators who file grievances over fires on plantation land.
 - Every screen takes colour from a deeper Peatland palette: the maps, the page ground and panels, and two bands on the landing.
 - Each detection's seal time comes from the chain, the page reads the chain even when the API says a record is unsealed, and six lines of copy claim no more than the chain or the data show.
 - The 2023 replay adds rule version 1's near-edge step alone and a next-pass guess beside the downwind guess. The forecast panel shows all four, and one sentence says what the rule adds.
-- The recorder seals one Merkle root per run on FireRuns, whose recorder key an owner key can replace. The page checks each new record's proof against its run's root, and old seals still check on FireRecords.
+- The recorder seals one Merkle root for each run with new records on FireRuns, whose recorder key an owner key can replace. The page checks each new record's proof against its run's root, and old seals still check on FireRecords.
 - The fire view, the pack and the landing say when a fire's first sighting is one detection with a long gap after it, and when one fire is several that the satellite first saw apart.
 - A complaint pack shows, in the reader's browser, that no stored detection of its fire was left out of the recorder runs in its window, and lists any that was.
-- Each damage estimate adds the ground that likely burned, at the shares NASA's MODIS map found burned near concessions in 2023: 61.8% of peat and 42.2% of other ground. `damage-check-2023` redoes the shares from pinned files.
+- Each damage estimate adds the ground that likely burned, at the shares Fire Watch found burned near concessions in 2023 on NASA's MODIS map, in large patches: 61.8% of peat and 42.2% of other ground. `damage-check-2023` redoes the shares from pinned files.
 - The 2023 replay adds one rule version 2, picked on January to September and judged once on October to December. It warned of 2 fewer arrivals than the near-edge step there, so rule version 1 stays, and the forecast panel says so.
 - The landing opens with the answer a company gives to a fire grievance, and it and the complaint pack claim no more than the chain or the data shows. The README's sha for the example pack matches the API again.
 - A weak first sighting says "as one detection" in its headline. Every fire names what the satellite can miss, and the CO₂ figure leads with its range.
@@ -235,8 +235,8 @@ count only from their seal, so each day between the merge and the job update los
 forecasts. The next run's log line shows `forecasts=` and `forecast_ms=`. To roll back, point the
 job at its previous digest; `migrate down` only if the table must go.
 
-Turning on run roots, in order. The recorder then seals one root per run on FireRuns, and the
-owner key can replace the recorder key if it leaks (D103, D104).
+Turning on run roots, in order. The recorder then seals one root for each run with new records on
+FireRuns, and the owner key can replace the recorder key if it leaks (D103, D104).
 
 1. `migrate up`, which adds the `roots` table and each record's `root_id` and `proof`.
 2. Merge to main. Deploy ships the API and the page, which still check every record on
@@ -253,7 +253,8 @@ owner key can replace the recorder key if it leaks (D103, D104).
    can read FireRuns.
 6. Point the recorder job at the merged sha's image by digest, with the new address:
    `az containerapp job update -g firewatch -n firewatch-recorder --image ghcr.io/<owner>/firewatch-api@sha256:<digest> --set-env-vars FIRE_RUNS_ADDRESS=<FireRuns address>`.
-   The next run's log line shows `roots=1 run=<n>`, and Basescan shows one `sealRoot` an hour.
+   The next run's log line shows `roots=1 run=<n>`, and Basescan shows one `sealRoot` for each
+   hourly run with new records.
 
 To roll back, point the job at its previous digest; it still has `CONTRACT_ADDRESS`, and seals
 any record with no `tx_hash` on FireRecords. The page and the API read both contracts, so they
