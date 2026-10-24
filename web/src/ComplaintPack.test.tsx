@@ -414,6 +414,11 @@ describe("ComplaintPack", () => {
     const basis = screen.getByRole("region", { name: "Basis" });
     expect(
       within(basis).getByText(
+        /The first pass is the earliest NOAA-20 pass in Fire Watch's records that saw the fire\. Other satellites, or NOAA-20 before the records begin, may have seen it earlier\./,
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(basis).getByText(
         "A fire that comes within 1 km of another is joined to it, so one fire here can be several that the satellite first saw apart. First seen is the oldest one's.",
       ),
     ).toBeInTheDocument();
