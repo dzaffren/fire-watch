@@ -386,13 +386,13 @@ _Never delete this section or its rows. See references/ledger.md._
 
 ## Glossary
 
-- **NOAA-20, NOAA-21, S-NPP:** three satellites that carry the same VIIRS fire sensor and pass at
+- **NOAA-20, NOAA-21, S-NPP**: three satellites that carry the same VIIRS fire sensor and pass at
   different times of day.
-- **MODIS:** an older NASA fire sensor with 1 km pixels; its burned-area map uses 500 m pixels.
-- **Large patch:** more than 20 joined 375 m squares (D127).
-- **Joined fire:** a fire that came within 1 km and 48 hours of another, so Fire Watch counts them
+- **MODIS**: an older NASA fire sensor with 1 km pixels; its burned-area map uses 500 m pixels.
+- **Large patch**: more than 20 joined 375 m squares (D127).
+- **Joined fire**: a fire that came within 1 km and 48 hours of another, so Fire Watch counts them
   as one (D25).
-- **e2e:** end-to-end: one test that walks the whole slice as a user would.
-- **Pair test:** the fire rule's check that two detections are within 1 km and 48 hours, so they are
+- **e2e**: end-to-end: one test that walks the whole slice as a user would.
+- **Pair test**: the fire rule's check that two detections are within 1 km and 48 hours, so they are
   in the same fire.
-- **Mutant:** a deliberate break in the code, made to check that a test fails on it.
+- **Mutant**: a deliberate break in the code, made to check that a test fails on it.
