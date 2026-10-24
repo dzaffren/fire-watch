@@ -33,6 +33,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - A fire and its complaint pack say when the fire was first seen as one detection and then not seen for more than 14 hours, and when Fire Watch joined other fires to it, with where each was first seen. "How this is worked out" names joins, NOAA-20's position error and that Trase gives no accuracy for its concession edges. The landing tells its example fire as one detection, then a second fire joined on 14 Oct.
 - The damage estimate adds the ground that likely burned: 61.8% of the peat and 42.2% of the other ground in a fire's pixels, the shares NASA's MODIS burned-area map found burned near concessions in 2023. The CO₂ and the cost follow it. `damage-check-2023` redoes the check byte for byte from pinned files.
 - The forecast panel's 2023 replay says a rule version 2 was tried. Picked on January to September 2023, it warned of 63 of October to December's 79 arrivals, 2 fewer than the near-edge step, so rule version 1 stays. "How this is worked out" gives the rule and both parts' counts, and `backtest-2023` writes them, with a CSV column for its time.
+- A fire whose first sighting is one detection with a long gap after it says "as one detection" in its heading. Every fire and complaint pack says what the satellite can miss, cloud, heavy smoke, thick tree canopy and smouldering peat, with its sources. The CO₂ figure leads with IPCC's range for burned peat, and the average moves under it.
 
 ### Removed
 
