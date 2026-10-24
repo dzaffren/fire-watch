@@ -34,6 +34,7 @@ for watchdog investigators who file grievances over fires on plantation land.
 - The landing opens with the answer a company gives to a fire grievance, and it and the complaint pack claim no more than the chain or the data shows. The README's sha for the example pack matches the API again.
 - A weak first sighting says "as one detection" in its headline. Every fire names what the satellite can miss, and the CO₂ figure leads with its range.
 - The landing names the one satellite Fire Watch reads and when its records begin. The globe caption counts squares, the damage estimate credits its shares to Fire Watch's own check, and a joined fire's inside time names the fire it came from.
+- The fire view, the complaint pack, the landing and the forecast panel stop making five claims that the chain or the data doesn't support. The landing's earlier sightings rest on a committed copy of NASA's archive, as every other figure on the page does.
 
 ## Docs
 

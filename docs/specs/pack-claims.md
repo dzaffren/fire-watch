@@ -1,6 +1,6 @@
 # Pack claims
 
-**Version:** v1 · **Status:** Built · **Type:** Bug · **Project type:** Web UI
+**Version:** v1 · **Status:** Shipped · **Type:** Bug · **Project type:** Web UI
 
 **Shape doc:** docs/specs/judge-review/shape.md
 **Depends on:** source-claims
