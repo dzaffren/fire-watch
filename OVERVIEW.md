@@ -1,6 +1,6 @@
 # ClimateChain hackathon entry
 
-**Status:** Active · **Release:** v1.1.0 · **Updated:** 2026-10-24 by /ship pack-claims
+**Status:** Active · **Release:** v1.1.0 · **Updated:** 2026-10-24 by /ship site-logo
 
 Fire Watch, an entry for the IEEE ClimateChain Global Hackathon (deadline 2026-10-25). It shows
 satellite fire hotspots with on-chain proof that each record hasn't changed since it was sealed,
@@ -51,6 +51,7 @@ for watchdog investigators who file grievances over fires on plantation land.
 | origin-and-range | Shipped | A weak first sighting says "as one detection" in its headline. Every fire names what the satellite can miss, and the CO₂ figure leads with its range. | docs/specs/origin-and-range.md |
 | source-claims    | Shipped | The landing names the one satellite Fire Watch reads and when its records begin. The globe caption counts squares, the damage estimate credits its shares to Fire Watch's own check, and a joined fire's inside time names the fire it came from. | docs/specs/source-claims.md |
 | pack-claims      | Shipped | The fire view, the complaint pack, the landing and the forecast panel stop making five claims that the chain or the data doesn't support. The landing's earlier sightings rest on a committed copy of NASA's archive, as every other figure on the page does. | docs/specs/pack-claims.md |
+| site-logo        | Shipped | The Clasp mark shows in the browser tab and beside the name in the header of the landing, the tool and the complaint pack, in light, dark and print. | docs/specs/site-logo.md |
 
 ## More
 
