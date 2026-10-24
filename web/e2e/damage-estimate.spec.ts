@@ -15,7 +15,7 @@ async function readFigures(damage: Locator) {
   await expect(damage.getByText("About 210 ha", { exact: true })).toBeVisible();
   await expect(damage.getByText("59 ha of it inside the concession.", { exact: true })).toBeVisible();
   await expect(damage.getByText("About 130 ha", { exact: true })).toBeVisible();
-  await expect(damage.getByText("About 76,000 t", { exact: true })).toBeVisible();
+  await expect(damage.getByText("37,000 to 110,000 t", { exact: true })).toBeVisible();
 }
 
 /** The 2023 check's peat row, which the shares come from. */

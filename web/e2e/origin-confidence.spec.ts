@@ -3,7 +3,7 @@ import { expect, test, type Page } from "@playwright/test";
 
 const FAKE_GOOGLE_MAPS = fileURLToPath(new URL("./fake-google-maps.js", import.meta.url));
 const WEAK = "First seen outside, 3.1 km from the edge";
-const WEAK_NOTE = "First seen as one detection, then not seen for 36 hours. That detection may be a separate fire.";
+const WEAK_NOTE = "The satellite didn't see this fire again for 36 hours, so that detection may be a separate fire.";
 
 // Puts a step of the real case across the reading line, 60% down the screen.
 async function toStep(page: Page, step: number) {
@@ -35,7 +35,7 @@ test("an investigator reads a weak first sighting and its pack, and a judge read
   await fires.filter({ hasText: "Inside, 3.4 km" }).getByRole("button").click();
   const firm = page.getByRole("article", { name: "First seen inside, 3.4 km from the edge" });
   await expect(firm).toBeVisible();
-  await expect(firm.getByText(/^First seen as one detection/)).toHaveCount(0);
+  await expect(firm.getByText(/^The satellite didn't see this fire again/)).toHaveCount(0);
   await firm.getByText("How this is worked out").click();
   await expect(
     firm.getByText(/Straight below the satellite, NOAA-20 places almost every detection within 400 m of the fire/),
@@ -50,7 +50,7 @@ test("an investigator reads a weak first sighting and its pack, and a judge read
     page.context().waitForEvent("page"),
     weak.getByRole("link", { name: "Make complaint pack" }).click(),
   ]);
-  await expect(pack.getByRole("heading", { level: 1 })).toHaveText(WEAK);
+  await expect(pack.getByRole("heading", { level: 1 })).toHaveText(`${WEAK}, as one detection`);
   await expect(pack.locator(".pack-head").getByText(WEAK_NOTE)).toBeVisible();
   await expect(pack.getByRole("region", { name: "Basis" }).getByRole("link", { name: "Version 2, in full" })).toBeVisible();
   await pack.close();
