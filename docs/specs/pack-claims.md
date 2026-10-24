@@ -169,7 +169,7 @@ of the same fire and its pack say the same.
 "Before recording began" becomes "before the records begin": the recorder began on 16 Oct
 (`SEALED_WHEN`), and its records reach back to 12 Oct. The pinned cut, read on 2026-10-24, gives
 NOAA-20 at 965 m and 680 m from the first detection on 11 Oct, both outside the concession; and S-NPP,
-NOAA-21 and MODIS within 1 km of the second fire's first pass on 10 Oct, two inside and seven outside.
+NOAA-21 and MODIS within 1 km of the second fire's first pass on 10 Oct, two inside and six outside.
 
 **Motion tier:** none new.
 
@@ -330,6 +330,7 @@ Recorded as D145, D146.
 | O1 | The pack can't know of sightings before Fire Watch's records for any fire. Does it only change its method's words, or does the example's pack also list its 11 Oct sightings? | question | spec p1 | user | Resolved | 2026-10-24: every fire view and pack says "earliest in Fire Watch's records", and the example's pack also lists its 11 Oct sightings from the pinned FIRMS cut of O2. A per-pack FIRMS lookup was asked for first, then dropped: it puts the FIRMS key on the public API and lets a pack change with FIRMS's answer (D33) |
 | O2 | The 11 Oct and 10 Oct lines rest on a hand reading of FIRMS. Do we commit a pinned cut of FIRMS's files and a test, or drop the two lines from the landing? | question | spec p1 | user | Resolved | 2026-10-24: commit a pinned cut of the four satellites' files for 10 to 12 Oct, with sha256 and the commands that fetched them, and a test that holds the lines to it. D141 stays |
 | O3 | The printed pack carries no record IDs or fingerprints, so a paper copy can't be checked against the chain. Is that in this slice? | question | spec p1 | user | Resolved | 2026-10-24: out. The pack's link checks every record in the reader's browser; the roadmap names a pack that carries its proofs |
+| O4 | The interface said the cut gives "S-NPP, NOAA-21 and MODIS within 1 km of the second fire's first pass on 10 Oct, two inside and seven outside". Seven outside counts all 35 of pass 2's detections. A MODIS detection 569 m from the first fire's part of pass 2 is the seventh | flag | build | user | Decided alone | Chose: `archive.test.ts` measures from the second fire's 16 detections on pass 2, the ones that the first detection doesn't reach through the pass. That gives two inside and six outside, and the spec says so. Other: measure from all of pass 2, which gives seven outside. Undo: in `archive.test.ts`, measure from `pass2` and expect `[2, 7]`. 2026-10-24 |
 
 _Never delete this section or its rows. See references/ledger.md._
 

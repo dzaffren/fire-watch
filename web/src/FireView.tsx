@@ -132,7 +132,7 @@ export function JoinedTable({ joined, labelledBy }: { joined: JoinedFire[]; labe
   );
 }
 
-// From the pinned FIRMS cut in fixtures/firms/archive/, which archive.test.ts holds these lines to (D141).
+// From the pinned FIRMS cut in fixtures/firms/archive/, which archive.test.ts holds these lines to (D146).
 const BEFORE_RECORDS: Record<string, string> = {
   "0x13b417c6f54dd95c7c418b5df3f34963cf00f46555d5cae74693cdffbb1d1cf7":
     "In NASA's FIRMS archive, NOAA-20 saw fire under 1 km from this fire's first detection on 11 Oct, also outside the concession.",

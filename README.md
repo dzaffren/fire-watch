@@ -185,6 +185,27 @@ sha256sum web/public/case/pack-0332.json
 The sha256 is `33037b98adedebb862c94dc110d5a13b4c562cfb5b19349898d42323f38728fa`. The first call after a
 quiet hour can take up to a minute while the API wakes.
 
+The 11 Oct and 10 Oct sightings, on the landing and in the example fire's view and pack, come from
+a pinned cut of NASA FIRMS's archive in `fixtures/firms/archive/` (D145, D146): NOAA-20, S-NPP,
+NOAA-21 and MODIS around the fire, from 10 to 12 Oct 2026. `web/src/archive.test.ts` holds the
+lines to it. With `FIRMS_MAP_KEY` in `.env`, from the repo root:
+
+```sh
+FIRMS_MAP_KEY=$(grep '^FIRMS_MAP_KEY=' .env | cut -d= -f2-)
+for s in VIIRS_NOAA20_NRT VIIRS_SNPP_NRT VIIRS_NOAA21_NRT MODIS_NRT; do
+  curl -sf "https://firms.modaps.eosdis.nasa.gov/api/area/csv/$FIRMS_MAP_KEY/$s/112.75,-3.17,112.90,-3.00/3/2026-10-10" -o fixtures/firms/archive/$s.csv
+done
+sha256sum -c <<'EOF'
+19091b5f102aa5c3d3e16807363dd1298113bc3ea59336cb15dd5b2ea1bd3e11  fixtures/firms/archive/VIIRS_NOAA20_NRT.csv
+94010bcbd60bba73637540b1e106240a8dc8f63278804e88967063ce77dfda65  fixtures/firms/archive/VIIRS_SNPP_NRT.csv
+270cc14d123938c0a8ef5b0fa7a3a26b0b28b66f7127fef19951395a9becfe06  fixtures/firms/archive/VIIRS_NOAA21_NRT.csv
+36316c819c77b6af0bbc6a6359b74538d02cee47b26aa7aa6c12759d8feb1af3  fixtures/firms/archive/MODIS_NRT.csv
+EOF
+```
+
+The cut was fetched on 2026-10-24, and two fetches that day gave the same bytes. FIRMS can later
+replace its near-real-time rows with reprocessed ones, so a later fetch may differ.
+
 ## First deploy
 
 1. **Neon:** create a free project. Put its owner URL in `.env` as `DATABASE_URL`, run the
