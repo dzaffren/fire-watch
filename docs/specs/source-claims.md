@@ -156,8 +156,10 @@ flowchart LR
 `sideJoin` replays the fire rule's pair test, which `leftOut.ts` already shares with the API through
 `fixtures/join-vectors.json`, over the fire's detections pass by pass. It finds the pass whose
 detection first put the fire more than 375 m on a side. When that detection wasn't joined to the
-fire's first detection yet, it names the join that brought it in. The pair test moves from
-`leftOut.ts` to `sameFire.ts`, so the fire view can use it without loading the chain code.
+fire's first detection yet, it names the join that brought it in. On the pass that joins another
+fire, a detection counts as the fire's own only when it reaches the first detection through the
+fire's earlier detections and that pass's. The pair test moves from `leftOut.ts` to `sameFire.ts`,
+so the fire view can use it without loading the chain code.
 
 | Where | Was | Now |
 | ----- | --- | --- |
@@ -334,6 +336,12 @@ the docs.
 
 Recorded as D141, D142, D143, D144.
 
+## Review
+
+2026-10-24 · 4 raw findings, 1 survived, 1 fixed.
+
+- correctness · `web/src/sameFire.ts:52` · on the pass that joins another fire, count a side detection as the fire's own only through its own earlier detections and that pass's · `216ec28`
+
 ## Open items
 
 | ID | What | Type | Raised at | Owner | Status | Answer |
@@ -342,6 +350,7 @@ Recorded as D141, D142, D143, D144.
 | O2 | What does "Seen inside from" say when the first inside detection came from a joined fire? | question | spec p1 | user | Resolved | 2026-10-24: keep the time and say the fire joined on 14 Oct was the one seen inside. A fire with no join reads as now |
 | O3 | Does "Likely burned" only credit the shares, or also show the 15.1% all-ground share? The second shows a lower share, and D127 rejected it | question | spec p1 | user | Resolved | 2026-10-24: credit the shares to Fire Watch's own measure on NASA's map, in large patches, and keep D127's figures |
 | O4 | Which of the smaller doc fixes go in: "since it was sealed", a root only for a run with new records, and the README's removed latest-hotspot feature? | question | spec p1 | user | Resolved | 2026-10-24: all three |
+| O5 | The interface said `sideJoin` names a join "when that detection wasn't joined to the fire's first detection yet". As built, a side detection linked to the first by the end of its pass was the fire's own, also through a fire that pass joined. | flag | review | user | Decided alone | Chose: on the pass that joins another fire, a side detection is the fire's own only when it reaches the first through the fire's earlier detections and that pass's; otherwise the join is named. A detection that chains to the first through a bridge on its own pass stays the fire's own. Other: name the join whenever the side pass also joins a fire. Undo: revert 216ec28. 2026-10-24 |
 
 _Never delete this section or its rows. See references/ledger.md._
 
