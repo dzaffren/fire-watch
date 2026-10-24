@@ -51,3 +51,4 @@
 - Count a cut's matched detections before writing a test the plan described — [count-the-cut-before-a-test-case](count-the-cut-before-a-test-case.md)
 - Answer a cross-origin API call with `route.fulfill` and no CORS header — [fulfil-api-without-cors-header](fulfil-api-without-cors-header.md)
 - Grep the lazy chunks, not `index-<hash>.js`, to confirm a deploy — [live-bundle-lazy-chunks](live-bundle-lazy-chunks.md)
+- Wait for the real case's 12 steps before `toStep` on a fresh landing; they render after the pack loads — [real-case-steps-wait-for-pack](real-case-steps-wait-for-pack.md)
