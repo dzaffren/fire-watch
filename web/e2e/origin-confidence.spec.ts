@@ -38,7 +38,7 @@ test("an investigator reads a weak first sighting and its pack, and a judge read
   await expect(firm.getByText(/^The satellite didn't see this fire again/)).toHaveCount(0);
   await firm.getByText("How this is worked out").click();
   await expect(
-    firm.getByText(/Straight below the satellite, NOAA-20 places almost every detection within 400 m of the fire/),
+    firm.getByText(/Straight below the satellite, NOAA-20 places almost every pixel within 400 m of where it belongs/),
   ).toBeVisible();
 
   await page.getByRole("button", { name: "Fires in ID-WOOD-CONCESSION-0540" }).click();
