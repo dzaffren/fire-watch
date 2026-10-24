@@ -82,7 +82,7 @@ test("an investigator reads a weak first sighting, what the satellite can miss a
   await expect(steps).toHaveCount(12);
   await toStep(page, 2);
   await expect(steps.nth(2)).toContainText(
-    `It didn't see the fire again for 25 hours, so that detection may be a separate fire. ${MISSED}`,
+    `The satellite didn't see the fire again for 25 hours, so that detection may be a separate fire. ${MISSED}`,
   );
 
   // The e2e's API has no example fire, so the pack's API call is answered from the committed copy (D137).

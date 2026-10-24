@@ -59,8 +59,8 @@ test("an investigator reads a weak first sighting and its pack, and a judge read
   await page.getByRole("button", { name: "Go to the example fire" }).click();
   await expect(
     page.getByText(
-      "The satellite first saw it on 12 Oct as one detection, 3,100 m outside the concession. On 14 Oct it joined a" +
-        " second fire, first seen the day before on both sides of the edge.",
+      "Fire Watch's records first show it on 12 Oct as one detection, 3,100 m outside the concession. On 14 Oct it" +
+        " joined a second fire, first recorded the day before on both sides of the edge.",
       { exact: false },
     ),
   ).toBeVisible();
@@ -68,7 +68,7 @@ test("an investigator reads a weak first sighting and its pack, and a judge read
   const steps = page.getByRole("region", { name: "A real case" }).getByRole("listitem");
   await toStep(page, 2);
   await expect(steps.nth(2)).toContainText(
-    "It didn't see the fire again for 25 hours, so that detection may be a separate fire.",
+    "The satellite didn't see the fire again for 25 hours, so that detection may be a separate fire.",
   );
   await toStep(page, 3);
   await expect(steps.nth(3)).toContainText(
