@@ -131,6 +131,65 @@ e2e does (D137). Scenarios 2, 4 and 5's panel read the e2e's own 0332 fire in
 - Raising the 375 m margin for position error: not planned (D115).
 - The written deliverables: on the `docs/submission` branch, not in this slice (judge-review O2).
 
+## Interface
+
+Copy changes in the real components, one note shared by the fire view and the pack, and a definition
+in the forecast panel's method. Nothing is added to the layout, moved or restyled.
+
+```mermaid
+flowchart LR
+    CUT[("fixtures/firms/archive: pinned FIRMS cut")] -- "held to by archive.test.ts" --> RC["RealCase.tsx: BEFORE_RECORDS, SECOND_BEFORE"]
+    CUT -- "held to by archive.test.ts" --> RB["FireView.tsx: RecordsBegin, BEFORE_RECORDS by fire key"]
+    RB -- "records begin, and 11 Oct for the example" --> FV["FireView.tsx: Reading notes"]
+    RB -- "the same" --> PK["ComplaintPack.tsx: Caveats"]
+    OM["FireView.tsx: OriginMethod"] -- "first pass, position, redo" --> FV
+    OM -- "the same" --> PK
+    LD["Landing.tsx: lede"] -- "NOAA's NOAA-20, NASA's FIRMS" --> J((judge))
+    FP["ForecastPanel.tsx: 2023 tables, method"] -- "forecasts that came in" --> I((investigator))
+```
+
+`RecordsBegin` replaces the two copies of the records-begin note in `FireView.tsx` and
+`ComplaintPack.tsx`. It adds the example fire's 11 Oct sentence by its fire key, so the tool's view
+of the same fire and its pack say the same.
+
+| Where | Was | Now |
+| ----- | --- | --- |
+| Method, first pass (fire view and pack) | The first pass is the earliest satellite pass that saw the fire. | The first pass is the earliest NOAA-20 pass in Fire Watch's records that saw the fire. Other satellites, or NOAA-20 before the records begin, may have seen it earlier. |
+| Method, position error | Straight below the satellite, NOAA-20 places almost every detection within 400 m of the fire, and most within 200 m (Blonski…). The 375 m margin doesn't allow for this. | Straight below the satellite, NOAA-20 places almost every pixel within 400 m of where it belongs, and most within 200 m (Blonski…). A fire can also sit anywhere in its 375 m pixel. The 375 m margin allows for neither. |
+| Method, last line | Each detection is sealed, so anyone can redo this from the chain and NASA FIRMS's public archive. | Each detection is sealed: your browser checks each record Fire Watch sends against the chain, and a record matches a row of NASA FIRMS's public archive by its time and place. |
+| Records-begin note (fire view and pack) | Fire Watch's records begin 1 hour before this fire was first seen, so it may have been burning earlier. | The same, then: NASA's archive may hold detections from before then. |
+| Records-begin note, the example fire | — | The same, then: In NASA's FIRMS archive, NOAA-20 saw fire under 1 km from this fire's first detection on 11 Oct, also outside the concession. |
+| Landing lede | It shows where NASA's NOAA-20 satellite first saw a fire and how it spread, on records the buyer checks in their own browser. | It reads NOAA's NOAA-20 satellite through NASA's FIRMS service. It shows where the satellite first saw a fire and how it spread, on records the buyer checks in their own browser. |
+| Real case, first step | From 12 Oct to 17 Oct 2026, the NOAA-20 satellite saw this fire on 8 passes, 283 detections in all… | From 12 Oct to 17 Oct 2026, Fire Watch's records hold this fire on 8 passes of the NOAA-20 satellite, 283 detections in all… |
+| Real case, "Where it was first seen" | …and read only NASA's NOAA-20 satellite. In NASA's archive, NOAA-20 saw fire under 1 km from here on 11 Oct, before recording began, also outside the concession. | …and hold only the NOAA-20 satellite's detections. In NASA's FIRMS archive, NOAA-20 saw fire under 1 km from here on 11 Oct, before the records begin, also outside the concession. |
+| Real case, pass 2 of 8 | In NASA's archive, other satellites saw fire on that ground on 10 Oct… | In NASA's FIRMS archive, other satellites saw fire on that ground on 10 Oct… |
+| 2023 tables' column | Arrivals warned of, out of 135 | Warned of, out of 135 forecasts that came in |
+| Forecast method | …A warning is a forecast that the fire is seen inside. | The same, then: An arrival is a forecast whose fire was then seen inside within 48 hours, so a fire forecast after several passes counts once for each. |
+
+"Before recording began" becomes "before the records begin": the recorder began on 16 Oct
+(`SEALED_WHEN`), and its records reach back to 12 Oct. The pinned cut, read on 2026-10-24, gives
+NOAA-20 at 965 m and 680 m from the first detection on 11 Oct, both outside the concession; and S-NPP,
+NOAA-21 and MODIS within 1 km of the second fire's first pass on 10 Oct, two inside and seven outside.
+
+**Motion tier:** none new.
+
+**Components used:** the fire view's and the pack's `fire-notes` `fw-help` notes and the method's
+`fw-help`, the landing's `landing-lede`, the real case's steps, and the forecast panel's `fw-table`
+and `fw-help`. There is no new component, no new token and no CSS change. The longer column head
+wraps, as `.forecast .fw-table thead th` sets `white-space: normal`.
+
+**Design system:** Fire Watch, `docs/design/design-system/` (D2).
+
+**Preview:** real components in `web/src`, after `cd web && pnpm dev`:
+`http://localhost:5173/?preview=origin-confidence` (the 0332 fire and its pack, with the records-begin
+note and the method), `?preview=season-backtest` (the 2023 tables and method) and `/` (the lede and
+the real case). The drift check passed over the 5 files changed. `tsc -b` is clean, and all 341 web
+unit tests pass on the new words.
+
+**Craft checks:** a one-line prompt would hedge with a "data limitations" box. This puts each limit
+in the sentence it qualifies, with no new component. Next to Stripe's documentation, the reference
+for D2, each figure says where it comes from at the point of use.
+
 ## Open items
 
 | ID | What | Type | Raised at | Owner | Status | Answer |
