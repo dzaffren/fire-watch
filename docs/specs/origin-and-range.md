@@ -354,40 +354,7 @@ ones.
 
 ### Decisions to record
 
-`/build` appends these to `DECISIONS.md`. None supersedes an entry.
-
-#### D138 · 2026-10-24 · Say "as one detection" in a weak first sighting's headline
-
-Why: the example pack's headline "First seen outside, 3.1 km from the edge" rests on one detection
-that the satellite next saw 25 hours later. The reading stays (D113), and the headline now carries
-the weak point. It applies to 380 of 4,445 readings on 12 to 22 Oct 2026.
-Rejected: on any one-detection first pass (true of most fires, so the words stop standing out,
-D112), the headline as it is (the weak point stays only in the note under it).
-Source: docs/specs/origin-and-range.md
-Status: active
-
-#### D139 · 2026-10-24 · Name cloud, smoke, canopy and smouldering peat under every fire's headline, with sources
-
-Why: NASA FIRMS names cloud, heavy smoke and tree canopy among the reasons a fire goes unseen, and
-Sofan et al. (2019) find smouldering peat hard to see for its low heat and small size. So any fire
-may have burned unseen before it was first seen, on either side of the edge. Only the method,
-behind a disclosure, named cloud.
-Rejected: only fires read as inside or outside (the limit holds for every first sighting), only in
-"How this is worked out" (a reader of the headline may not open it), "peat that smoulders below the
-surface" (no source read says so).
-Source: docs/specs/origin-and-range.md
-Status: active
-
-#### D140 · 2026-10-24 · Lead the CO₂ figure with IPCC's 95% interval for burned peat
-
-Why: one figure claims more than the factors know. IPCC gives a 95% interval only for peat fuel, 170
-to 536 t of dry matter a hectare (2013 Wetlands Supplement, Table 2.6). Peat's gas factor comes from
-one study with no interval, and other ground's standard error, 23.6 on 42.2, puts its interval at
-zero. A fire with no peat keeps one figure.
-Rejected: peat and other ground, with other ground from its standard error floored at zero (a fire
-with no peat would read "0 to 830 t").
-Source: docs/specs/origin-and-range.md
-Status: active
+Recorded as D138, D139, D140.
 
 ## Open items
 
