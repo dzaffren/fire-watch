@@ -1,6 +1,6 @@
 # Pack claims
 
-**Version:** v1 · **Status:** Draft · **Type:** Bug · **Project type:** Web UI
+**Version:** v1 · **Status:** Refined · **Type:** Bug · **Project type:** Web UI
 
 **Shape doc:** docs/specs/judge-review/shape.md
 **Depends on:** source-claims
@@ -190,6 +190,159 @@ unit tests pass on the new words.
 in the sentence it qualifies, with no new component. Next to Stripe's documentation, the reference
 for D2, each figure says where it comes from at the point of use.
 
+## Technical plan
+
+### Approach
+
+The page changed at pause 2 in `FireView.tsx`, `ComplaintPack.tsx`, `Landing.tsx`, `RealCase.tsx`
+and `ForecastPanel.tsx`, with their unit tests. This plan commits the FIRMS cut that the 11 Oct and
+10 Oct lines rest on, adds a unit test that holds the lines to it, walks the slice in one e2e, puts
+the old e2e specs on the new words, and gives the cut's sha256 and redo line in the README. The API,
+the recorder, the chain and the committed example pack don't change.
+
+Relies on: D33, D73, D81, D84, D85, D90, D111, D115, D137, D141, D145, D146.
+
+```mermaid
+flowchart TB
+    F[(NASA FIRMS area API)] -- "4 CSVs, 10 to 12 Oct, fetched once with FIRMS_MAP_KEY" --> CUT[("fixtures/firms/archive/*.csv, sha256 in README")]
+    CUT -- "rows near each first pass" --> AT["web/src/archive.test.ts"]
+    C[("web/public/case/pack-0332.json")] -- "first passes, boundary" --> AT
+    AT -- "holds the facts of" --> RC["RealCase.tsx: BEFORE_RECORDS, SECOND_BEFORE"]
+    AT -- "holds the facts of" --> RB["FireView.tsx: BEFORE_RECORDS by fire key"]
+    RB -- "RecordsBegin" --> FV["fire view notes"]
+    RB -- "RecordsBegin" --> PK["pack Caveats"]
+```
+
+The cut is fetched once by an operator and committed. Only a test reads it; the page carries its
+facts as dated lines, as the landing does for every figure of the committed copy (D73, D85).
+
+```mermaid
+sequenceDiagram
+    participant J as judge's browser
+    participant S as Static Web Apps
+    participant A as API
+    J->>S: GET / and /case/pack-0332.json
+    J-->>J: lede names NOAA's NOAA-20 and NASA's FIRMS; step 1: what the records hold
+    J->>A: GET …/ID-WOOD-CONCESSION-0332/fires/0x13b4…?as_of=1792227600
+    A-->>J: the example pack, recorded_before_h 1, key 0x13b4…
+    J-->>J: Caveats: records begin 1 hour before, and NOAA-20 on 11 Oct; Basis: the new method
+```
+
+A judge reads the landing, then opens the example pack. Its caveats name the 11 Oct sighting by the
+fire's key, and its method says what the records and the chain hold.
+
+### Changes
+
+| File | What | Why |
+| ---- | ---- | --- |
+| `fixtures/firms/archive/VIIRS_NOAA20_NRT.csv`, `VIIRS_SNPP_NRT.csv`, `VIIRS_NOAA21_NRT.csv`, `MODIS_NRT.csv` (new) | FIRMS's area files for `112.75,-3.17,112.90,-3.00`, 3 days from 2026-10-10, as fetched on 2026-10-24: 25, 44, 38 and 5 rows, 10 kB in all | Scenario 3 (O2) |
+| `web/src/archive.test.ts` (new) | Reads the four files and the committed pack. NOAA-20 has detections on 11 Oct under 1 km of the first detection, all outside the boundary, and before the records begin. S-NPP, NOAA-21 and MODIS have detections on 10 Oct under 1 km of the second fire's first pass, inside and outside | Scenarios 1 and 3 |
+| `web/e2e/pack-claims.spec.ts` (new) | The slice's walk, below | E2E |
+| `web/e2e/landing-page.spec.ts:15`, `:19` | `LEDE` and `FIRST_STOP` take the new words | The old walk on the new copy |
+| `web/e2e/source-claims.spec.ts:12`, `:14`, `:48` | `RECORDS_BEGIN`, `BEFORE_RECORDS` and the lede check take the new words | The old walk on the new copy |
+| `web/e2e/origin-confidence.spec.ts:41` | The position line reads "places almost every pixel within 400 m of where it belongs" | The old walk on the new copy |
+| `README.md` "Redo the real case's data" | The cut's four sha256 values and the curl line that fetched them, with `$FIRMS_MAP_KEY` | Scenario 3 (O2) |
+| `docs/ARCHITECTURE.md` Landing and Fire record page rows | The 11 Oct and 10 Oct lines rest on the pinned cut (D145); the example's view and pack name its 11 Oct sighting (D146) | Scenarios 1 and 3 |
+
+Done at pause 2 and kept: `web/src/FireView.tsx`, `ComplaintPack.tsx`, `Landing.tsx`, `RealCase.tsx`,
+`ForecastPanel.tsx`, and their unit tests.
+
+Reusing: `distanceM` from `sameFire.ts` for the 1 km test, the committed pack's `boundary` rings and
+`recorded_before_h`, the README's sha256 pattern for the example pack (D90), the landing e2e's
+`EXAMPLE_PACK` and `route.fulfill` from the committed copy (D137), `toStep`, the 12-step wait (lesson
+`real-case-steps-wait-for-pack`), the `unroute` before the tool (lesson `unroute-example-pack`), and
+the fake Google Maps file.
+
+### Earn-it
+
+| Added | Triggered by |
+| ----- | ------------ |
+| `fixtures/firms/archive/` | Scenario 3 (O2): the lines need a source a reader can check |
+| `web/src/archive.test.ts` | Scenario 3: the lines must be held to the cut |
+| `RecordsBegin` and the fire-keyed `BEFORE_RECORDS` | Scenario 1 (O1): the view and the pack say one note, and the example names its 11 Oct sighting |
+| `web/e2e/pack-claims.spec.ts` | The slice test: one e2e walks the slice |
+
+Cut: a command to fetch the cut (one curl line in the README does it, as for the example pack), a
+point-in-polygon helper in the page (only the test needs it, so it lives there), a FIRMS lookup per
+pack (O1), and record IDs in the printed pack (O3).
+
+### Non-functionals
+
+|                      |                                                                               |
+| -------------------- | ----------------------------------------------------------------------------- |
+| **Load**             | None new. `RecordsBegin` looks up one key in a one-entry map |
+| **Breaks first**     | Nothing at 10 times the load. The cut is read only by a test |
+| **Security surface** | No new route, input or secret on the page or the API. The FIRMS key is used once, by the operator's curl line, from the environment; the committed files hold no key |
+| **Proof it works**   | After Deploy, the live lazy chunks hold "earliest NOAA-20 pass in Fire Watch's records", "forecasts that came in" and "NOAA's NOAA-20 satellite through NASA's FIRMS". The live example pack's caveats end "on 11 Oct, also outside the concession." |
+| **Rollout**          | No flag, as D81. Merge to main; Deploy ships the page. Rollback: revert the merge |
+
+### Test plan
+
+| Scenario | Test | Command |
+| -------- | ---- | ------- |
+| 1. Earliest in the records | `FireView.test.tsx` "counts recording hours…" and the method test; `ComplaintPack.test.tsx` "puts one detection in the heading…" and the Basis test; `archive.test.ts`; the e2e | `cd web && pnpm test && pnpm e2e pack-claims` |
+| 2. The redo line | `FireView.test.tsx` "writes out how the reading is worked out…"; the e2e | as above |
+| 3. The pinned cut | `archive.test.ts`; `RealCase.test.tsx` "tells the fire, the claim…"; `sha256sum -c` from the README | as above |
+| 4. Position error | `FireView.test.tsx` and `ComplaintPack.test.tsx` method tests; the e2e | as above |
+| 5. Names and counts | `Landing.test.tsx` "says why Fire Watch matters…"; `RealCase.test.tsx`; `ForecastPanel.test.tsx` 2023 tests; the e2e | as above |
+| Earlier slices | the full suites | `cd api && uv run pytest`; `cd web && pnpm test && pnpm e2e` |
+
+The e2e needs `docker compose up -d --wait db` and `~/.foundry/bin` on `PATH`. The unit tests on the
+new words were written against pause 2's code, so `/build` breaks the code once for each and watches
+it fail (lesson `pause-2-code-needs-mutants`).
+
+**E2E:** `web/e2e/pack-claims.spec.ts` "a judge reads what Fire Watch's records hold and what the
+chain checks, on the landing and the example pack; an investigator reads the method and the 2023
+count in the tool":
+
+1. Open `/`. The lede reads "It reads NOAA's NOAA-20 satellite through NASA's FIRMS service."
+2. Wait for the 12 steps. Step 0 reads "Fire Watch's records hold this fire on 8 passes of the
+   NOAA-20 satellite". Step 2 reads "hold only the NOAA-20 satellite's detections" and the 11 Oct
+   line with "before the records begin".
+3. Answer the example pack's API call from the committed copy and click "See its complaint pack".
+   The caveats read the records-begin note with the 11 Oct sentence. Basis reads the new first-pass,
+   position and redo lines, and neither "earliest satellite pass" nor "anyone can redo".
+4. Unroute, open `/?tool` for 12 to 15 Oct, ID-WOOD-CONCESSION-0332 and its 13 Oct 17:37 fire. Its
+   method reads the new first-pass line, and the 2023 table's head reads "Warned of, out of 135
+   forecasts that came in".
+
+### Chunks
+
+Single chunk. The page is done; the rest is four data files, one unit test, one new e2e, three edited
+ones and two docs.
+
+### Risks
+
+| Risk | Mitigation |
+| ---- | ---------- |
+| FIRMS later replaces its near-real-time rows with reprocessed ones, so the README's curl line stops giving the same bytes | Two fetches on 2026-10-24 gave the same four sha256 values. The README dates the read and says a later fetch may differ; the test reads the committed copy, not FIRMS |
+| A reader takes the 11 Oct note as Fire Watch hiding a sighting | The note sits beside "Fire Watch's records begin 1 hour before", which says why the records lack it |
+| The fire-keyed note drifts from the landing's line | `archive.test.ts` checks the facts both lines state, and the unit tests pin both words |
+
+### Decisions to record
+
+`/build` appends these to `DECISIONS.md`. None supersedes an entry.
+
+#### D145 · 2026-10-24 · Back the landing's earlier sightings with a pinned FIRMS cut and a test
+
+Why: the 11 Oct and 10 Oct lines were a hand reading of FIRMS, with no file a reader could check.
+Every other figure on the landing has one (D85, D90). Four FIRMS files of 10 kB hold them, and two
+fetches on 2026-10-24 gave the same bytes.
+Rejected: dropping the two lines (undoes D141, and hides what NASA's archive shows).
+Source: docs/specs/pack-claims.md
+Status: active
+
+#### D146 · 2026-10-24 · Name only the example fire's earlier sightings in its view and pack, from the pinned cut
+
+Why: a buyer reads the pack, not the landing, and the example's pack didn't say what the landing
+says about 11 Oct. Every other fire gets the general note that NASA's archive may hold earlier
+detections.
+Rejected: a FIRMS lookup for every pack (puts the FIRMS key on the public, read-only API, spends
+FIRMS quota on each open, and a pack would change with FIRMS's answer, against D33), the general
+note alone (the example's pack would still leave out what the landing names).
+Source: docs/specs/pack-claims.md
+Status: active
+
 ## Open items
 
 | ID | What | Type | Raised at | Owner | Status | Answer |
@@ -211,3 +364,6 @@ _Never delete this section or its rows. See references/ledger.md._
 - **Pixel geolocation**: where the satellite places a pixel on the ground, which can be off by a few
   hundred metres.
 - **e2e**: end-to-end: one test that walks the whole slice as a user would.
+- **Near-real-time (NRT)**: FIRMS's first, fast version of each detection, which it can later replace
+  with a reprocessed one.
+- **Arrival**: a forecast whose fire was then seen inside the concession within 48 hours.
