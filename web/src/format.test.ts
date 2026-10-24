@@ -83,6 +83,12 @@ describe("format", () => {
     expect(firstSeenLine({ reading: "both", inside: false, edge_m: 23 })).toBe("First seen on both sides of the edge");
   });
 
+  it("says in the headline when the first pass was one detection with a long gap after it", () => {
+    const outside = { reading: "outside", inside: false, edge_m: 3100 } as const;
+    expect(firstSeenLine(outside, 25)).toBe("First seen outside, 3.1 km from the edge, as one detection");
+    expect(firstSeenLine(outside, null)).toBe("First seen outside, 3.1 km from the edge");
+  });
+
   it("says where a first pass saw a fire, to follow a date in a sentence", () => {
     expect(seenWhere({ reading: "both", inside: false, edge_m: 2 })).toBe("on both sides of the edge");
     expect(seenWhere({ reading: "edge", inside: true, edge_m: 158 })).toBe("160 m inside the edge, within one satellite pixel of it");

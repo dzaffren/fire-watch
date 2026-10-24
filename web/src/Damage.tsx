@@ -54,6 +54,8 @@ export function estimate(d: Damage) {
     co2Low: co2(PEAT_DM.low, peatBurned, otherBurned),
     co2High: co2(PEAT_DM.high, peatBurned, otherBurned),
     co2Inside: co2(PEAT_DM.mean, insidePeatBurned, insideOtherBurned),
+    co2InsideLow: co2(PEAT_DM.low, insidePeatBurned, insideOtherBurned),
+    co2InsideHigh: co2(PEAT_DM.high, insidePeatBurned, insideOtherBurned),
     cost: (peatBurned + otherBurned) * COST_PER_HA,
     costInside: (insidePeatBurned + insideOtherBurned) * COST_PER_HA,
   };
@@ -77,12 +79,17 @@ const ha = (n: number) => `${amount(n)}\u00a0ha`;
 const tonnes = (n: number) => `${amount(n)}\u00a0t`;
 const usd = (n: number) => `US$${amount(n).replace(" ", "\u00a0")}`;
 const percent = (share: number, places = 0) => `${(share * 100).toFixed(places)}%`;
+// CO2 from IPCC's 95% interval for burned peat (D140); with too little peat to differ, one figure.
+const co2Range = (low: number, high: number) => `${amount(low)} to ${tonnes(high)}`;
+const ranged = (low: number, high: number) => twoFigures(low) !== twoFigures(high);
 
 function DamageFigures({ d }: { d: Damage }) {
   const e = estimate(d);
   // Name the part inside only when the fire is on both sides of the edge.
   const split = e.haInside > 0 && e.haInside < e.ha;
   const inside = (text: string) => (split ? ` ${text} of it inside the concession.` : "");
+  const co2Ranged = ranged(e.co2Low, e.co2High);
+  const co2Inside = ranged(e.co2InsideLow, e.co2InsideHigh) ? co2Range(e.co2InsideLow, e.co2InsideHigh) : tonnes(e.co2Inside);
   return (
     <>
       <dl className="fw-kv">
@@ -101,11 +108,11 @@ function DamageFigures({ d }: { d: Damage }) {
         </dd>
         <dt>CO₂ released</dt>
         <dd>
-          <span className="damage-value">About {tonnes(e.co2)}</span>
-          {(e.peat > 0 || split) && (
+          <span className="damage-value">{co2Ranged ? co2Range(e.co2Low, e.co2High) : `About ${tonnes(e.co2)}`}</span>
+          {(co2Ranged || split) && (
             <span className="sub">
-              {e.peat > 0 && `Likely ${amount(e.co2Low)} to ${tonnes(e.co2High)}.`}
-              {inside(tonnes(e.co2Inside))}
+              {co2Ranged && `About ${tonnes(e.co2)} at IPCC's average.`}
+              {inside(co2Inside)}
             </span>
           )}
         </dd>
@@ -217,6 +224,10 @@ function DamageMethod({ d, labelledBy }: { d: Damage; labelledBy: string }) {
           2015, counting haze, health and crop losses.
         </dd>
       </dl>
+      <p className="fw-help">
+        The CO₂ range is IPCC's 95% interval for the peat a fire burns. Other ground is at IPCC's average, since its
+        interval reaches zero. IPCC gives no interval for peat's {PEAT_CO2_C} g, which comes from one study.
+      </p>
       <p className="fw-help">
         Methane and carbon monoxide are left out. This estimate is not sealed. Its detections are sealed, and the maps,
         the 2023 check and the factors are pinned, so anyone can redo it.

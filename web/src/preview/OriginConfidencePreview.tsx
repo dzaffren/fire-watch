@@ -40,7 +40,7 @@ export const LIVE_JOINED: JoinedFire[] = [
 const STATES = {
   fire: "1–2. 0332's fire as its pack stands: one detection first, one join",
   fireLive: "2. The same notes for the 7 fires joined to it by 22 Oct (detections as of 17 Oct)",
-  firm: "3. 0356's fire: one detection, seen again 11 h later, no note",
+  firm: "3. 0356's fire: one detection, seen again 11 h later, only what the satellite can miss",
   pack: "4. 0332's pack: both notes on top",
   packLive: "4. The pack with the 7 fires joined by 22 Oct, listed under Basis",
   landing: "5. The landing tells 0332's fire as the record shows it",

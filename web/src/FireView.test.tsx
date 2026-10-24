@@ -25,7 +25,9 @@ const ONE_HOUR = { id: "ID-WOOD-CONCESSION-0332", key: "0x13b417c6f54dd95c7c418b
 const ONE_PASS = { id: "ID-WOOD-CONCESSION-0332", key: "0x08fb9ad47abd958004db9297551fe94a158405a81e978620b4ad8a4a67b63c9e" } as const;
 
 const CANT_TELL = "The satellite record can't say which side this fire started on.";
-const ALONE = "First seen as one detection, then not seen for 25 hours. That detection may be a separate fire.";
+const ALONE = "The satellite didn't see this fire again for 25 hours, so that detection may be a separate fire.";
+const MISSED =
+  "The satellite can miss fire under cloud or thick tree canopy, and peat that smoulders below the surface. This fire may have burned unseen before it was first seen, inside or outside the concession.";
 const JOINED_ONE =
   "Fire Watch joined another fire to this one on 14 Oct 17:20 UTC, when they came within 1 km. First seen above is the older of the two. The other was first seen on 13 Oct 06:37 UTC, on both sides of the edge.";
 const JOINED_MANY =
@@ -138,11 +140,13 @@ describe("FireView", () => {
     ).toBeInTheDocument();
   });
 
-  it("says the example fire's first pass is one detection with 25 hours after it, and keeps its reading", () => {
+  it("says in the heading that the example fire's first pass is one detection, with 25 hours after it", () => {
     // 0332's fire as its pack stands at 17 Oct 09:00 UTC: one detection 3,100 m outside on 12 Oct 05:16.
     show(ONE_HOUR.id, { kind: "ready", fire: { ...fire(ONE_HOUR), ...AS_PACKED } });
 
-    expect(screen.getByRole("heading", { name: "First seen outside, 3.1 km from the edge" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "First seen outside, 3.1 km from the edge, as one detection" }),
+    ).toBeInTheDocument();
     expect(screen.getByText(ALONE)).toBeInTheDocument();
   });
 
@@ -171,13 +175,12 @@ describe("FireView", () => {
     ]);
   });
 
-  it("adds nothing to a firm fire that never joined another", () => {
+  it("gives a firm fire that never joined another only what the satellite can miss", () => {
     // 0356's fire: one detection 409 m inside, seen again 11 hours later.
     show(INSIDE.id, { kind: "ready", fire: { ...fire(INSIDE), first_alone_h: null, joined: [] } });
 
     expect(screen.getByRole("heading", { name: "First seen inside, 410 m from the edge" })).toBeInTheDocument();
-    expect(document.querySelector(".fire-notes")).toBeNull();
-    expect(screen.queryByText(/First seen as one detection/)).toBeNull();
+    expect([...document.querySelectorAll(".fire-notes p")].map((p) => p.textContent)).toEqual([MISSED]);
     expect(screen.queryByText(/^Fire Watch joined/)).toBeNull();
     expect(screen.queryByText(/fires joined to this one$/)).toBeNull();
   });
@@ -185,7 +188,7 @@ describe("FireView", () => {
   it("gives each note on its own to a fire with no other caveat", () => {
     show(INSIDE.id, { kind: "ready", fire: { ...fire(INSIDE), first_alone_h: 36 } });
     expect(
-      screen.getByText("First seen as one detection, then not seen for 36 hours. That detection may be a separate fire."),
+      screen.getByText("The satellite didn't see this fire again for 36 hours, so that detection may be a separate fire."),
     ).toBeInTheDocument();
     cleanup();
 
@@ -193,7 +196,7 @@ describe("FireView", () => {
     expect(screen.getByText(/^Fire Watch joined another fire to this one on 14 Oct 17:20 UTC/)).toBeInTheDocument();
   });
 
-  it("puts the notes after can't tell and before never spread and records begin", () => {
+  it("puts the notes after can't tell and before never spread and records begin, and what the satellite can miss last", () => {
     show(BOTH.id, {
       kind: "ready",
       fire: { ...fire(BOTH), ...AS_PACKED, joined: LIVE_JOINED, never_spread: true },
@@ -206,6 +209,7 @@ describe("FireView", () => {
       JOINED_MANY,
       "Seen on 6 passes without spreading. This can be a fixed heat source, such as a mill, or peat smouldering in place.",
       "Fire Watch's records begin 27 hours before this fire was first seen, so it may have been burning earlier.",
+      MISSED,
     ]);
   });
 
@@ -225,7 +229,7 @@ describe("FireView", () => {
         "A detection's position can be off as well. Straight below the satellite, NOAA-20 places almost every detection within 400 m of the fire, and most within 200 m (Blonski and others, 2023, doi 10.1117/1.JRS.17.034506). The 375 m margin doesn't allow for this. Concession edges come from Trase's map, which gives no accuracy for its lines.",
       ),
     ).toBeInTheDocument();
-    expect(within(how).getByText(/NOAA-20 passes about twice a day and cloud can hide a fire/)).toBeInTheDocument();
+    expect(within(how).getByText(/NOAA-20 passes about twice a day, so a fire may burn for hours/)).toBeInTheDocument();
   });
 
   it("links to a pack in a new tab", () => {
