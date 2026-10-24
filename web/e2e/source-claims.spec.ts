@@ -9,10 +9,10 @@ const EXAMPLE_PACK =
 const EXAMPLE_FIRES = `${API_URL}/api/concessions/ID-WOOD-CONCESSION-0332/fires/**`;
 
 const FIRST_SHOWN = "Fire Watch's records first show it on 12 Oct 05:16 UTC as one detection";
-const RECORDS_BEGIN = "Fire Watch's records begin 1 hour before this detection and read only NASA's NOAA-20 satellite.";
+const RECORDS_BEGIN = "Fire Watch's records begin 1 hour before this detection and hold only the NOAA-20 satellite's detections.";
 const BEFORE_RECORDS =
-  "In NASA's archive, NOAA-20 saw fire under 1 km from here on 11 Oct, before recording began, also outside the concession.";
-const SECOND_BEFORE = "In NASA's archive, other satellites saw fire on that ground on 10 Oct, also on both sides of the edge.";
+  "In NASA's FIRMS archive, NOAA-20 saw fire under 1 km from here on 11 Oct, before the records begin, also outside the concession.";
+const SECOND_BEFORE = "In NASA's FIRMS archive, other satellites saw fire on that ground on 10 Oct, also on both sides of the edge.";
 const SHARES =
   "At the shares Fire Watch measured on NASA's 2023 burned-area map, in large patches: 62% of peat, 42% of other ground.";
 const DRAINED =
@@ -45,7 +45,7 @@ test("a judge reads which satellite and when the records begin, and the joined f
   page,
 }) => {
   await page.goto("/");
-  await expect(page.locator(".landing-lede")).toContainText("It shows where NASA's NOAA-20 satellite first saw a fire");
+  await expect(page.locator(".landing-lede")).toContainText("It reads NOAA's NOAA-20 satellite through NASA's FIRMS service.");
   await expect(page.locator(".landing-globe figcaption p")).toHaveText(/^Each dot is a square about 1 km across/);
 
   const steps = page.getByRole("region", { name: "A real case" }).getByRole("listitem");

@@ -12,11 +12,11 @@ const EXAMPLE_PACK =
 
 const HEADLINE = "When a company says a fire spread in from outside its land, show where the satellite first saw it.";
 const LEDE =
-  "Fire Watch is built for the watchdog groups that report plantation fires to the companies that buy from the plantation. It shows where NASA's NOAA-20 satellite first saw a fire and how it spread, on records the buyer checks in their own browser.";
+  "Fire Watch is built for the watchdog groups that report plantation fires to the companies that buy from the plantation. It reads NOAA's NOAA-20 satellite through NASA's FIRMS service. It shows where the satellite first saw a fire and how it spread, on records the buyer checks in their own browser.";
 const GLOBE_CAPTION =
   "Each dot is a square about 1 km across where the NOAA-20 satellite detected fire on 14 Oct 2026, and near the example fire, one detection. That day it made 62,489 detections worldwide, 9,923 of them in and around Indonesia.";
 const FIRST_STOP =
-  "From 12 Oct to 17 Oct 2026, the NOAA-20 satellite saw this fire on 8 passes, 283 detections in all, near ID-WOOD-CONCESSION-0332, in Central Kalimantan.";
+  "From 12 Oct to 17 Oct 2026, Fire Watch's records hold this fire on 8 passes of the NOAA-20 satellite, 283 detections in all, near ID-WOOD-CONCESSION-0332, in Central Kalimantan.";
 const PACK_FOOT =
   "This pack holds this fire as Fire Watch had stored it by 2026-10-17 09:00 UTC. Passes after that are not in it.";
 
