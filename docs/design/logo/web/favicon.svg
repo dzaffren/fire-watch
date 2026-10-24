@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+<title>Fire Watch</title>
+<rect width="256" height="256" rx="48" fill="#1f2421"/>
+<g transform="translate(38.4 38.4) scale(0.7)">
+<path fill="#e8e9e4" fill-rule="evenodd" d="M204.98 56.22A112 112 0 1 0 204.98 199.78L174.27 174.14A72 72 0 1 1 174.27 81.86Z"/>
+<path fill="#ff8a4c" fill-rule="evenodd" d="M173 90h76v76h-76Z"/>
+</g>
+</svg>
