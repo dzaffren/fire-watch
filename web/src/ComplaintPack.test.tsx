@@ -21,6 +21,8 @@ const RUN_1_AT = Date.parse("2026-10-15T08:02:00Z") / 1000;
 const RUN_2_AT = Date.parse("2026-10-15T21:03:00Z") / 1000;
 const RULE_URL = "https://github.com/dzaffren/fire-watch/blob/main/api/src/firewatch/fires.py";
 const CANT_TELL = "The satellite record can't say which side this fire started on.";
+const MISSED =
+  "The satellite can miss fire under cloud or thick tree canopy, and peat that smoulders below the surface. This fire may have burned unseen before it was first seen, inside or outside the concession.";
 const NEVER_SPREAD =
   "Seen on 5 passes without spreading. This can be a fixed heat source, such as a mill, or peat smouldering in place.";
 // Scenario 3's detection, first sealed at 14.48 MW.
@@ -328,6 +330,7 @@ describe("ComplaintPack", () => {
       "First seen 160 m inside the edge, within one satellite pixel of it",
       "ID-WOOD-CONCESSION-0540, Sumatera Selatan",
       CANT_TELL,
+      MISSED,
     ]);
   });
 
@@ -338,19 +341,23 @@ describe("ComplaintPack", () => {
     expect(within(title.closest("header")!).getByText(NEVER_SPREAD)).toBeInTheDocument();
   });
 
-  it("puts the one-detection and joined notes on top with the other caveats", async () => {
+  it("puts one detection in the heading, and the one-detection, joined and missed notes on top", async () => {
     // 0332's fire cut at 17 Oct 09:00 UTC: one detection on 12 Oct 05:16, then 25 hours; one join on 14 Oct.
     render(<ComplaintPack source={sourceOf({ ...packOf(FIRES.largest), ...AS_PACKED })} packRef={refOf(FIRES.largest)} />);
 
-    const title = await screen.findByRole("heading", { level: 1, name: "First seen outside, 3.1 km from the edge" });
+    const title = await screen.findByRole("heading", {
+      level: 1,
+      name: "First seen outside, 3.1 km from the edge, as one detection",
+    });
     const head = title.closest("header")!;
     expect([...head.querySelectorAll("h1, p")].map((e) => e.textContent)).toEqual([
       "Complaint pack, as of 2026-10-17 09:00 UTC",
-      "First seen outside, 3.1 km from the edge",
+      "First seen outside, 3.1 km from the edge, as one detection",
       "ID-WOOD-CONCESSION-0332, Kalimantan Tengah",
-      "First seen as one detection, then not seen for 25 hours. That detection may be a separate fire.",
+      "The satellite didn't see this fire again for 25 hours, so that detection may be a separate fire.",
       "Fire Watch joined another fire to this one on 14 Oct 17:20 UTC, when they came within 1 km. First seen above is the older of the two. The other was first seen on 13 Oct 06:37 UTC, on both sides of the edge.",
       "Fire Watch's records begin 1 hour before this fire was first seen, so it may have been burning earlier.",
+      MISSED,
     ]);
     expect(screen.queryByText(/fires joined to this one$/)).toBeNull();
   });
@@ -360,9 +367,10 @@ describe("ComplaintPack", () => {
     render(<ComplaintPack source={sourceOf({ ...packOf(FIRES.inside), first_alone_h: 36 })} packRef={refOf(FIRES.inside)} />);
 
     const title = await screen.findByRole("heading", { level: 1 });
+    expect(title).toHaveTextContent("First seen inside, 410 m from the edge, as one detection");
     expect(
       within(title.closest("header")!).getByText(
-        "First seen as one detection, then not seen for 36 hours. That detection may be a separate fire.",
+        "The satellite didn't see this fire again for 36 hours, so that detection may be a separate fire.",
       ),
     ).toBeInTheDocument();
   });
@@ -402,7 +410,7 @@ describe("ComplaintPack", () => {
     render(<ComplaintPack source={sourceOf({ ...packOf(FIRES.inside), rule_version: 2 })} packRef={refOf(FIRES.inside)} />);
 
     await screen.findByRole("heading", { level: 1, name: "First seen inside, 410 m from the edge" });
-    expect(document.querySelector(".pack-caveats")).toBeNull();
+    expect([...document.querySelectorAll(".pack-caveats p")].map((p) => p.textContent)).toEqual([MISSED]);
     const basis = screen.getByRole("region", { name: "Basis" });
     expect(
       within(basis).getByText(
@@ -430,7 +438,9 @@ describe("ComplaintPack", () => {
     expect(value("Likely burned")).toMatch(
       /^About 130\shaAt NASA's 2023 shares: 62% of peat, 42% of other ground\. 37\sha of it inside the concession\.$/,
     );
-    expect(value("CO₂ released")).toMatch(/^About 76,000\st/);
+    expect(value("CO₂ released")).toMatch(
+      /^37,000 to 110,000\stAbout 76,000\st at IPCC's average\. 11,000 to 33,000\st of it inside the concession\.$/,
+    );
 
     // Shown in full, so a printed pack carries it.
     expect(section.querySelector("details")).toBeNull();

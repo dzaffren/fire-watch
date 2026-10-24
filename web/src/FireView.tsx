@@ -62,7 +62,7 @@ export function OriginNotes({ fire, listed }: { fire: FireDetail; listed: string
     <>
       {hours != null && (
         <p className="fw-help">
-          First seen as one detection, then not seen for {plural(hours, "hour", "hours")}. That detection may be a
+          The satellite didn't see this fire again for {plural(hours, "hour", "hours")}, so that detection may be a
           separate fire.
         </p>
       )}
@@ -81,6 +81,18 @@ export function OriginNotes({ fire, listed }: { fire: FireDetail; listed: string
         </p>
       )}
     </>
+  );
+}
+
+/** What the satellite can miss, so any fire may have burned before it was first seen (D139). */
+export const MISSED = "The satellite can miss fire under cloud or thick tree canopy, and peat that smoulders below the surface.";
+
+/** The note every fire carries, after the notes on its own record. */
+export function MissedNote() {
+  return (
+    <p className="fw-help">
+      {MISSED} This fire may have burned unseen before it was first seen, inside or outside the concession.
+    </p>
   );
 }
 
@@ -126,7 +138,7 @@ export function OriginMethod() {
         lines.
       </p>
       <p className="fw-help">
-        NOAA-20 passes about twice a day and cloud can hide a fire, so it may burn for hours before it is first seen.
+        NOAA-20 passes about twice a day, so a fire may burn for hours before it is first seen.
         Each detection is sealed, so anyone can redo this from the chain and NASA FIRMS's public archive.
       </p>
     </>
@@ -229,29 +241,27 @@ function Reading({ id, fire, packHref }: { id: string; fire: FireDetail; packHre
   const showOutside = fire.outside_from_unix !== null && (reading === "inside" || unclear);
   const hours = fire.recorded_before_h;
   const joined = fire.joined ?? [];
-  const weak = fire.first_alone_h != null || joined.length > 0;
 
   return (
     <article className="fw-panel fire-reading enter" aria-labelledby="h-fire">
-      <h2 id="h-fire">{firstSeenLine(fire.first_seen)}</h2>
-      {(unclear || weak || fire.never_spread || hours !== null) && (
-        <div className="fire-notes">
-          {unclear && <p className="fw-help">The satellite record can't say which side this fire started on.</p>}
-          <OriginNotes fire={fire} listed="below" />
-          {fire.never_spread && (
-            <p className="fw-help">
-              Seen on {count(fire.passes)} passes without spreading. This can be a fixed heat source, such as a mill, or
-              peat smouldering in place.
-            </p>
-          )}
-          {hours !== null && (
-            <p className="fw-help">
-              Fire Watch's records begin {hours < 1 ? "less than an hour" : plural(hours, "hour", "hours")} before this
-              fire was first seen, so it may have been burning earlier.
-            </p>
-          )}
-        </div>
-      )}
+      <h2 id="h-fire">{firstSeenLine(fire.first_seen, fire.first_alone_h)}</h2>
+      <div className="fire-notes">
+        {unclear && <p className="fw-help">The satellite record can't say which side this fire started on.</p>}
+        <OriginNotes fire={fire} listed="below" />
+        {fire.never_spread && (
+          <p className="fw-help">
+            Seen on {count(fire.passes)} passes without spreading. This can be a fixed heat source, such as a mill, or
+            peat smouldering in place.
+          </p>
+        )}
+        {hours !== null && (
+          <p className="fw-help">
+            Fire Watch's records begin {hours < 1 ? "less than an hour" : plural(hours, "hour", "hours")} before this
+            fire was first seen, so it may have been burning earlier.
+          </p>
+        )}
+        <MissedNote />
+      </div>
       <dl className="fw-kv">
         <dt>Concession</dt>
         <dd>{id}</dd>

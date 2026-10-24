@@ -73,8 +73,10 @@ export function seenWhere(f: FirstSeen): string {
   return `${f.reading}, ${distance(f.edge_m)} from the edge`;
 }
 
-/** The fire view's headline: where the fire's first pass saw it against this concession (D26). */
-export const firstSeenLine = (f: FirstSeen) => `First seen ${seenWhere(f)}`;
+/** The fire view's headline: where the fire's first pass saw it against this concession (D26), and
+ *  whether that pass was one detection with a long gap after it (D112). */
+export const firstSeenLine = (f: FirstSeen, aloneH?: number | null) =>
+  `First seen ${seenWhere(f)}${aloneH != null ? ", as one detection" : ""}`;
 
 /** The fires table's short form: "Outside, 950 m", or "Too close to tell". */
 export function firstSeenShort(f: FirstSeen): string {

@@ -4,7 +4,7 @@ import type { HotspotRecord, PackDetail, PackRef } from "./api";
 import type { Seal } from "./chain";
 import { DamageSection } from "./Damage";
 import { FireMap } from "./FireMap";
-import { fireArea, fireDots, JoinedTable, OriginMethod, OriginNotes, passTimes, Replay, where } from "./FireView";
+import { fireArea, fireDots, JoinedTable, MissedNote, OriginMethod, OriginNotes, passTimes, Replay, where } from "./FireView";
 import { count, detected, detectedShort, distance, firstSeenLine, location, plural, shortHash } from "./format";
 import { AlertIcon, BadIcon, ExternalIcon, OkIcon } from "./icons";
 import { checkSeal, checkTitle, Chip, overall, RecordPanel, type Check, type SealCheck } from "./RecordPanel";
@@ -232,7 +232,7 @@ export function ComplaintPack({ source, packRef, initialOpen = null }: Props) {
             <>
               <header className="pack-head enter">
                 <p className="fw-help">Complaint pack, as of {detected(pack.as_of_unix)}</p>
-                <h1 id="h-pack">{firstSeenLine(pack.first_seen)}</h1>
+                <h1 id="h-pack">{firstSeenLine(pack.first_seen, pack.first_alone_h)}</h1>
                 <p className="pack-where">
                   {pack.concession_id}, {pack.province}
                 </p>
@@ -485,8 +485,6 @@ function Caveats({ pack }: { pack: PackDetail }) {
   const { reading } = pack.first_seen;
   const unclear = reading === "edge" || reading === "both";
   const hours = pack.recorded_before_h;
-  const weak = pack.first_alone_h != null || (pack.joined ?? []).length > 0;
-  if (!unclear && !weak && !pack.never_spread && hours === null) return null;
   return (
     <div className="fire-notes pack-caveats">
       {unclear && <p className="fw-help">The satellite record can't say which side this fire started on.</p>}
@@ -503,6 +501,7 @@ function Caveats({ pack }: { pack: PackDetail }) {
           was first seen, so it may have been burning earlier.
         </p>
       )}
+      <MissedNote />
     </div>
   );
 }

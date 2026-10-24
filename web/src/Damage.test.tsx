@@ -68,6 +68,8 @@ describe("estimate", () => {
     expect(Math.round(e.co2Low)).toBe(36555);
     expect(Math.round(e.co2High)).toBe(114874);
     expect(Math.round(e.co2Inside)).toBe(21976);
+    expect(Math.round(e.co2InsideLow)).toBe(10583);
+    expect(Math.round(e.co2InsideHigh)).toBe(33369);
     expect(Math.round(e.cost)).toBe(795303);
     expect(Math.round(e.costInside)).toBe(226588);
   });
@@ -79,7 +81,10 @@ describe("DamagePanel", () => {
 
     expect(figure("Ground in its pixels")).toEqual(["About 210 ha", "59 ha of it inside the concession."]);
     expect(figure("Likely burned")).toEqual(["About 130 ha", `${SHARES} 37 ha of it inside the concession.`]);
-    expect(figure("CO₂ released")).toEqual(["About 76,000 t", "Likely 37,000 to 110,000 t. 22,000 t of it inside the concession."]);
+    expect(figure("CO₂ released")).toEqual([
+      "37,000 to 110,000 t",
+      "About 76,000 t at IPCC's average. 11,000 to 33,000 t of it inside the concession.",
+    ]);
     expect(figure("Cost")).toEqual([
       "About US$800,000",
       "At Indonesia's 2015 average of US$6,192 a hectare. US$230,000 of it inside the concession.",
@@ -100,7 +105,7 @@ describe("DamagePanel", () => {
     expect(figure("CO₂ released")).toEqual(["About 400 t"]);
     expect(figure("Cost")).toEqual(["About US$37,000", "At Indonesia's 2015 average of US$6,192 a hectare."]);
     expect(within(panel()).getByText("None of this ground is inside the concession.")).toBeInTheDocument();
-    expect(panel().textContent).not.toMatch(/Likely \d|of it inside/);
+    expect(panel().querySelector("dl")!.textContent).not.toMatch(/\d to \d|IPCC's average|of it inside/);
   });
 
   it("puts the never-spread caveat above a fire's figures", () => {
@@ -108,7 +113,7 @@ describe("DamagePanel", () => {
 
     expect(figure("Ground in its pixels")).toEqual(["About 58 ha"]);
     expect(figure("Likely burned")).toEqual(["About 36 ha", SHARES]);
-    expect(figure("CO₂ released")).toEqual(["About 22,000 t", "Likely 10,000 to 33,000 t."]);
+    expect(figure("CO₂ released")).toEqual(["10,000 to 33,000 t", "About 22,000 t at IPCC's average."]);
     expect(within(panel()).getByText("All of this ground is inside the concession.")).toBeInTheDocument();
     const caveat = within(panel()).getByText(NEVER_SPREAD);
     expect(caveat.compareDocumentPosition(panel().querySelector("dl")!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
@@ -148,6 +153,11 @@ describe("DamagePanel", () => {
     expect(within(panel()).getByText("CO₂ on other ground", { selector: "dt" }).nextElementSibling?.textContent).toMatch(
       /^66\.7 t a hectare/,
     );
+    expect(
+      within(panel()).getByText(
+        "The CO₂ range is IPCC's 95% interval for the peat a fire burns. Other ground is at IPCC's average, since its interval reaches zero. IPCC gives no interval for peat's 464 g, which comes from one study.",
+      ),
+    ).toBeInTheDocument();
     expect(
       within(panel()).getByText(
         "Methane and carbon monoxide are left out. This estimate is not sealed. Its detections are sealed, and the maps, the 2023 check and the factors are pinned, so anyone can redo it.",

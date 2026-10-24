@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { HotspotRecord, PackDetail } from "./api";
 import { FireMap, type Dot } from "./FireMap";
-import { fireArea, fireDots, passTimes } from "./FireView";
+import { fireArea, fireDots, MISSED, passTimes } from "./FireView";
 import { count, detected, detectedShort, location, plural, seenWhere } from "./format";
 import { checkTitle, Chip, overall, type Check } from "./RecordPanel";
 
@@ -146,7 +146,7 @@ export function RealCase({ source, packHref }: { source: CaseSource; packHref: s
                 {edge ? ` and ${count(edge.edge_m)} m from its edge` : ""}.
                 {alone != null &&
                   ` It didn't see the fire again for ${plural(alone, "hour", "hours")}, so that detection may be a separate fire.`}{" "}
-                Scroll on to see what came next, one satellite pass at a time.
+                {MISSED} Scroll on to see what came next, one satellite pass at a time.
               </p>
             </>
           );
