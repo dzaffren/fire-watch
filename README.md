@@ -32,6 +32,7 @@ for watchdog investigators who file grievances over fires on plantation land.
 - Each damage estimate adds the ground that likely burned, at the shares NASA's MODIS map found burned near concessions in 2023: 61.8% of peat and 42.2% of other ground. `damage-check-2023` redoes the shares from pinned files.
 - The 2023 replay adds one rule version 2, picked on January to September and judged once on October to December. It warned of 2 fewer arrivals than the near-edge step there, so rule version 1 stays, and the forecast panel says so.
 - The landing opens with the answer a company gives to a fire grievance, and it and the complaint pack claim no more than the chain or the data shows. The README's sha for the example pack matches the API again.
+- A weak first sighting says "as one detection" in its headline. Every fire names what the satellite can miss, and the CO₂ figure leads with its range.
 
 ## Docs
 
