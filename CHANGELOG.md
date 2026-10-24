@@ -44,6 +44,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Play in a fire's replay no longer jumps almost straight to the last pass; the built page read its 600 ms step as 0.6 ms.
 - The landing opens with the answer a company gives to a fire grievance, and says who Fire Watch is built for, not who uses it. The globe counts detections, not fires, and the real case gives 8 passes and 283 detections. A complaint pack no longer says it holds every detection of its fire. The README's sha256 for the example pack matches the API's answer again.
 - The landing names NOAA-20 as the one satellite Fire Watch reads, and says its records begin an hour before the example fire's first detection. It gives the earlier detections in NASA's archive, which saw the same sides. Each dot on the globe is a square about 1 km across. The damage estimate credits its burned shares to Fire Watch's own check of NASA's map. A joined fire's "Seen inside from" says when the fire joined to it was the one seen inside.
+- A fire's method says its first pass is the earliest in Fire Watch's records, not the earliest the satellite made, and that NOAA-20's position error is for its pixels, not its detections. It says your browser checks each record against the chain, not that anyone can redo the reading from the chain. The example fire's view and pack name its 11 Oct sighting in NASA's FIRMS archive. The landing's earlier sightings rest on a pinned copy of FIRMS's files, and the 2023 replay counts forecasts that came in.
 
 ### Security
 
