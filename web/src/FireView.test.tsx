@@ -154,7 +154,7 @@ describe("FireView", () => {
     show(ONE_HOUR.id, { kind: "ready", fire: { ...fire(ONE_HOUR), ...AS_PACKED } });
 
     expect(screen.getByText(JOINED_ONE)).toBeInTheDocument();
-    expect(detail("Seen inside from")).toBe("2026-10-13 06:37 UTC");
+    expect(detail("Seen inside from")).toBe("2026-10-13 06:37 UTC, by the fire joined to this one on 14 Oct 17:20 UTC");
     expect(screen.queryByText(/fires joined to this one$/)).toBeNull();
   });
 

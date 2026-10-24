@@ -30,12 +30,12 @@ describe("Landing", () => {
     render(<Landing caseSource={caseSource} />);
 
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
-      "When a company says a fire spread in from outside its land, show where satellites first saw it.",
+      "When a company says a fire spread in from outside its land, show where the satellite first saw it.",
     );
     expect(document.body.textContent).not.toMatch(/fire started/);
     expect(
       screen.getByText(
-        "Fire Watch is built for the watchdog groups that report plantation fires to the companies that buy from the plantation. It shows where satellites first saw a fire and how it spread, on records the buyer checks in their own browser.",
+        "Fire Watch is built for the watchdog groups that report plantation fires to the companies that buy from the plantation. It shows where NASA's NOAA-20 satellite first saw a fire and how it spread, on records the buyer checks in their own browser.",
       ),
     ).toBeInTheDocument();
     expect(document.body.textContent).not.toMatch(/groups use Fire Watch/);
@@ -56,7 +56,7 @@ describe("Landing", () => {
     ]);
     expect(
       screen.getByText(
-        "Every dot is one detection by the NOAA-20 satellite on 14 Oct 2026: 62,489 worldwide, 9,923 of them in and around Indonesia.",
+        "Each dot is a square about 1 km across where the NOAA-20 satellite detected fire on 14 Oct 2026, and near the example fire, one detection. That day it made 62,489 detections worldwide, 9,923 of them in and around Indonesia.",
       ),
     ).toBeInTheDocument();
     const words = within(screen.getByRole("region", { name: "Words used here" }));
@@ -87,11 +87,11 @@ describe("Landing", () => {
     expect(vi.mocked(FireGlobe).mock.lastCall![0].atFire).toBe(true);
     expect(
       screen.getByText(
-        /^A fire in ID-WOOD-CONCESSION-0332, Central Kalimantan, on 14 Oct 2026\. The satellite first saw it on 12 Oct as one detection, 3,100 m outside the concession\. On 14 Oct it joined a second fire, first seen the day before on both sides of the edge\./,
+        /^A fire in ID-WOOD-CONCESSION-0332, Central Kalimantan, on 14 Oct 2026\. Fire Watch's records first show it on 12 Oct as one detection, 3,100 m outside the concession\. On 14 Oct it joined a second fire, first recorded the day before on both sides of the edge\./,
       ),
     ).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "See its complaint pack" })).toHaveAttribute("href", EXAMPLE_PACK);
     expect(screen.queryByRole("button", { name: "Go to the example fire" })).not.toBeInTheDocument();
-    expect(screen.queryByText(/^Every dot is one detection/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/^Each dot is a square/)).not.toBeInTheDocument();
   });
 });

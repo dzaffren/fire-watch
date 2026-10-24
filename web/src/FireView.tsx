@@ -5,6 +5,7 @@ import type { Dot } from "./FireMap";
 import type { Area } from "./maps";
 import { count, detected, detectedShort, distance, firePower, firstSeenLine, firstSeenShort, plural, seenWhere } from "./format";
 import { AlertIcon, ChevronLeftIcon, ExternalIcon, PauseIcon, PlayIcon } from "./icons";
+import { sideJoin } from "./sameFire";
 
 export type FireLoad = { kind: "loading" } | { kind: "error" } | { kind: "ready"; fire: FireDetail };
 
@@ -94,6 +95,18 @@ export function MissedNote() {
     <p className="fw-help">
       {MISSED} This fire may have burned unseen before it was first seen, inside or outside the concession.
     </p>
+  );
+}
+
+/** When the fire was first seen on a side of the edge, naming the joined fire when it, not this one, was seen there
+ *  first (D142). */
+export function SideFrom({ fire, id, inside }: { fire: FireDetail; id: string; inside: boolean }) {
+  const by = sideJoin(fire, id, inside);
+  return (
+    <>
+      {detected((inside ? fire.inside_from_unix : fire.outside_from_unix)!)}
+      {by && `, by the fire joined to this one on ${detectedShort(by.at_unix)} UTC`}
+    </>
   );
 }
 
@@ -273,13 +286,17 @@ function Reading({ id, fire, packHref }: { id: string; fire: FireDetail; packHre
         {showInside && (
           <>
             <dt>Seen inside from</dt>
-            <dd>{detected(fire.inside_from_unix!)}</dd>
+            <dd>
+              <SideFrom fire={fire} id={id} inside />
+            </dd>
           </>
         )}
         {showOutside && (
           <>
             <dt>Seen outside from</dt>
-            <dd>{detected(fire.outside_from_unix!)}</dd>
+            <dd>
+              <SideFrom fire={fire} id={id} inside={false} />
+            </dd>
           </>
         )}
         <dt>Last seen</dt>

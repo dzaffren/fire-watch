@@ -19,6 +19,11 @@ type CaseLoad = { kind: "loading" } | { kind: "error" } | { kind: "ready"; pack:
 // The committed copy is cut at 17 Oct 2026 09:00 UTC, so these lines can't drift from it (D84, D85).
 const SEALED_WHEN =
   "Passes 1 to 6 were sealed on 16 Oct, when recording began: 23 hours to 4 days after the satellite saw them. Passes 7 and 8 were sealed about 3 hours after.";
+// From FIRMS's archive of NOAA-20, S-NPP, NOAA-21 and MODIS for 10 to 12 Oct 2026, within 1 km of each fire's first
+// pass in the committed copy (D141).
+const BEFORE_RECORDS =
+  "In NASA's archive, NOAA-20 saw fire under 1 km from here on 11 Oct, before recording began, also outside the concession.";
+const SECOND_BEFORE = "In NASA's archive, other satellites saw fire on that ground on 10 Oct, also on both sides of the edge.";
 
 const insideOf = (h: HotspotRecord, id: string) => h.concessions.some((m) => m.id === id && m.inside);
 const day = (unix: number) => detectedShort(unix).split(" ").slice(0, 2).join(" ");
@@ -137,16 +142,20 @@ export function RealCase({ source, packHref }: { source: CaseSource; packHref: s
         if (s.pass === 1) {
           const edge = hs[0].concessions.find((m) => m.id === id);
           const alone = pack!.first_alone_h;
+          const before = pack!.recorded_before_h;
           return (
             <>
               <h3>Where it was first seen</h3>
               <p>
-                The satellite first saw it on {detectedShort(pack!.first_seen_unix)} UTC
+                Fire Watch's records first show it on {detectedShort(pack!.first_seen_unix)} UTC
                 {alone != null && " as one detection"}, {pack!.first_seen.inside ? "inside" : "outside"} the concession
                 {edge ? ` and ${count(edge.edge_m)} m from its edge` : ""}.
                 {alone != null &&
-                  ` It didn't see the fire again for ${plural(alone, "hour", "hours")}, so that detection may be a separate fire.`}{" "}
-                {MISSED} Scroll on to see what came next, one satellite pass at a time.
+                  ` The satellite didn't see the fire again for ${plural(alone, "hour", "hours")}, so that detection may be a separate fire.`}{" "}
+                {MISSED}
+                {before != null &&
+                  ` Fire Watch's records begin ${before < 1 ? "less than an hour" : plural(before, "hour", "hours")} before this detection and read only NASA's NOAA-20 satellite. ${BEFORE_RECORDS}`}{" "}
+                Scroll on to see what came next, one satellite pass at a time.
               </p>
             </>
           );
@@ -163,7 +172,7 @@ export function RealCase({ source, packHref }: { source: CaseSource; packHref: s
                 ? `${plural(hs.length, "detection", "detections")}, all outside.`
                 : `${plural(hs.length, "detection", "detections")}, ${count(inside)} inside the concession.`}
               {seenNow.length > 0 &&
-                ` These include ${seenNow.length === 1 ? "another fire" : `${count(seenNow.length)} other fires`}, first seen on this pass more than 1 km from the first${seenNow.length === 1 ? `, ${seenWhere(seenNow[0].first_seen)}` : ""}.`}
+                ` These include ${seenNow.length === 1 ? "another fire" : `${count(seenNow.length)} other fires`}, first seen on this pass more than 1 km from the first${seenNow.length === 1 ? `, ${seenWhere(seenNow[0].first_seen)}` : ""}. ${SECOND_BEFORE}`}
               {joinedNow && " On this pass the fires came within 1 km of each other, so Fire Watch counts them as one."}
               {s.pass === times.length &&
                 ` In all, ${count(insideAll)} of the ${count(pack!.detections)} detections were inside.`}

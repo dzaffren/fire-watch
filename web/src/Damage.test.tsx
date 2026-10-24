@@ -13,7 +13,7 @@ const STILL: Damage = { inside_peat_ha: 58.25, inside_other_ha: 0, outside_peat_
 const NOT_MEASURED =
   "An estimate, not a measurement. A detection means fire somewhere in its 375 m pixel, not that the whole pixel burned.";
 const NEVER_SPREAD = "This fire never spread. If it is a fixed heat source, such as a mill, little or nothing here burned.";
-const SHARES = "At NASA's 2023 shares: 62% of peat, 42% of other ground.";
+const SHARES = "At the shares Fire Watch measured on NASA's 2023 burned-area map, in large patches: 62% of peat, 42% of other ground.";
 
 // Hotspot B of fire-record scenario 1: one detection, 371 m outside ID-WOOD-CONCESSION-0377.
 const B: FireSummary = {
@@ -137,10 +137,10 @@ describe("DamagePanel", () => {
       ["Outside", "144.31 ha", "6.30 ha"],
     ]);
     expect(
-      within(panel()).getByText(/The ground that likely burned is each part at the share NASA found burned in 2023, below\.$/),
+      within(panel()).getByText(/The ground that likely burned is each part at the share that Fire Watch found burned on NASA's 2023 map, below\.$/),
     ).toBeInTheDocument();
 
-    const check = within(panel()).getByRole("table", { name: /^In 2023, NASA's MODIS burned-area map checked the squares/ });
+    const check = within(panel()).getByRole("table", { name: /^Fire Watch checked the squares of every 2023 detection within 5 km of a concession against NASA's MODIS/ });
     expect(within(check).getAllByRole("row").map((r) => [...r.children].map((c) => c.textContent))).toEqual([
       ["", "Ground in its pixels", "Found burned"],
       ["Peat, in large patches", "31,915 ha", "61.8%"],
@@ -162,7 +162,7 @@ describe("DamagePanel", () => {
     );
     expect(
       within(panel()).getByText(
-        "The CO₂ range is IPCC's 95% interval for the peat a fire burns. Other ground is at IPCC's average, since its interval reaches zero. IPCC gives no interval for peat's 464 g, which comes from one study.",
+        "The CO₂ range is IPCC's 95% interval for the peat a fire burns. Other ground is at IPCC's average, since its interval reaches zero. IPCC gives no interval for peat's 464 g, which comes from one study. Fire Watch treats all peat as drained, since WRI's map doesn't say which is, and IPCC gives no figure for a wildfire on undrained tropical peat.",
       ),
     ).toBeInTheDocument();
     expect(

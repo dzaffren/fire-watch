@@ -439,7 +439,7 @@ describe("ComplaintPack", () => {
     const value = (label: string) => within(figures).getByText(label, { selector: "dt" }).nextElementSibling!.textContent;
     expect(value("Ground in its pixels")).toMatch(/^About 210\sha59\sha of it inside the concession\.$/);
     expect(value("Likely burned")).toMatch(
-      /^About 130\shaAt NASA's 2023 shares: 62% of peat, 42% of other ground\. 37\sha of it inside the concession\.$/,
+      /^About 130\shaAt the shares Fire Watch measured on NASA's 2023 burned-area map, in large patches: 62% of peat, 42% of other ground\. 37\sha of it inside the concession\.$/,
     );
     expect(value("CO₂ released")).toMatch(
       /^37,000 to 110,000\stAbout 76,000\st at IPCC's average\. 11,000 to 33,000\st of it inside the concession\.$/,
@@ -453,7 +453,7 @@ describe("ComplaintPack", () => {
       ["Inside the concession", "59.21 ha", "0.00 ha"],
       ["Outside", "144.31 ha", "6.30 ha"],
     ]);
-    const check = within(section).getByRole("table", { name: /^In 2023, NASA's MODIS burned-area map checked the squares/ });
+    const check = within(section).getByRole("table", { name: /^Fire Watch checked the squares of every 2023 detection within 5 km of a concession against NASA's MODIS/ });
     expect(within(check).getAllByRole("row").slice(1).map((r) => [...r.children].map((c) => c.textContent))).toEqual([
       ["Peat, in large patches", "31,915 ha", "61.8%"],
       ["Other ground, in large patches", "25,536 ha", "42.2%"],
