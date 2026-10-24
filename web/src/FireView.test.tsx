@@ -218,7 +218,11 @@ describe("FireView", () => {
 
     const how = screen.getByText("How this is worked out").closest("details")!;
     expect(how).not.toHaveAttribute("open");
-    expect(within(how).getByText(/A detection joins a fire when it is within 1 km and 48 hours/)).toBeInTheDocument();
+    expect(
+      within(how).getByText(
+        "A detection joins a fire when it is within 1 km and 48 hours of one already in it. The first pass is the earliest NOAA-20 pass in Fire Watch's records that saw the fire. Other satellites, or NOAA-20 before the records begin, may have seen it earlier. A side is named only when every detection on that pass is more than 375 m from the edge, half the widest VIIRS pixel; nearer than that, the fire could be on either side.",
+      ),
+    ).toBeInTheDocument();
     expect(
       within(how).getByText(
         "A fire that comes within 1 km of another is joined to it, so one fire here can be several that the satellite first saw apart. First seen is the oldest one's.",
