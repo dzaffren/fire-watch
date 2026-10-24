@@ -1,6 +1,6 @@
 # Source claims
 
-**Version:** v1 · **Status:** Draft · **Type:** Bug · **Project type:** Web UI
+**Version:** v1 · **Status:** Refined · **Type:** Bug · **Project type:** Web UI
 
 **Shape doc:** docs/specs/judge-review/shape.md
 **Depends on:** claim-fixes, origin-and-range
@@ -198,6 +198,181 @@ preview's State picker is hidden.
 each source in the sentence that rests on it, with no new component. Next to Stripe's documentation,
 the reference for D2, each figure says where it comes from at the point of use.
 
+## Technical plan
+
+### Approach
+
+The page changed at pause 2 in `Landing.tsx`, `RealCase.tsx`, `FireView.tsx`, `ComplaintPack.tsx`,
+`Damage.tsx`, the new `sameFire.ts` and `leftOut.ts`, with their unit tests. This plan adds unit
+tests for `sideJoin`, one e2e that walks the slice, the old e2e specs on the new words, and the
+docs that O4 named. The API, the recorder, the chain and the committed example pack don't change,
+so the README's sha for the pack still holds.
+
+Relies on: D25, D73, D81, D84, D85, D90, D111, D114, D118, D124, D127, D137, D141, D142, D143, D144.
+
+```mermaid
+flowchart TB
+    C[("public/case/pack-0332.json")] -- "hotspots, joined, recorded_before_h" --> RC["RealCase.tsx: first-seen step, pass 2"]
+    K["RealCase.tsx: BEFORE_RECORDS, SECOND_BEFORE"] -- "11 Oct and 10 Oct, from FIRMS" --> RC
+    API["fire route: hotspots with pass, joined"] -- "FireDetail" --> SJ["sameFire.ts: sideJoin"]
+    VEC[("fixtures/join-vectors.json")] -- "pair test, held to fires.py" --> SJ
+    SJ -- "the join, or null" --> SF["FireView.tsx: SideFrom"]
+    SF -- "Seen inside from" --> FV["FireView.tsx: Reading"]
+    SF -- "Seen inside from" --> PK["ComplaintPack.tsx: Dates"]
+    D["Damage.tsx"] -- "credited shares, drained peat" --> FV
+    D -- "the same" --> PK
+```
+
+The landing reads the committed pack and two dated constants. The fire view and the pack work out
+a joined fire's side from detections the API already sends.
+
+```mermaid
+sequenceDiagram
+    participant J as judge's browser
+    participant S as Static Web Apps
+    participant A as API
+    J->>S: GET / and /case/pack-0332.json
+    J-->>J: lede names NOAA-20; step: records begin 1 hour before, NOAA-20 on 11 Oct
+    J->>A: GET …/ID-WOOD-CONCESSION-0332/fires/0x13b4…?as_of=1792227600
+    A-->>J: 283 detections with pass, joined[0].at_unix 1791998400
+    J-->>J: sideJoin: the 13 Oct 06:37 inside detection joins detection 0 on 14 Oct 17:20
+    J-->>J: "Seen inside from: 2026-10-13 06:37 UTC, by the fire joined to this one on 14 Oct 17:20 UTC"
+```
+
+A judge reads the satellite and the records' start on the landing, then opens the example pack.
+The pack replays the pair test and names the join that brought in the inside detection.
+
+### Changes
+
+| File | What | Why |
+| ---- | ---- | --- |
+| `web/src/sameFire.test.ts` (new) | `sideJoin` on the committed pack names the 14 Oct 17:20 join for inside and none for outside; a fire with no join, and one whose own detection went inside first, give null; the pair test still matches `join-vectors.json` through `leftOut.ts` | Scenario 4 |
+| `web/e2e/source-claims.spec.ts` (new) | The slice's walk, below | E2E |
+| `web/e2e/landing-page.spec.ts:13`, `:15`, `:17`, `:66` | `HEADLINE`, `LEDE` and `GLOBE_CAPTION` take the new words; the hero caption's regex reads "Fire Watch's records first show it on 12 Oct" | The old walk on the new copy |
+| `web/e2e/origin-confidence.spec.ts:62`, `:71` | The hero caption reads "Fire Watch's records first show it…first recorded the day before"; step 2 reads "The satellite didn't see the fire again for 25 hours" | The old walk on the new copy |
+| `web/e2e/origin-and-range.spec.ts:85` | Step 2 reads "The satellite didn't see the fire again…" before `MISSED` | The old walk on the new copy |
+| `OVERVIEW.md:6` | "hasn't changed since it was sealed" | O4 |
+| `OVERVIEW.md` slices table | walking-skeleton's line says the fire record page replaced its latest-hotspot page; run-roots' says one root for each run with new records; damage-check's says the shares are Fire Watch's measure of NASA's map | O4 and scenario 3; the README's features come from these lines |
+| `README.md:256` | "Basescan shows one `sealRoot` for each hourly run with new records" | O4 |
+| `README.md` zuko block | Re-rendered from `OVERVIEW.md` by `render-readme-block.sh --write` | O4 |
+| `docs/ARCHITECTURE.md:26`, `:50` | One Merkle root for each run with new records (`record_hotspots.py:281` skips an empty run) | O4 |
+| `docs/ARCHITECTURE.md` Landing and Fire record page rows | The landing names NOAA-20 and when the records begin (D141); "Seen inside from" names a joined fire (`sameFire.ts`, D142); the shares are Fire Watch's measure (D143) | Scenarios 1, 3 and 4 |
+
+Done at pause 2 and kept: `web/src/Landing.tsx`, `RealCase.tsx`, `FireView.tsx`, `ComplaintPack.tsx`,
+`Damage.tsx`, `sameFire.ts`, `leftOut.ts`, and their unit tests.
+
+Reusing: `joins`, `distanceM`, `JOIN_M` and `JOIN_S` (moved, not copied, from `leftOut.ts`, which
+re-exports them for its test), `detected()` and `detectedShort()`, `plural()`, the `SEALED_WHEN`
+pattern for dated facts, the landing e2e's `EXAMPLE_PACK` and its `route.fulfill` from
+`public/case/pack-0332.json` (D137), the `toStep` helper, the 12-step wait (lesson
+`real-case-steps-wait-for-pack`), and the fake Google Maps file.
+
+### Earn-it
+
+| Added | Triggered by |
+| ----- | ------------ |
+| `sameFire.ts` and `sideJoin` | Scenario 4: the page must tell which fire held the first inside detection. The pair test moves there so the fire view doesn't load `leftOut.ts`'s chain code |
+| `SideFrom` in `FireView.tsx` | Scenario 4: the fire view and the pack say the same line |
+| `BEFORE_RECORDS` and `SECOND_BEFORE` | Scenario 1 (O1): the 11 Oct and 10 Oct detections aren't in the pack, so they are dated facts (D73) |
+| `web/e2e/source-claims.spec.ts` | The slice test: one e2e walks the slice |
+
+Cut: an API field for a joined fire's own side (D144), a "Data sources" footnote (each sentence
+names its own source), and reading more satellites in the recorder (a later slice).
+
+### Non-functionals
+
+|                      |                                                                               |
+| -------------------- | ----------------------------------------------------------------------------- |
+| **Load**             | `sideJoin` runs only for a fire with a join and a side time on show. It compares each detection with those of the 48 hours before: 14 ms for the example's 283 in jsdom |
+| **Breaks first**     | A fire of several thousand detections in 48 hours could take a few hundred ms on a slow phone. It still renders, and the line is the same |
+| **Security surface** | No new route, input or secret. Arithmetic and copy on data the page already has |
+| **Proof it works**   | After Deploy, the live bundle holds "by the fire joined to this one on", "read only NASA's NOAA-20 satellite" and "Fire Watch measured on NASA's 2023". The live example pack's "Seen inside from" reads "2026-10-13 06:37 UTC, by the fire joined to this one on 14 Oct 17:20 UTC" |
+| **Rollout**          | No flag, as D81. Merge to main; Deploy ships the page. Rollback: revert the merge |
+
+### Test plan
+
+| Scenario | Test | Command |
+| -------- | ---- | ------- |
+| 1. The satellite and the records' start | `Landing.test.tsx` "says why Fire Watch matters…"; `RealCase.test.tsx` "tells the fire, the claim, where it was first seen…"; the e2e | `cd web && pnpm test && pnpm e2e source-claims` |
+| 2. The globe caption | `Landing.test.tsx` "gives the tool's four steps, the dated facts and the four words"; the e2e | as above |
+| 3. The credited shares | `Damage.test.tsx` "gives a peat fire's damage…" and "shows how the estimate is worked out…"; `ComplaintPack.test.tsx` "holds the damage estimate…"; the e2e | as above |
+| 4. A joined fire's inside time | `sameFire.test.ts`; `FireView.test.tsx` "says when one fire was joined to this one…" and the no-join tests; the e2e | as above |
+| Earlier slices | the full suites | `cd api && uv run pytest`; `cd web && pnpm test && pnpm e2e` |
+
+The e2e needs `docker compose up -d --wait db` and `~/.foundry/bin` on `PATH`. The unit tests
+changed at pause 2 passed on their first run, so `/build` breaks the code once for each and watches
+it fail (lesson `pause-2-code-needs-mutants`).
+
+**E2E:** `web/e2e/source-claims.spec.ts` "a judge reads which satellite and when the records begin,
+and the joined fire's inside time; an investigator reads whose shares the damage uses":
+
+1. Open `/`. The lede names "NASA's NOAA-20 satellite", and the globe caption starts "Each dot is a
+   square about 1 km across".
+2. Wait for the 12 steps, then scroll to "Where it was first seen". It reads "Fire Watch's records
+   first show it on 12 Oct 05:16 UTC", "read only NASA's NOAA-20 satellite" and the 11 Oct line.
+3. Scroll to Pass 2 of 8. It reads the 10 Oct line.
+4. Answer the example pack's API call from the committed copy, click "See its complaint pack", and
+   read "Seen inside from" in Dates.
+5. Open `/?tool` for 12 to 15 Oct, ID-WOOD-CONCESSION-0332, and its 13 Oct 17:37 fire. "Likely
+   burned" reads "At the shares Fire Watch measured on NASA's 2023 burned-area map, in large
+   patches", and "Seen inside from" has no join words.
+
+### Chunks
+
+Single chunk. The page is done; the rest is one unit test file, one new e2e, three edited ones and
+the docs.
+
+### Risks
+
+| Risk | Mitigation |
+| ---- | ---------- |
+| `sideJoin` and the API's step 10 disagree on a fire | Both use the same pair test, held to `join-vectors.json`. The unit test runs `sideJoin` on the committed pack, whose join the API made |
+| The 11 Oct and 10 Oct lines go stale | They describe the committed copy's cut, which doesn't change (D84, D85). The comment names the FIRMS sources and dates to redo them |
+| A reader takes "records first show it" as Fire Watch hiding an earlier sighting | The same step says the records begin an hour before and gives NOAA-20's 11 Oct detection |
+
+### Decisions to record
+
+`/build` appends these to `DECISIONS.md`. None supersedes an entry.
+
+#### D141 · 2026-10-24 · Name NOAA-20, when the records begin, and the earlier sightings on the landing
+
+Why: the landing said "satellites first saw it" on 12 Oct. The recorder reads NOAA-20 alone, its
+records begin an hour before, and FIRMS shows NOAA-20 saw the ground under 1 km away on 11 Oct. The
+sides hold with every satellite's detections, so the example stays (D111).
+Rejected: the records' limits only (hides what the archive shows), swapping the example (the sides
+hold, and a new pack and its seals don't fit the deadline).
+Source: docs/specs/source-claims.md
+Status: active
+
+#### D142 · 2026-10-24 · Say when a fire's first inside sighting came from a fire joined to it
+
+Why: the example pack's "Seen inside from 13 Oct 06:37" is the joined fire's first sighting. Read
+under "First seen outside", it tells the company's story.
+Rejected: hiding the time on a joined fire (drops a true time), both times on two lines (needs a new
+API field).
+Source: docs/specs/source-claims.md
+Status: active
+
+#### D143 · 2026-10-24 · Credit the burned shares to Fire Watch's own measure of NASA's map, in large patches
+
+Why: "NASA's 2023 shares" reads as a figure NASA published. Fire Watch measured them on MODIS
+MCD64A1, over large patches only (D127).
+Rejected: showing the 15.1% all-ground share as the low end (supersedes D127, which chose large
+patches because MODIS misses small burns).
+Source: docs/specs/source-claims.md
+Status: active
+
+#### D144 · 2026-10-24 · Work out a joined fire's side in the page, from the rule's shared pair test
+
+Why: the page has every detection with its pass, and the pair test it shares with `fires.py`
+through `join-vectors.json`. The API and the committed pack stay as they are, and so does the
+README's sha for it (D90).
+Rejected: a new API field (the committed pack must be the API's own answer, so it would need
+fetching again after Deploy), a page check on `first_seen_unix` alone (misses a joined fire that went
+inside after its first pass).
+Source: docs/specs/source-claims.md
+Status: active
+
 ## Open items
 
 | ID | What | Type | Raised at | Owner | Status | Answer |
@@ -218,3 +393,6 @@ _Never delete this section or its rows. See references/ledger.md._
 - **Joined fire:** a fire that came within 1 km and 48 hours of another, so Fire Watch counts them
   as one (D25).
 - **e2e:** end-to-end: one test that walks the whole slice as a user would.
+- **Pair test:** the fire rule's check that two detections are within 1 km and 48 hours, so they are
+  in the same fire.
+- **Mutant:** a deliberate break in the code, made to check that a test fails on it.
