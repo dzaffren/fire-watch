@@ -20,7 +20,7 @@ type CaseLoad = { kind: "loading" } | { kind: "error" } | { kind: "ready"; pack:
 const SEALED_WHEN =
   "Passes 1 to 6 were sealed on 16 Oct, when recording began: 23 hours to 4 days after the satellite saw them. Passes 7 and 8 were sealed about 3 hours after.";
 // From the pinned FIRMS cut of NOAA-20, S-NPP, NOAA-21 and MODIS for 10 to 12 Oct 2026 in fixtures/firms/archive/,
-// within 1 km of each fire's first pass in the committed copy. archive.test.ts holds these lines to it (D141).
+// within 1 km of each fire's first pass in the committed copy. archive.test.ts holds these lines to it (D141, D145).
 const BEFORE_RECORDS =
   "In NASA's FIRMS archive, NOAA-20 saw fire under 1 km from here on 11 Oct, before the records begin, also outside the concession.";
 const SECOND_BEFORE =
