@@ -1,6 +1,6 @@
 # ClimateChain hackathon entry
 
-**Status:** Active · **Updated:** 2026-10-24 by /ship origin-and-range
+**Status:** Active · **Updated:** 2026-10-24 by /ship source-claims
 
 Fire Watch, an entry for the IEEE ClimateChain Global Hackathon (deadline 2026-10-25). It shows
 satellite fire hotspots with on-chain proof that each record hasn't changed since it was sealed,
@@ -49,6 +49,7 @@ for watchdog investigators who file grievances over fires on plantation land.
 | forecast-v2-trial | Shipped | The 2023 replay adds one rule version 2, picked on January to September and judged once on October to December. It warned of 2 fewer arrivals than the near-edge step there, so rule version 1 stays, and the forecast panel says so. | docs/specs/forecast-v2-trial.md   |
 | claim-fixes      | Shipped | The landing opens with the answer a company gives to a fire grievance, and it and the complaint pack claim no more than the chain or the data shows. The README's sha for the example pack matches the API again. | docs/specs/claim-fixes.md         |
 | origin-and-range | Shipped | A weak first sighting says "as one detection" in its headline. Every fire names what the satellite can miss, and the CO₂ figure leads with its range. | docs/specs/origin-and-range.md |
+| source-claims    | Shipped | The landing names the one satellite Fire Watch reads and when its records begin. The globe caption counts squares, the damage estimate credits its shares to Fire Watch's own check, and a joined fire's inside time names the fire it came from. | docs/specs/source-claims.md |
 
 ## More
 
