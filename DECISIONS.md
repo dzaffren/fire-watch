@@ -1528,3 +1528,13 @@ FIRMS quota on each open, and a pack would change with FIRMS's answer, against D
 note alone (the example's pack would still leave out what the landing names).
 Source: docs/specs/pack-claims.md
 Status: active
+
+## D147 · 2026-10-24 · Backfill v1.0.0 at palette's ship, by hand and without a pentest
+
+Why: v1.0.0 marks the product before the judge review: 11 slices, last palette on 2026-10-22
+(`7da2436`). `release.py` tags only the tip of main, so the tag goes on by hand. v2.0.0's pentest
+covers every change since, and the deploy runs v2's code.
+Rejected: one 1.0.0 at the tip of main (hides the step the judge review made), a pentest of the
+v1 tree (a day before the deadline, for code no longer deployed).
+Source: /release, 2026-10-24
+Status: active
