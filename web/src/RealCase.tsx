@@ -19,11 +19,12 @@ type CaseLoad = { kind: "loading" } | { kind: "error" } | { kind: "ready"; pack:
 // The committed copy is cut at 17 Oct 2026 09:00 UTC, so these lines can't drift from it (D84, D85).
 const SEALED_WHEN =
   "Passes 1 to 6 were sealed on 16 Oct, when recording began: 23 hours to 4 days after the satellite saw them. Passes 7 and 8 were sealed about 3 hours after.";
-// From FIRMS's archive of NOAA-20, S-NPP, NOAA-21 and MODIS for 10 to 12 Oct 2026, within 1 km of each fire's first
-// pass in the committed copy (D141).
+// From the pinned FIRMS cut of NOAA-20, S-NPP, NOAA-21 and MODIS for 10 to 12 Oct 2026 in fixtures/firms/archive/,
+// within 1 km of each fire's first pass in the committed copy. archive.test.ts holds these lines to it (D141).
 const BEFORE_RECORDS =
-  "In NASA's archive, NOAA-20 saw fire under 1 km from here on 11 Oct, before recording began, also outside the concession.";
-const SECOND_BEFORE = "In NASA's archive, other satellites saw fire on that ground on 10 Oct, also on both sides of the edge.";
+  "In NASA's FIRMS archive, NOAA-20 saw fire under 1 km from here on 11 Oct, before the records begin, also outside the concession.";
+const SECOND_BEFORE =
+  "In NASA's FIRMS archive, other satellites saw fire on that ground on 10 Oct, also on both sides of the edge.";
 
 const insideOf = (h: HotspotRecord, id: string) => h.concessions.some((m) => m.id === id && m.inside);
 const day = (unix: number) => detectedShort(unix).split(" ").slice(0, 2).join(" ");
@@ -116,9 +117,9 @@ export function RealCase({ source, packHref }: { source: CaseSource; packHref: s
           <>
             <h3>A fire near a pulpwood plantation</h3>
             <p>
-              From {day(pack!.first_seen_unix)} to {day(pack!.last_seen_unix)} 2026, the NOAA-20 satellite saw this fire on{" "}
-              {times.length} passes, {count(pack!.detections)} detections in all, near {id}, in Central Kalimantan. The
-              dashed line is the concession's edge.
+              From {day(pack!.first_seen_unix)} to {day(pack!.last_seen_unix)} 2026, Fire Watch's records hold this fire on{" "}
+              {times.length} passes of the NOAA-20 satellite, {count(pack!.detections)} detections in all, near {id}, in
+              Central Kalimantan. The dashed line is the concession's edge.
               The company that holds the land answers for fires inside it.
             </p>
           </>
@@ -154,7 +155,7 @@ export function RealCase({ source, packHref }: { source: CaseSource; packHref: s
                   ` The satellite didn't see the fire again for ${plural(alone, "hour", "hours")}, so that detection may be a separate fire.`}{" "}
                 {MISSED}
                 {before != null &&
-                  ` Fire Watch's records begin ${before < 1 ? "less than an hour" : plural(before, "hour", "hours")} before this detection and read only NASA's NOAA-20 satellite. ${BEFORE_RECORDS}`}{" "}
+                  ` Fire Watch's records begin ${before < 1 ? "less than an hour" : plural(before, "hour", "hours")} before this detection and hold only the NOAA-20 satellite's detections. ${BEFORE_RECORDS}`}{" "}
                 Scroll on to see what came next, one satellite pass at a time.
               </p>
             </>

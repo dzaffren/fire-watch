@@ -52,7 +52,7 @@ function BacktestSummary({ b }: { b: Backtest }) {
           <thead>
             <tr>
               <th scope="col">In 2023</th>
-              <th scope="col" className="num">Arrivals warned of, out of {count(arrivals)}</th>
+              <th scope="col" className="num">Warned of, out of {count(arrivals)} forecasts that came in</th>
               <th scope="col" className="num">Warnings that didn't come in</th>
             </tr>
           </thead>
@@ -140,7 +140,9 @@ function TriedCounts({ b }: { b: Backtest }) {
               <thead>
                 <tr>
                   <th scope="col">{head}</th>
-                  <th scope="col" className="num">Arrivals warned of, out of {count(part.rule.warned + part.rule.missed)}</th>
+                  <th scope="col" className="num">
+                    Warned of, out of {count(part.rule.warned + part.rule.missed)} forecasts that came in
+                  </th>
                   <th scope="col" className="num">Warnings that didn't come in</th>
                 </tr>
               </thead>
@@ -338,7 +340,8 @@ export function ForecastPanel({ fire, checks, fingerprints, picked, now, backtes
               </p>
               <p className="fw-help">
                 All four forecast at the same moments, and only passes after a forecast was made count. A warning is a
-                forecast that the fire is seen inside.
+                forecast that the fire is seen inside. An arrival is a forecast whose fire was then seen inside within 48
+                hours, so a fire forecast after several passes counts once for each.
               </p>
               <BacktestCounts b={replayed} />
               <p className="fw-help">

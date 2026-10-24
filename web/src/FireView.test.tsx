@@ -79,7 +79,7 @@ describe("FireView", () => {
     expect(detail("Last seen")).toBe("2026-10-15 18:43 UTC");
     expect(detail("Passes")).toBe("4, with 19 detections");
     expect(
-      screen.getByText("Fire Watch's records begin 38 hours before this fire was first seen, so it may have been burning earlier."),
+      screen.getByText("Fire Watch's records begin 38 hours before this fire was first seen, so it may have been burning earlier. NASA's archive may hold detections from before then."),
     ).toBeInTheDocument();
     expect(screen.queryByText(CANT_TELL)).toBeNull();
   });
@@ -91,7 +91,7 @@ describe("FireView", () => {
     expect(detail("First seen")).toBe("2026-10-14 06:20 UTC");
     expect(screen.queryByText("Seen outside from")).toBeNull();
     expect(screen.queryByText("Seen inside from")).toBeNull();
-    expect(screen.queryByText(/records begin/)).toBeNull();
+    expect(screen.queryByText(/^Fire Watch's records begin/)).toBeNull();
   });
 
   it("reads the same fire from the neighbouring concession as first seen outside", () => {
@@ -130,13 +130,13 @@ describe("FireView", () => {
   it("counts recording hours, and says less than an hour under one", () => {
     showFire(ONE_HOUR);
     expect(
-      screen.getByText("Fire Watch's records begin 1 hour before this fire was first seen, so it may have been burning earlier."),
+      screen.getByText("Fire Watch's records begin 1 hour before this fire was first seen, so it may have been burning earlier. NASA's archive may hold detections from before then. In NASA's FIRMS archive, NOAA-20 saw fire under 1 km from this fire's first detection on 11 Oct, also outside the concession."),
     ).toBeInTheDocument();
     expect(screen.queryByText(/Recording had started/)).toBeNull();
 
     show(ONE_HOUR.id, { kind: "ready", fire: { ...fire(ONE_HOUR), recorded_before_h: 0 } });
     expect(
-      screen.getByText("Fire Watch's records begin less than an hour before this fire was first seen, so it may have been burning earlier."),
+      screen.getByText("Fire Watch's records begin less than an hour before this fire was first seen, so it may have been burning earlier. NASA's archive may hold detections from before then. In NASA's FIRMS archive, NOAA-20 saw fire under 1 km from this fire's first detection on 11 Oct, also outside the concession."),
     ).toBeInTheDocument();
   });
 
@@ -208,7 +208,7 @@ describe("FireView", () => {
       ALONE,
       JOINED_MANY,
       "Seen on 6 passes without spreading. This can be a fixed heat source, such as a mill, or peat smouldering in place.",
-      "Fire Watch's records begin 27 hours before this fire was first seen, so it may have been burning earlier.",
+      "Fire Watch's records begin 27 hours before this fire was first seen, so it may have been burning earlier. NASA's archive may hold detections from before then.",
       MISSED,
     ]);
   });
@@ -226,12 +226,12 @@ describe("FireView", () => {
     ).toBeInTheDocument();
     expect(
       within(how).getByText(
-        "A detection's position can be off as well. Straight below the satellite, NOAA-20 places almost every detection within 400 m of the fire, and most within 200 m (Blonski and others, 2023, doi 10.1117/1.JRS.17.034506). The 375 m margin doesn't allow for this. Concession edges come from Trase's map, which gives no accuracy for its lines.",
+        "A detection's position can be off as well. Straight below the satellite, NOAA-20 places almost every pixel within 400 m of where it belongs, and most within 200 m (Blonski and others, 2023, doi 10.1117/1.JRS.17.034506). A fire can also sit anywhere in its 375 m pixel. The 375 m margin allows for neither. Concession edges come from Trase's map, which gives no accuracy for its lines.",
       ),
     ).toBeInTheDocument();
     expect(
       within(how).getByText(
-        "NOAA-20 passes about twice a day, so a fire may burn for hours before it is first seen. NASA FIRMS names cloud, heavy smoke and tree canopy among the reasons a fire goes unseen. Smouldering peat is hard to see from space, as its heat is low and its area small (Sofan and others, 2019, doi 10.3390/rs11040465). Each detection is sealed, so anyone can redo this from the chain and NASA FIRMS's public archive.",
+        "NOAA-20 passes about twice a day, so a fire may burn for hours before it is first seen. NASA FIRMS names cloud, heavy smoke and tree canopy among the reasons a fire goes unseen. Smouldering peat is hard to see from space, as its heat is low and its area small (Sofan and others, 2019, doi 10.3390/rs11040465). Each detection is sealed: your browser checks each record Fire Watch sends against the chain, and a record matches a row of NASA FIRMS's public archive by its time and place.",
       ),
     ).toBeInTheDocument();
   });

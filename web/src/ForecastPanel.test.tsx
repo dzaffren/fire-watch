@@ -370,7 +370,7 @@ describe("ForecastPanel", () => {
 
       const block = screen.getByRole("heading", { name: "How this rule did on 2023, replayed" }).parentElement!;
       expect(cells(within(block).getByRole("table", { name: "How this rule did on 2023, replayed" }))).toEqual([
-        ["In 2023", "Arrivals warned of, out of 135", "Warnings that didn't come in"],
+        ["In 2023", "Warned of, out of 135 forecasts that came in", "Warnings that didn't come in"],
         ["Rule version 1", "123", "3,751 of 3,874"],
         ["Near-edge step", "117", "3,193 of 3,310"],
         ["Downwind guess", "19", "256 of 275"],
@@ -417,13 +417,13 @@ describe("ForecastPanel", () => {
       show({ backtest: REPLAY });
 
       expect(cells(screen.getByRole("table", { name: "Picked on: January to September 2023" }))).toEqual([
-        ["Picked on, Jan to Sep", "Arrivals warned of, out of 56", "Warnings that didn't come in"],
+        ["Picked on, Jan to Sep", "Warned of, out of 56 forecasts that came in", "Warnings that didn't come in"],
         ["Rule version 2, tried", "52", "1,871 of 1,923"],
         ["Near-edge step", "52", "2,091 of 2,143"],
         ["Rule version 1", "53", "2,395 of 2,448"],
       ]);
       expect(cells(screen.getByRole("table", { name: "Judged on: October to December 2023" }))).toEqual([
-        ["Judged on, Oct to Dec", "Arrivals warned of, out of 79", "Warnings that didn't come in"],
+        ["Judged on, Oct to Dec", "Warned of, out of 79 forecasts that came in", "Warnings that didn't come in"],
         ["Rule version 2, tried", "63", "1,022 of 1,085"],
         ["Near-edge step", "65", "1,102 of 1,167"],
         ["Rule version 1", "70", "1,356 of 1,426"],
@@ -439,6 +439,11 @@ describe("ForecastPanel", () => {
     it("gives every other count, each guess and both links under How this is worked out", () => {
       show({ backtest: REPLAY });
 
+      expect(
+        screen.getByText(
+          "All four forecast at the same moments, and only passes after a forecast was made count. A warning is a forecast that the fire is seen inside. An arrival is a forecast whose fire was then seen inside within 48 hours, so a fire forecast after several passes counts once for each.",
+        ),
+      ).toBeInTheDocument();
       expect(cells(screen.getByRole("table", { name: "The rest of the 2023 replay" }))).toEqual([
         ["Forecasts", "Arrivals missed", "Said no, stayed out", "Median hours off"],
         ["Rule version 1", "12", "16,109", "11.7 h"],

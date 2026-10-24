@@ -79,14 +79,14 @@ describe("RealCase", () => {
       "What the buyer gets",
     ]);
     expect(steps[0]).toHaveTextContent(
-      "From 12 Oct to 17 Oct 2026, the NOAA-20 satellite saw this fire on 8 passes, 283 detections in all, near ID-WOOD-CONCESSION-0332, in Central Kalimantan.",
+      "From 12 Oct to 17 Oct 2026, Fire Watch's records hold this fire on 8 passes of the NOAA-20 satellite, 283 detections in all, near ID-WOOD-CONCESSION-0332, in Central Kalimantan.",
     );
     expect(steps[1]).toHaveTextContent("The company that holds it can answer that the fire started outside its land and spread in.");
     expect(steps[2]).toHaveTextContent(
-      "Fire Watch's records first show it on 12 Oct 05:16 UTC as one detection, outside the concession and 3,100 m from its edge. The satellite didn't see the fire again for 25 hours, so that detection may be a separate fire. The satellite can miss fire under cloud, heavy smoke or thick tree canopy, and peat that smoulders with too little heat to show. Fire Watch's records begin 1 hour before this detection and read only NASA's NOAA-20 satellite. In NASA's archive, NOAA-20 saw fire under 1 km from here on 11 Oct, before recording began, also outside the concession. Scroll on to see what came next, one satellite pass at a time.",
+      "Fire Watch's records first show it on 12 Oct 05:16 UTC as one detection, outside the concession and 3,100 m from its edge. The satellite didn't see the fire again for 25 hours, so that detection may be a separate fire. The satellite can miss fire under cloud, heavy smoke or thick tree canopy, and peat that smoulders with too little heat to show. Fire Watch's records begin 1 hour before this detection and hold only the NOAA-20 satellite's detections. In NASA's FIRMS archive, NOAA-20 saw fire under 1 km from here on 11 Oct, before the records begin, also outside the concession. Scroll on to see what came next, one satellite pass at a time.",
     );
     expect(steps[3]).toHaveTextContent(
-      "13 Oct 06:37 UTC · 35 detections, 6 inside the concession. These include another fire, first seen on this pass more than 1 km from the first, on both sides of the edge. In NASA's archive, other satellites saw fire on that ground on 10 Oct, also on both sides of the edge.",
+      "13 Oct 06:37 UTC · 35 detections, 6 inside the concession. These include another fire, first seen on this pass more than 1 km from the first, on both sides of the edge. In NASA's FIRMS archive, other satellites saw fire on that ground on 10 Oct, also on both sides of the edge.",
     );
     expect(steps[6]).toHaveTextContent(
       "14 Oct 17:20 UTC · 66 detections, 43 inside the concession. On this pass the fires came within 1 km of each other, so Fire Watch counts them as one.",

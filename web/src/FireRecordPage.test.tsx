@@ -312,7 +312,7 @@ describe("FireRecordPage", () => {
     expect(kv("First seen")).toHaveTextContent("2026-10-13 17:37 UTC");
     expect(kv("Seen inside from")).toHaveTextContent("2026-10-15 18:43 UTC");
     expect(
-      screen.getByText("Fire Watch's records begin 38 hours before this fire was first seen, so it may have been burning earlier."),
+      screen.getByText("Fire Watch's records begin 38 hours before this fire was first seen, so it may have been burning earlier. NASA's archive may hold detections from before then."),
     ).toBeInTheDocument();
     expect(screen.getByText("19 detections, oldest first. Pick one to check it against the chain.")).toBeInTheDocument();
     expect(map().dots).toHaveLength(19);

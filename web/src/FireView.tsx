@@ -132,30 +132,53 @@ export function JoinedTable({ joined, labelledBy }: { joined: JoinedFire[]; labe
   );
 }
 
+// From the pinned FIRMS cut in fixtures/firms/archive/, which archive.test.ts holds these lines to (D141).
+const BEFORE_RECORDS: Record<string, string> = {
+  "0x13b417c6f54dd95c7c418b5df3f34963cf00f46555d5cae74693cdffbb1d1cf7":
+    "In NASA's FIRMS archive, NOAA-20 saw fire under 1 km from this fire's first detection on 11 Oct, also outside the concession.",
+};
+
+/** When Fire Watch's records begin, for a fire first seen within 48 hours of them, and any sighting in NASA's archive
+ *  before them. */
+export function RecordsBegin({ fire }: { fire: FireDetail }) {
+  const hours = fire.recorded_before_h;
+  if (hours === null) return null;
+  const before = BEFORE_RECORDS[fire.key];
+  return (
+    <p className="fw-help">
+      Fire Watch's records begin {hours < 1 ? "less than an hour" : plural(hours, "hour", "hours")} before this fire
+      was first seen, so it may have been burning earlier. NASA's archive may hold detections from before then.
+      {before && ` ${before}`}
+    </p>
+  );
+}
+
 /** How where a fire was first seen is worked out, and what that can't allow for (D25, D26, D115). */
 export function OriginMethod() {
   return (
     <>
       <p className="fw-help">
         A detection joins a fire when it is within 1 km and 48 hours of one already in it. The first pass is the
-        earliest satellite pass that saw the fire. A side is named only when every detection on that pass is more than
-        375 m from the edge, half the widest VIIRS pixel; nearer than that, the fire could be on either side.
+        earliest NOAA-20 pass in Fire Watch's records that saw the fire. Other satellites, or NOAA-20 before the records
+        begin, may have seen it earlier. A side is named only when every detection on that pass is more than 375 m from
+        the edge, half the widest VIIRS pixel; nearer than that, the fire could be on either side.
       </p>
       <p className="fw-help">
         A fire that comes within 1 km of another is joined to it, so one fire here can be several that the satellite
         first saw apart. First seen is the oldest one's.
       </p>
       <p className="fw-help">
-        A detection's position can be off as well. Straight below the satellite, NOAA-20 places almost every detection
-        within 400 m of the fire, and most within 200 m (Blonski and others, 2023, doi 10.1117/1.JRS.17.034506). The
-        375 m margin doesn't allow for this. Concession edges come from Trase's map, which gives no accuracy for its
-        lines.
+        A detection's position can be off as well. Straight below the satellite, NOAA-20 places almost every pixel
+        within 400 m of where it belongs, and most within 200 m (Blonski and others, 2023, doi 10.1117/1.JRS.17.034506).
+        A fire can also sit anywhere in its 375 m pixel. The 375 m margin allows for neither. Concession edges come from
+        Trase's map, which gives no accuracy for its lines.
       </p>
       <p className="fw-help">
         NOAA-20 passes about twice a day, so a fire may burn for hours before it is first seen. NASA FIRMS names cloud,
         heavy smoke and tree canopy among the reasons a fire goes unseen. Smouldering peat is hard to see from space, as
-        its heat is low and its area small (Sofan and others, 2019, doi 10.3390/rs11040465). Each detection is sealed,
-        so anyone can redo this from the chain and NASA FIRMS's public archive.
+        its heat is low and its area small (Sofan and others, 2019, doi 10.3390/rs11040465). Each detection is sealed:
+        your browser checks each record Fire Watch sends against the chain, and a record matches a row of NASA FIRMS's
+        public archive by its time and place.
       </p>
     </>
   );
@@ -255,7 +278,6 @@ function Reading({ id, fire, packHref }: { id: string; fire: FireDetail; packHre
   const unclear = reading === "edge" || reading === "both";
   const showInside = fire.inside_from_unix !== null && (reading === "outside" || unclear);
   const showOutside = fire.outside_from_unix !== null && (reading === "inside" || unclear);
-  const hours = fire.recorded_before_h;
   const joined = fire.joined ?? [];
 
   return (
@@ -270,12 +292,7 @@ function Reading({ id, fire, packHref }: { id: string; fire: FireDetail; packHre
             peat smouldering in place.
           </p>
         )}
-        {hours !== null && (
-          <p className="fw-help">
-            Fire Watch's records begin {hours < 1 ? "less than an hour" : plural(hours, "hour", "hours")} before this
-            fire was first seen, so it may have been burning earlier.
-          </p>
-        )}
+        <RecordsBegin fire={fire} />
         <MissedNote />
       </div>
       <dl className="fw-kv">

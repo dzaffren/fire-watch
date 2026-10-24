@@ -108,7 +108,7 @@ describe("ComplaintPack", () => {
     expect(screen.getByText("Complaint pack, as of 2026-10-17 09:00 UTC")).toBeInTheDocument();
     expect(screen.getByText("ID-WOOD-CONCESSION-0332, Kalimantan Tengah")).toBeInTheDocument();
     expect(
-      screen.getByText("Fire Watch's records begin 38 hours before this fire was first seen, so it may have been burning earlier."),
+      screen.getByText("Fire Watch's records begin 38 hours before this fire was first seen, so it may have been burning earlier. NASA's archive may hold detections from before then."),
     ).toBeInTheDocument();
     expect(screen.queryByText(/Recording had started/)).toBeNull();
     expect(await screen.findByRole("heading", { name: "19 of 19 detections match the chain" })).toBeInTheDocument();
@@ -356,7 +356,7 @@ describe("ComplaintPack", () => {
       "ID-WOOD-CONCESSION-0332, Kalimantan Tengah",
       "The satellite didn't see this fire again for 25 hours, so that detection may be a separate fire.",
       "Fire Watch joined another fire to this one on 14 Oct 17:20 UTC, when they came within 1 km. First seen above is the older of the two. The other was first seen on 13 Oct 06:37 UTC, on both sides of the edge.",
-      "Fire Watch's records begin 1 hour before this fire was first seen, so it may have been burning earlier.",
+      "Fire Watch's records begin 1 hour before this fire was first seen, so it may have been burning earlier. NASA's archive may hold detections from before then. In NASA's FIRMS archive, NOAA-20 saw fire under 1 km from this fire's first detection on 11 Oct, also outside the concession.",
       MISSED,
     ]);
     expect(screen.queryByText(/fires joined to this one$/)).toBeNull();
@@ -419,7 +419,7 @@ describe("ComplaintPack", () => {
     ).toBeInTheDocument();
     expect(
       within(basis).getByText(
-        "A detection's position can be off as well. Straight below the satellite, NOAA-20 places almost every detection within 400 m of the fire, and most within 200 m (Blonski and others, 2023, doi 10.1117/1.JRS.17.034506). The 375 m margin doesn't allow for this. Concession edges come from Trase's map, which gives no accuracy for its lines.",
+        "A detection's position can be off as well. Straight below the satellite, NOAA-20 places almost every pixel within 400 m of where it belongs, and most within 200 m (Blonski and others, 2023, doi 10.1117/1.JRS.17.034506). A fire can also sit anywhere in its 375 m pixel. The 375 m margin allows for neither. Concession edges come from Trase's map, which gives no accuracy for its lines.",
       ),
     ).toBeInTheDocument();
     expect(
