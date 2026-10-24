@@ -1538,3 +1538,12 @@ Rejected: one 1.0.0 at the tip of main (hides the step the judge review made), a
 v1 tree (a day before the deadline, for code no longer deployed).
 Source: /release, 2026-10-24
 Status: active
+
+## D148 · 2026-10-24 · The logo's square is the one use of the fire colour away from the map
+
+Why: the Clasp mark's square stands for a fire, so ember there obeys the rule that fire colour is
+for fire marks. The design-system readme names the logo, so nobody reads it as a breach.
+Rejected: an ink-only mark in the app with ember only in the favicon (two versions of one mark, and
+the app's mark loses the fire it stands for).
+Source: docs/specs/site-logo.md
+Status: active
