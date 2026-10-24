@@ -108,6 +108,13 @@ describe("DamagePanel", () => {
     expect(panel().querySelector("dl")!.textContent).not.toMatch(/\d to \d|IPCC's average|of it inside/);
   });
 
+  it("keeps one CO2 figure for a sliver of peat, whose range ends round the same", () => {
+    render(<DamagePanel fire={fireOf(B, { ...OFF_PEAT, outside_peat_ha: 0.01 })} />);
+
+    expect(figure("CO₂ released")).toEqual(["About 400 t"]);
+    expect(panel().querySelector("dl")!.textContent).not.toMatch(/\d to \d|IPCC's average/);
+  });
+
   it("puts the never-spread caveat above a fire's figures", () => {
     render(<DamagePanel fire={fireOf(summaryOf(FIRES.still), STILL)} />);
 
