@@ -21,12 +21,12 @@ flowchart TD
 | `fire-watch-horizontal.svg` | Site header, README, complaint pack header, slides |
 | `fire-watch-stacked.svg` | Title cards, video, square layouts |
 | `fire-watch-symbol.svg` | The mark alone, 32 px and up |
-| `fire-watch-symbol-small.svg` | The mark alone under 32 px: heavier ring, wider gap |
+| `fire-watch-symbol-small.svg` | The mark alone under 32 px: heavier ring, wider gap. The page header draws it as `LogoMark` in `web/src/icons.tsx` |
 | `fire-watch-icon.svg` | The small cut on an ink tile: favicon, app icon, avatar |
 | `*-dark.svg` | Dark grounds; 1 unit thinner so it doesn't look heavier |
 | `*-black.svg`, `*-white.svg` | One colour only |
 | `png/` | Rasters: marks at 1024 px, lockups 512 px tall |
-| `web/` | `favicon.ico` (16, 32, 48), `favicon.svg`, `apple-touch-icon.png`, `icon-192.png`, `icon-512.png` |
+| `web/` | `favicon.ico` (16, 32, 48), `favicon.svg`, `apple-touch-icon.png`, `icon-192.png`, `icon-512.png`. The site uses copies in `web/public/`; change both together |
 | `board/` | Presentation slides with mockups |
 
 ## Colour
