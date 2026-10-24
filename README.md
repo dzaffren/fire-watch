@@ -33,6 +33,7 @@ for watchdog investigators who file grievances over fires on plantation land.
 - The 2023 replay adds one rule version 2, picked on January to September and judged once on October to December. It warned of 2 fewer arrivals than the near-edge step there, so rule version 1 stays, and the forecast panel says so.
 - The landing opens with the answer a company gives to a fire grievance, and it and the complaint pack claim no more than the chain or the data shows. The README's sha for the example pack matches the API again.
 - A weak first sighting says "as one detection" in its headline. Every fire names what the satellite can miss, and the CO₂ figure leads with its range.
+- The landing names the one satellite Fire Watch reads and when its records begin. The globe caption counts squares, the damage estimate credits its shares to Fire Watch's own check, and a joined fire's inside time names the fire it came from.
 
 ## Docs
 

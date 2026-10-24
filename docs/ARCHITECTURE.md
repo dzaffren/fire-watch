@@ -1,6 +1,6 @@
 # ClimateChain hackathon entry · architecture
 
-**Status:** Active · **Updated:** 2026-10-24 by /ship origin-and-range
+**Status:** Active · **Updated:** 2026-10-24 by /ship source-claims
 
 ## Context
 
