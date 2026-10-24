@@ -7,7 +7,8 @@ as evidence: precise, sober, trustworthy; never alarmist, playful or salesy.
   imports them all, then adds the base and the primitives.
 - **Primitives:** buttons, fields, status labels, record panel, table, empty and loading states,
   map markers, replay timeline, fire globe. One guideline page each in `guidelines/`.
-- **Rules:** fire colour is for fire marks only. The accent means "you can act". Status labels
+- **Rules:** fire colour is for fire marks only, and the logo's square, which stands for a
+  fire (D148). The accent means "you can act". Status labels
   always carry an icon and words. Motion is tier 1 on working screens, tier 2 for the replay,
   tier 3 only for the fire globe; the replay steps one pass every 1500 ms. Fire dots are 3 px below
   zoom 12 and size by fire power from zoom 12. A concession is a dashed edge over an acacia green
