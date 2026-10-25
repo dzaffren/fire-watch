@@ -46,7 +46,7 @@ public test blockchain. For one fire it shows:
 - **An estimate of its damage**: the ground that likely burned, the CO₂ and the cost, split at the
   concession's edge.
 - **A complaint pack** at one link, printable to PDF: the site, the dates, the first sighting, the
-  spread, the estimate and every record. The buyer's browser rebuilds each record's fingerprint
+  spread, the estimate and every record Fire Watch sent. The buyer's browser rebuilds each record's fingerprint
   from the fields and random record ID that Fire Watch's API sends, and checks it against Base
   Sepolia. A changed record stops matching. For newer records, the pack also shows that no stored
   detection of the fire was left out.
@@ -57,8 +57,8 @@ The [example pack](https://orange-rock-0f5eae400.1.azurestaticapps.net/?pack=ID-
 is a fire at ID-WOOD-CONCESSION-0332 in Central Kalimantan.
 
 - Fire Watch's records first show it on 12 Oct 2026 at 05:16 UTC, as one detection 3,100 m outside
-  the concession. The satellite didn't see it again for 25 hours, so that detection may be a
-  separate fire.
+  the concession. NOAA-20 didn't see it again for 25 hours. NOAA-20 saw fire under 1 km away on
+  11 Oct, before Fire Watch's records begin.
 - On 13 Oct a second fire was first recorded, on both sides of the edge. On 14 Oct they came within
   1 km, so Fire Watch counts them as one.
 - From 12 to 17 Oct, NOAA-20 saw it on 8 passes: 283 detections, 164 inside the concession.

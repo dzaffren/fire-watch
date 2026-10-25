@@ -17,7 +17,7 @@ and Wilmar said an allegation did not identify "the specific sites, dates or the
 The investigator (`web/src/Landing.tsx`, D36):
 
 1. picks up to 31 days at `/?tool`, then a concession;
-2. opens a fire: where the satellite first saw it against the edge, then each pass;
+2. opens a fire: where Fire Watch's records first show it against the edge, then each pass;
 3. reads the notes on weak first sightings, joined fires and what the satellite can miss
    (D113, D114, D139);
 4. makes a pack and puts its link or PDF in the grievance (D95).

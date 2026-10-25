@@ -47,25 +47,34 @@ Sources:
 ### One season: 2023 near pulpwood concessions
 
 In 2023 NOAA-20 made 42,682 detections within 5 km of a concession on Trase's map. Their squares
-join into 456,345 ha, 105,961 ha of it on peat. Fire Watch checked them against NASA's MODIS
-burned-area map, MCD64A1 (https://lpdaac.usgs.gov/products/mcd64a1v061/). MODIS mapped 35.8% of the
-peat and 8.5% of the other ground as burned (`docs/specs/damage-check.md:36`).
+join into 456,345 ha. Fire Watch checked them against NASA's MODIS burned-area map, MCD64A1
+(https://lpdaac.usgs.gov/products/mcd64a1v061/). `damage-check-2023` redoes the check byte for byte
+from pinned files, and writes `fixtures/damage/2023-check.json`. Every figure below comes from that
+file.
 
-| | Peat | Other ground |
-| - | ---- | ------------ |
-| Ground in the squares | 105,961 ha | 350,384 ha |
-| Mapped burned by MODIS | 35.8%, 37,934 ha | 8.5%, 29,783 ha |
-| CO₂ a hectare, as above | 600.6 t (289.2 to 911.9) | 66.7 t |
-| CO₂ | 22.8 million t (11.0 to 34.6) | 2.0 million t |
+| | Ground | Mapped burned by MODIS |
+| - | ------ | ---------------------- |
+| All squares | 456,345 ha | 68,826 ha, 15.1% |
+| Peat in large patches | 31,915 ha | 19,722 ha, 61.8% |
+| Other ground in large patches | 25,536 ha | 10,781 ha, 42.2% |
+| Outside large patches | not split | 38,323 ha |
 
-That is **about 25 million t of CO₂ in one season, 13 to 37 million t**. Peat is 56% of the burned
-ground and 92% of the CO₂. At the World Bank's average, the burned ground cost about US$420 million.
+The file does not split the 38,323 ha outside large patches into peat and other ground. So the
+season's CO₂ is given as a floor, which counts all of it as other ground, and a ceiling, which counts
+all of it as peat. Both use the CO₂ a hectare above: 600.6 t for peat (289.2 to 911.9) and 66.7 t for
+other ground.
 
-These shares come from a first measurement on 23 Oct 2026. The rerun by `damage-check-2023` found
-68,826 ha burned in all, 1.7% more, but splits out peat only for large patches
-(`fixtures/damage/2023-check.json`). And Fire Watch's per-fire shares, 61.8% and 42.2%, come from
-large patches. Applied to every 2023 square they would give about 213,000 ha burned, three times what
-MODIS mapped, so a small fire's estimate may run high, as the page says.
+| | Peat burned | CO₂ |
+| - | ----------- | --- |
+| Floor | 19,722 ha | 15.1 million t (9.0 to 21.3) |
+| Ceiling | 58,045 ha | 35.6 million t |
+
+That is **at least 15 million t of CO₂ in one season**. Peat is at least 29% of the burned ground and
+78% of the floor's CO₂. At the World Bank's average, the 68,826 ha cost about US$426 million.
+
+Fire Watch's per-fire shares, 61.8% and 42.2%, come from large patches. Applied to every 2023 square
+they would give about 213,000 ha burned, three times what MODIS mapped, so a small fire's estimate
+may run high, as the page says.
 
 ## 2. Carbon reduction scenarios
 
@@ -90,9 +99,10 @@ or one Merkle root for each run on FireRuns.
 
 CO₂ not released in a season = S × B × C × D.
 
-- **Assumption:** S, the CO₂ at stake, is 24.8 million t a season (13.0 to 36.6). Source: the 2023 season
-  above. Reason: it is the only season measured. Seasons vary a lot: by Greenpeace's figures,
-  Indonesia's burned area was 2,604,500 ha in 2015 and 164,100 ha in 2017.
+- **Assumption:** S, the CO₂ at stake, is 15.1 million t a season (9.0 to 21.3), the 2023 floor
+  above. Reason: it is the only season measured, and the floor rests on committed data alone. The
+  ceiling, 35.6 million t, would raise every row by 2.4 times. Seasons vary a lot: by Greenpeace's
+  figures, Indonesia's burned area was 2,604,500 ha in 2015 and 164,100 ha in 2017.
   https://www.greenpeace.org/southeastasia/press/3098/palm-oil-and-pulp-companies-with-most-burned-land-go-unpunished-as-indonesian-forest-fires-rage/
 - **Assumption:** B, the share of S in fires that a watchdog takes to a buyer with a Fire Watch pack,
   is 5%, 15% or 30%. Reason: a guess. No watchdog has used Fire Watch
@@ -112,11 +122,11 @@ CO₂ not released in a season = S × B × C × D.
 
 | Scenario | B | C | D | CO₂ not released a season | With IPCC's peat range |
 | -------- | - | - | - | ------------------------- | ---------------------- |
-| Low | 5% | 10% | 10% | about 12,000 t | 6,500 to 18,000 t |
-| Middle | 15% | 25% | 25% | about 230,000 t | 120,000 to 340,000 t |
-| High | 30% | 50% | 50% | about 1.9 million t | 970,000 to 2.7 million t |
+| Low | 5% | 10% | 10% | about 7,600 t | 4,500 to 10,600 t |
+| Middle | 15% | 25% | 25% | about 142,000 t | 84,000 to 199,000 t |
+| High | 30% | 50% | 50% | about 1.1 million t | 670,000 to 1.6 million t |
 
-The middle row is about half the example fire's CO₂, each season. Zero is as defensible as the low
+The middle row is about a third of the example fire's CO₂, each season. Zero is as defensible as the low
 row, given Carlson and others.
 
 ## 3. Limits
