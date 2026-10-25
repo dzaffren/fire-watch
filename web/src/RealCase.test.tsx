@@ -75,7 +75,7 @@ describe("RealCase", () => {
       "Two accounts of one fire",
       "Where it was first seen",
       ...[2, 3, 4, 5, 6, 7, 8].map((p) => `Pass ${p} of 8`),
-      "Each record is sealed",
+      "Each record Fire Watch sent is sealed",
       "What the buyer gets",
     ]);
     expect(steps.at(-1)).toHaveTextContent(
@@ -102,6 +102,9 @@ describe("RealCase", () => {
     expect(steps[7]).toHaveTextContent("6 detections, all outside.");
     expect(steps[9]).toHaveTextContent("33 detections, 26 inside the concession. In all, 164 of the 283 detections were inside.");
     expect(steps[SEALS]).toHaveTextContent("Passes 1 to 6 were sealed on 16 Oct, when recording began");
+    expect(steps[SEALS]).toHaveTextContent(
+      "Your browser checks each record Fire Watch sent: it reads the record's seal from Base Sepolia, a public test blockchain, and compares the two. A record changed after its seal no longer matches.",
+    );
     expect(within(steps[11]).getByRole("link", { name: "See its complaint pack" })).toHaveAttribute("href", PACK_HREF);
   });
 
