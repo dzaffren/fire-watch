@@ -355,7 +355,7 @@ describe("ComplaintPack", () => {
       "Complaint pack, as of 2026-10-17 09:00 UTC",
       "First seen outside, 3.1 km from the edge, as one detection",
       "ID-WOOD-CONCESSION-0332, Kalimantan Tengah",
-      "The satellite didn't see this fire again for 25 hours, so that detection may be a separate fire.",
+      "NOAA-20 didn't see this fire again for 25 hours. Fire Watch reads only NOAA-20, so it can't tell whether that detection belongs to this fire.",
       "Fire Watch joined another fire to this one on 14 Oct 17:20 UTC, when they came within 1 km. First seen above is the older of the two. The other was first seen on 13 Oct 06:37 UTC, on both sides of the edge.",
       "Fire Watch's records begin 1 hour before this fire was first seen, so it may have been burning earlier. NASA's archive may hold detections from before then. In NASA's FIRMS archive, NOAA-20 saw fire under 1 km from this fire's first detection on 11 Oct, also outside the concession.",
       MISSED,
@@ -371,7 +371,7 @@ describe("ComplaintPack", () => {
     expect(title).toHaveTextContent("First seen inside, 410 m from the edge, as one detection");
     expect(
       within(title.closest("header")!).getByText(
-        "The satellite didn't see this fire again for 36 hours, so that detection may be a separate fire.",
+        "NOAA-20 didn't see this fire again for 36 hours. Fire Watch reads only NOAA-20, so it can't tell whether that detection belongs to this fire.",
       ),
     ).toBeInTheDocument();
   });

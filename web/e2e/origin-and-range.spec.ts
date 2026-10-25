@@ -9,7 +9,7 @@ const EXAMPLE_PACK =
 
 const WEAK = "First seen outside, 3.1 km from the edge, as one detection";
 const FIRM = "First seen inside, 3.4 km from the edge";
-const GAP_NOTE = "The satellite didn't see this fire again for 36 hours, so that detection may be a separate fire.";
+const GAP_NOTE = "NOAA-20 didn't see this fire again for 36 hours. Fire Watch reads only NOAA-20, so it can't tell whether that detection belongs to this fire.";
 const MISSED =
   "The satellite can miss fire under cloud, heavy smoke or thick tree canopy, and peat that smoulders with too little heat to show.";
 const MISSED_NOTE = `${MISSED} This fire may have burned unseen before it was first seen, inside or outside the concession.`;
@@ -82,7 +82,7 @@ test("an investigator reads a weak first sighting, what the satellite can miss a
   await expect(steps).toHaveCount(12);
   await toStep(page, 2);
   await expect(steps.nth(2)).toContainText(
-    `The satellite didn't see the fire again for 25 hours, so that detection may be a separate fire. ${MISSED}`,
+    `NOAA-20 didn't see the fire again for 25 hours. Fire Watch reads only NOAA-20, so it can't tell whether that detection belongs to the fire. ${MISSED}`,
   );
 
   // The e2e's API has no example fire, so the pack's API call is answered from the committed copy (D137).
