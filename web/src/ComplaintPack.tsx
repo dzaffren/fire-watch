@@ -7,7 +7,7 @@ import { FireMap } from "./FireMap";
 import { fireArea, fireDots, JoinedTable, MissedNote, OriginMethod, OriginNotes, passTimes, RecordsBegin, Replay, SideFrom, where } from "./FireView";
 import { count, detected, detectedShort, distance, firstSeenLine, location, plural, shortHash } from "./format";
 import { AlertIcon, BadIcon, ExternalIcon, LogoMark, OkIcon } from "./icons";
-import { checkSeal, checkTitle, Chip, overall, RecordPanel, type Check, type SealCheck } from "./RecordPanel";
+import { checkSeal, checkTitle, Chip, overall, RecordPanel, sealLag, type Check, type SealCheck } from "./RecordPanel";
 
 /** A run's root on FireRuns: its number, and its seal time by the chain's clock. */
 export interface RunSeal {
@@ -133,6 +133,7 @@ export function ComplaintPack({ source, packRef, initialOpen = null }: Props) {
 
   // After the seal checks, so the two reads don't share the RPC's rate limit (D121).
   const sealsDone = !!pack && checked?.pack === pack && !checks.some((c) => c.state === "checking");
+  const lag = sealsDone ? sealLag(checked!.seals, pack!.hotspots) : null;
   useEffect(() => {
     if (!pack?.runs || !sealsDone || !source.leftOut) return;
     let live = true;
@@ -261,6 +262,7 @@ export function ComplaintPack({ source, packRef, initialOpen = null }: Props) {
                   on FireRuns. Fire Watch's server chose which records to send.{" "}
                   {pack.runs ? "The check below shows whether it left one out." : "NASA FIRMS's public archive shows whether one is missing."}
                 </p>
+                {lag && <p className="fw-help rec-note">{lag}</p>}
                 {checks.some((c) => c.state === "mismatch") && (
                   <p className="fw-help rec-note">
                     A detection that doesn't match was changed after it was sealed. It is listed first below.

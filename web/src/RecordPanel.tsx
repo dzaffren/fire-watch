@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { zeroHash, type Hex } from "viem";
 import type { HotspotRecord } from "./api";
 import type { Seal } from "./chain";
-import { confidence, count, detected, firePower, gap, location, plural, satellite, shortHash, whereFromEdge } from "./format";
+import { confidence, count, detected, duration, firePower, gap, location, plural, satellite, shortHash, whereFromEdge } from "./format";
 import { AlertIcon, BadIcon, CheckingIcon, ExternalIcon, OkIcon, PendingIcon } from "./icons";
 import { leaf, rootFrom } from "./merkle";
 
@@ -92,6 +92,15 @@ export function checkTitle(checks: Check[]): string {
   if (mismatch) title += `. ${count(mismatch)} ${mismatch === 1 ? "does" : "do"} not.`;
   if (pending) title += `${mismatch ? "" : "."} ${count(pending)} ${pending === 1 ? "is" : "are"} not on the chain yet.`;
   return title;
+}
+
+/** How long after the satellite saw them the matching records were sealed, by the chain's clock; null before any matches. */
+export function sealLag(seals: SealCheck[], records: { acquired_unix: number }[]): string | null {
+  const lags = seals.flatMap((s, i) => (s.check.state === "matches" && s.sealedAt !== null ? [s.sealedAt - records[i].acquired_unix] : []));
+  if (!lags.length) return null;
+  const [low, high] = [Math.min(...lags), Math.max(...lags)];
+  const when = duration(low) === duration(high) ? duration(low) : `${duration(low)} to ${duration(high)}`;
+  return `Fire Watch sealed ${lags.length === 1 ? "it" : "them"} ${when} after the satellite saw ${lags.length === 1 ? "it" : "them"}. A seal shows a record is unchanged since it was sealed, not since it was seen.`;
 }
 
 export function overall(checks: Check[]): Check {
