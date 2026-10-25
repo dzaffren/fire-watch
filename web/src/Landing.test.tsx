@@ -58,6 +58,10 @@ describe("Landing", () => {
       "See where its records first place it against the concession's edge, and step through how it spread, pass by pass.",
     );
     expect(document.body.textContent).not.toMatch(/satellite first saw/);
+    expect(steps[3]).toHaveTextContent(
+      "The buyer opens it in their own browser, which checks each record Fire Watch sends against the blockchain.",
+    );
+    expect(document.body.textContent).not.toMatch(/every record/i);
     expect(
       screen.getByText(
         "Each dot is a square about 1 km across where the NOAA-20 satellite detected fire on 14 Oct 2026, and near the example fire, one detection. That day it made 62,489 detections worldwide, 9,923 of them in and around Indonesia.",

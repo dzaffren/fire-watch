@@ -189,8 +189,8 @@ export function RealCase({ source, packHref }: { source: CaseSource; packHref: s
             <h3>What the buyer gets</h3>
             <p>
               A complaint pack: the site, the dates, where the fire was first seen, how it spread pass by pass, an
-              estimate of the ground it burned, and all {count(pack!.detections)} sealed records, at one link. The
-              buyer's browser checks every record, the same way yours does on this page.
+              estimate of the ground it burned, and all {count(pack!.detections)} sealed records Fire Watch sent, at one
+              link. The buyer's browser checks each of them, the same way yours does on this page.
             </p>
             <p>
               <a className="fw-btn" href={packHref}>See its complaint pack</a>
@@ -244,7 +244,7 @@ function Seals({ checks, hotspots, onCheckAgain }: { checks: Check[] | null; hot
   const changed = hotspots.filter((_, i) => shown[i].state === "mismatch");
   return (
     <>
-      <h3>Every record is sealed</h3>
+      <h3>Each record is sealed</h3>
       <div className="case-check" aria-live="polite">
         {state.state === "error" ? (
           <>
