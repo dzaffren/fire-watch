@@ -186,7 +186,7 @@ The browser reads the seals once, as it does now, and the lag line comes from th
 | `web/src/Landing.tsx:49` | "It shows where its records first place a fire and how it spread, on records the buyer checks in their own browser." | scenario 1 |
 | `web/src/RealCase.tsx:155` | The gap note from O2, with "the fire" | scenario 4 |
 | `web/src/RealCase.tsx:191` | "…and the 283 sealed records Fire Watch sent, at one link. The buyer's browser checks each of them, the same way yours does on this page." | scenario 3 |
-| `web/src/RealCase.tsx:247` | Heading "Each record is sealed" | scenario 3 |
+| `web/src/RealCase.tsx:247`, `:273` | Heading "Each record Fire Watch sent is sealed", and the step says the browser checks each record Fire Watch sent | scenario 3 |
 | `web/src/FireView.tsx:66` | The gap note from O2 | scenario 4 |
 | `web/src/ComplaintPack.tsx:51` | `RULE_URL` at `blob/71ebcf6/…/fires.py` | scenario 5 |
 | `web/src/RecordPanel.tsx`, `web/src/ComplaintPack.tsx` | `sealLag()` and its note. Done at pause 2 | scenario 2 |
@@ -246,6 +246,9 @@ Recorded as D149.
 ## Review
 
 2026-10-25 · 1 raw finding, 0 survived. Clean.
+2026-10-25 · 2 raw findings, 1 survived, 1 fixed.
+
+- correctness · `web/src/RealCase.tsx:247` · the seal step names the records Fire Watch sent, in its heading and text · `8e3c68f`
 
 ## Open items
 
@@ -256,6 +259,7 @@ Recorded as D149.
 | O3  | Which commit should the rule link pin: the one that set rule version 2 (`5e3b685`), or the last change to `fires.py` (`71ebcf6`)? | question | spec p1 | user | Resolved | `71ebcf6`, the `fires.py` the live API runs, still rule version 2. 2026-10-25 |
 | O4  | Scenario 4 gives the gap note with "this fire" everywhere; the Changes table gives the real case "the fire", as its note said before. | flag | build | user | Decided alone | Chose: "the fire" in the real case, "this fire" in the fire view and the pack. Other: "this fire" in all three. Undo: change "the fire" to "this fire" twice in `web/src/RealCase.tsx:155` and in `RealCase.test.tsx`, `origin-and-range.spec.ts`, `origin-confidence.spec.ts`, `claim-gaps.spec.ts`. 2026-10-25 |
 | O5  | A pack at rule version 1 also links to `fires.py` at `71ebcf6`, which is rule version 2. | flag | build | user | Decided alone | Chose: one link for both versions; that file says steps 1 to 8 are version 1's. Other: link version 1 to the commit before `5e3b685`. Undo: make `RULE_URL` in `web/src/ComplaintPack.tsx` depend on `pack.rule_version`. 2026-10-25 |
+| O6  | The Changes table gave the seal step the heading "Each record is sealed" and left its text as it was. Scenario 3 asks the step to say the browser checks each record Fire Watch sent. | flag | review | user | Decided alone | Chose: heading "Each record Fire Watch sent is sealed", and the text "Your browser checks each record Fire Watch sent: it reads the record's seal from Base Sepolia, a public test blockchain, and compares the two." Other: keep "Each record is sealed" and the old text. Undo: `git revert 8e3c68f`. 2026-10-25 |
 
 _Never delete this section or its rows. See references/ledger.md._
 
