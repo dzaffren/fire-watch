@@ -1547,3 +1547,13 @@ Rejected: an ink-only mark in the app with ember only in the favicon (two versio
 the app's mark loses the fire it stands for).
 Source: docs/specs/site-logo.md
 Status: active
+
+## D149 · 2026-10-25 · Pin the pack's fire-rule link to the commit the live API runs
+
+Why: a printed pack names "fire rule version 2" and links to it. A link to `main` can show code
+changed after the pack was made. Commit `71ebcf6` is the last change to `fires.py`, and the live API
+runs it at rule version 2.
+Rejected: `blob/main` (moves after printing), commit `5e3b685` (set version 2, but the API runs the
+later `71ebcf6`).
+Source: docs/specs/claim-gaps.md
+Status: active
