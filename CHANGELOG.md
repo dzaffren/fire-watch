@@ -10,6 +10,11 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - Fire Watch's mark shows in the browser tab and beside the name at the top of the landing, the tool and the complaint pack, also in print.
 
+### Fixed
+
+- The landing says where Fire Watch's records first place a fire, not where the satellite first saw it, and that the buyer's browser checks each record Fire Watch sends, not every record. A first detection seen alone for hours says that NOAA-20 is the one satellite Fire Watch reads, so it can't tell whether that detection belongs to the fire.
+- A complaint pack's check says how long after the satellite's pass its records were sealed, by the chain's clock, and its fire-rule link opens the rule at a fixed commit instead of the latest code.
+
 ## [1.1.0] - 2026-10-24
 
 ### Added
