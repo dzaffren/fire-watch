@@ -244,7 +244,7 @@ function Seals({ checks, hotspots, onCheckAgain }: { checks: Check[] | null; hot
   const changed = hotspots.filter((_, i) => shown[i].state === "mismatch");
   return (
     <>
-      <h3>Each record is sealed</h3>
+      <h3>Each record Fire Watch sent is sealed</h3>
       <div className="case-check" aria-live="polite">
         {state.state === "error" ? (
           <>
@@ -270,8 +270,8 @@ function Seals({ checks, hotspots, onCheckAgain }: { checks: Check[] | null; hot
         )}
       </div>
       <p>
-        Your browser reads each detection's seal from Base Sepolia, a public test blockchain, and compares it with the
-        record. A record changed after its seal no longer matches.
+        Your browser checks each record Fire Watch sent: it reads the record's seal from Base Sepolia, a public test
+        blockchain, and compares the two. A record changed after its seal no longer matches.
       </p>
       <p className="fw-help">{SEALED_WHEN}</p>
     </>

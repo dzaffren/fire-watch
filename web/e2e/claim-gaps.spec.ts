@@ -13,6 +13,8 @@ const HEADLINE =
 const OPEN_A_FIRE =
   "See where its records first place it against the concession's edge, and step through how it spread, pass by pass.";
 const SEND_A_PACK = "The buyer opens it in their own browser, which checks each record Fire Watch sends against the blockchain.";
+const SEAL_STEP =
+  "Your browser checks each record Fire Watch sent: it reads the record's seal from Base Sepolia, a public test blockchain, and compares the two. A record changed after its seal no longer matches.";
 const PACK_STEP = "The buyer's browser checks each of them, the same way yours does on this page.";
 const GAP = (art: string) =>
   `NOAA-20 didn't see ${art} fire again for 25 hours. Fire Watch reads only NOAA-20, so it can't tell whether that detection belongs to ${art} fire.`;
@@ -52,9 +54,10 @@ test("a judge reads the record's first place, the one satellite, each record sen
   await toStep(page, 2);
   await expect(steps.nth(2)).toContainText(GAP("the"));
   await toStep(page, 10);
-  await expect(steps.nth(10).getByRole("heading", { name: "Each record is sealed" })).toBeVisible();
+  await expect(steps.nth(10).getByRole("heading", { name: "Each record Fire Watch sent is sealed" })).toBeVisible();
   await expect(steps.nth(10)).toContainText("283 of 283 detections match the chain");
   await expect(steps.nth(10)).toContainText("Passes 1 to 6 were sealed on 16 Oct");
+  await expect(steps.nth(10)).toContainText(SEAL_STEP);
   await toStep(page, 11);
   await expect(steps.nth(11)).toContainText(PACK_STEP);
   await expect(page.getByText(/every record/i)).toHaveCount(0);
