@@ -16,7 +16,7 @@ export const EXAMPLE_PACK_HREF =
 const USE = [
   { title: "Pick dates.", text: "Up to 31 days at a time. The tool lists every pulpwood concession with a fire detection on it or within 5 km." },
   { title: "Pick a concession.", text: "The list puts the most detections inside first, since a complaint names one company's land." },
-  { title: "Open a fire.", text: "See where the satellite first saw it against the concession's edge, and step through how it spread, pass by pass." },
+  { title: "Open a fire.", text: "See where its records first place it against the concession's edge, and step through how it spread, pass by pass." },
   { title: "Make a pack and send its link.", text: "The buyer opens it in their own browser, which checks every record against the blockchain." },
 ];
 
@@ -42,12 +42,12 @@ export function Landing({ caseSource }: { caseSource: CaseSource }) {
         <div className="landing-hero">
           <section className="landing-intro" aria-labelledby="h-landing">
             <h1 id="h-landing">
-              When a company says a fire spread in from outside its land, show where the satellite first saw it.
+              When a company says a fire spread in from outside its land, show where the record first places it, and how it spread.
             </h1>
             <p className="landing-lede">
               Fire Watch is built for the watchdog groups that report plantation fires to the companies that buy from
-              the plantation. It reads NOAA's NOAA-20 satellite through NASA's FIRMS service. It shows where the satellite
-              first saw a fire and how it spread, on records the buyer checks in their own browser.
+              the plantation. It reads NOAA's NOAA-20 satellite through NASA's FIRMS service. It shows where its records
+              first place a fire and how it spread, on records the buyer checks in their own browser.
             </p>
             <div className="landing-actions">
               <a className="fw-btn" href="#case">Walk through a real case</a>
