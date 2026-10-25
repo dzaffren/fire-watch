@@ -48,7 +48,7 @@ type PackLoad = { kind: "loading" } | { kind: "error" } | { kind: "missing" } | 
 
 const SLOW_AFTER_MS = 3000;
 const COPIED_MS = 2000;
-const RULE_URL = "https://github.com/dzaffren/fire-watch/blob/main/api/src/firewatch/fires.py";
+const RULE_URL = "https://github.com/dzaffren/fire-watch/blob/71ebcf6/api/src/firewatch/fires.py";
 const TRASE_DATASET = "https://trase.earth/open-data/datasets/indonesia-wood-pulp-concessions-2023-2024";
 
 /** "3 outside, 950 m to 1.3 km; 1 inside, 190 m": one pass against the concession's edge. */
