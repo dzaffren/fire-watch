@@ -1,6 +1,6 @@
 # Claim gaps
 
-**Version:** v1 · **Status:** Refined · **Type:** Bug · **Project type:** Web UI
+**Version:** v1 · **Status:** Built · **Type:** Bug · **Project type:** Web UI
 
 **Shape doc:** docs/specs/judge-review/shape.md
 **Depends on:** None
@@ -250,6 +250,8 @@ Recorded as D149.
 | O1  | The landing's headline is "When a company says a fire spread in from outside its land, show where the satellite first saw it." What should it say instead? | question | spec p1 | user | Resolved | "When a company says a fire spread in from outside its land, show where the record first places it, and how it spread." 2026-10-25 |
 | O2  | The long-gap note: name NOAA-20 and say Fire Watch can't tell if the detection belongs to the fire, or drop the note? | question | spec p1 | user | Resolved | Keep it: "NOAA-20 didn't see this fire again for 25 hours. Fire Watch reads only NOAA-20, so it can't tell whether that detection belongs to this fire." Dropping the note was rejected. 2026-10-25 |
 | O3  | Which commit should the rule link pin: the one that set rule version 2 (`5e3b685`), or the last change to `fires.py` (`71ebcf6`)? | question | spec p1 | user | Resolved | `71ebcf6`, the `fires.py` the live API runs, still rule version 2. 2026-10-25 |
+| O4  | Scenario 4 gives the gap note with "this fire" everywhere; the Changes table gives the real case "the fire", as its note said before. | flag | build | user | Decided alone | Chose: "the fire" in the real case, "this fire" in the fire view and the pack. Other: "this fire" in all three. Undo: change "the fire" to "this fire" twice in `web/src/RealCase.tsx:155` and in `RealCase.test.tsx`, `origin-and-range.spec.ts`, `origin-confidence.spec.ts`, `claim-gaps.spec.ts`. 2026-10-25 |
+| O5  | A pack at rule version 1 also links to `fires.py` at `71ebcf6`, which is rule version 2. | flag | build | user | Decided alone | Chose: one link for both versions; that file says steps 1 to 8 are version 1's. Other: link version 1 to the commit before `5e3b685`. Undo: make `RULE_URL` in `web/src/ComplaintPack.tsx` depend on `pack.rule_version`. 2026-10-25 |
 
 _Never delete this section or its rows. See references/ledger.md._
 
