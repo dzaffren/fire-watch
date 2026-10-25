@@ -17,7 +17,7 @@ const USE = [
   { title: "Pick dates.", text: "Up to 31 days at a time. The tool lists every pulpwood concession with a fire detection on it or within 5 km." },
   { title: "Pick a concession.", text: "The list puts the most detections inside first, since a complaint names one company's land." },
   { title: "Open a fire.", text: "See where its records first place it against the concession's edge, and step through how it spread, pass by pass." },
-  { title: "Make a pack and send its link.", text: "The buyer opens it in their own browser, which checks every record against the blockchain." },
+  { title: "Make a pack and send its link.", text: "The buyer opens it in their own browser, which checks each record Fire Watch sends against the blockchain." },
 ];
 
 const WORDS = [

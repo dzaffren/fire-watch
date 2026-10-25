@@ -75,9 +75,13 @@ describe("RealCase", () => {
       "Two accounts of one fire",
       "Where it was first seen",
       ...[2, 3, 4, 5, 6, 7, 8].map((p) => `Pass ${p} of 8`),
-      "Every record is sealed",
+      "Each record is sealed",
       "What the buyer gets",
     ]);
+    expect(steps.at(-1)).toHaveTextContent(
+      "and all 283 sealed records Fire Watch sent, at one link. The buyer's browser checks each of them, the same way yours does on this page.",
+    );
+    for (const step of steps) expect(step).not.toHaveTextContent(/every record/i);
     expect(steps[0]).toHaveTextContent(
       "From 12 Oct to 17 Oct 2026, Fire Watch's records hold this fire on 8 passes of the NOAA-20 satellite, 283 detections in all, near ID-WOOD-CONCESSION-0332, in Central Kalimantan.",
     );
