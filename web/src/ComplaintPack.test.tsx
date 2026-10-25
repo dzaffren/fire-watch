@@ -112,6 +112,7 @@ describe("ComplaintPack", () => {
     ).toBeInTheDocument();
     expect(screen.queryByText(/Recording had started/)).toBeNull();
     expect(await screen.findByRole("heading", { name: "19 of 19 detections match the chain" })).toBeInTheDocument();
+    expect(screen.getByText(/^Fire Watch sealed them .+ after the satellite saw them\. A seal shows a record is unchanged since it was sealed, not since it was seen\.$/)).toBeInTheDocument();
 
     expect(kv("Concession")).toBe("ID-WOOD-CONCESSION-0332");
     expect(kv("Province")).toBe("Kalimantan Tengah");

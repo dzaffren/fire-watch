@@ -2,7 +2,7 @@ import { fireEvent, render, screen, within } from "@testing-library/react";
 import type { Hex } from "viem";
 import { describe, expect, it, vi } from "vitest";
 import type { HotspotRecord } from "./api";
-import { checkOf, checkSeal, RecordPanel } from "./RecordPanel";
+import { checkOf, checkSeal, RecordPanel, sealLag, type SealCheck } from "./RecordPanel";
 
 const MAP = "Trase pulpwood concessions 2023–2024, v2026-02-20";
 const A_FP = "0x86a47945c682c15fb86471df99c10a3fe1d8fc4ba7f39f87e70b46703b85f051";
@@ -303,5 +303,32 @@ describe("checkOf", () => {
     expect(checkOf(`0x${"00".repeat(32)}`, A_FP)).toEqual({ state: "pending" });
     expect(checkOf(A_FP, A_FP)).toEqual({ state: "matches" });
     expect(checkOf(B_FP, B_EDITED_FP)).toEqual({ state: "mismatch", sealed: B_FP });
+  });
+});
+
+describe("sealLag", () => {
+  const SEEN = 1791958680;
+  const at = (lag: number): SealCheck => ({ check: { state: "matches" }, sealedAt: SEEN + lag, sealedIn: OWN });
+  const pending: SealCheck = { check: { state: "pending" }, sealedAt: null, sealedIn: null };
+  const changed: SealCheck = { check: { state: "mismatch", sealed: B_EDITED_FP }, sealedAt: SEEN + 60, sealedIn: OWN };
+  const seen = (n: number) => Array.from({ length: n }, () => ({ acquired_unix: SEEN }));
+  const TAIL = "A seal shows a record is unchanged since it was sealed, not since it was seen.";
+
+  it("says nothing before a record matches", () => {
+    expect(sealLag([pending, changed], seen(2))).toBeNull();
+  });
+
+  it("gives one record's delay", () => {
+    expect(sealLag([at(10020), pending], seen(2))).toBe(`Fire Watch sealed it 2 hours 47 minutes after the satellite saw it. ${TAIL}`);
+  });
+
+  it("gives the shortest and longest delay over the matching records only", () => {
+    expect(sealLag([at(9780), changed, at(337680)], seen(3))).toBe(
+      `Fire Watch sealed them 2 hours 43 minutes to 3 days 21 hours after the satellite saw them. ${TAIL}`,
+    );
+  });
+
+  it("gives one delay when every match was sealed as late", () => {
+    expect(sealLag([at(10800), at(10800)], seen(2))).toBe(`Fire Watch sealed them 3 hours after the satellite saw them. ${TAIL}`);
   });
 });
