@@ -19,7 +19,7 @@ const FIRE_RUNS: Hex = "0xe7f1725e7734ce288f8367e1bb143e90bb3f0512";
 // Run 1, sealed 15 Oct 08:02 UTC, and run 2, sealed 15 Oct 21:03 UTC, by the chain's clock.
 const RUN_1_AT = Date.parse("2026-10-15T08:02:00Z") / 1000;
 const RUN_2_AT = Date.parse("2026-10-15T21:03:00Z") / 1000;
-const RULE_URL = "https://github.com/dzaffren/fire-watch/blob/main/api/src/firewatch/fires.py";
+const RULE_URL = "https://github.com/dzaffren/fire-watch/blob/71ebcf6/api/src/firewatch/fires.py";
 const CANT_TELL = "The satellite record can't say which side this fire started on.";
 const MISSED =
   "The satellite can miss fire under cloud, heavy smoke or thick tree canopy, and peat that smoulders with too little heat to show. This fire may have burned unseen before it was first seen, inside or outside the concession.";
