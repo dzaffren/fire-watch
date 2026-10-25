@@ -63,8 +63,8 @@ export function OriginNotes({ fire, listed }: { fire: FireDetail; listed: string
     <>
       {hours != null && (
         <p className="fw-help">
-          The satellite didn't see this fire again for {plural(hours, "hour", "hours")}, so that detection may be a
-          separate fire.
+          NOAA-20 didn't see this fire again for {plural(hours, "hour", "hours")}. Fire Watch reads only NOAA-20, so it
+          can't tell whether that detection belongs to this fire.
         </p>
       )}
       {joined.length === 1 && (

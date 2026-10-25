@@ -25,7 +25,7 @@ const ONE_HOUR = { id: "ID-WOOD-CONCESSION-0332", key: "0x13b417c6f54dd95c7c418b
 const ONE_PASS = { id: "ID-WOOD-CONCESSION-0332", key: "0x08fb9ad47abd958004db9297551fe94a158405a81e978620b4ad8a4a67b63c9e" } as const;
 
 const CANT_TELL = "The satellite record can't say which side this fire started on.";
-const ALONE = "The satellite didn't see this fire again for 25 hours, so that detection may be a separate fire.";
+const ALONE = "NOAA-20 didn't see this fire again for 25 hours. Fire Watch reads only NOAA-20, so it can't tell whether that detection belongs to this fire.";
 const MISSED =
   "The satellite can miss fire under cloud, heavy smoke or thick tree canopy, and peat that smoulders with too little heat to show. This fire may have burned unseen before it was first seen, inside or outside the concession.";
 const JOINED_ONE =
@@ -188,7 +188,7 @@ describe("FireView", () => {
   it("gives each note on its own to a fire with no other caveat", () => {
     show(INSIDE.id, { kind: "ready", fire: { ...fire(INSIDE), first_alone_h: 36 } });
     expect(
-      screen.getByText("The satellite didn't see this fire again for 36 hours, so that detection may be a separate fire."),
+      screen.getByText("NOAA-20 didn't see this fire again for 36 hours. Fire Watch reads only NOAA-20, so it can't tell whether that detection belongs to this fire."),
     ).toBeInTheDocument();
     cleanup();
 

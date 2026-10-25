@@ -3,7 +3,7 @@ import { expect, test, type Page } from "@playwright/test";
 
 const FAKE_GOOGLE_MAPS = fileURLToPath(new URL("./fake-google-maps.js", import.meta.url));
 const WEAK = "First seen outside, 3.1 km from the edge";
-const WEAK_NOTE = "The satellite didn't see this fire again for 36 hours, so that detection may be a separate fire.";
+const WEAK_NOTE = "NOAA-20 didn't see this fire again for 36 hours. Fire Watch reads only NOAA-20, so it can't tell whether that detection belongs to this fire.";
 
 // Puts a step of the real case across the reading line, 60% down the screen.
 async function toStep(page: Page, step: number) {
@@ -35,7 +35,7 @@ test("an investigator reads a weak first sighting and its pack, and a judge read
   await fires.filter({ hasText: "Inside, 3.4 km" }).getByRole("button").click();
   const firm = page.getByRole("article", { name: "First seen inside, 3.4 km from the edge" });
   await expect(firm).toBeVisible();
-  await expect(firm.getByText(/^The satellite didn't see this fire again/)).toHaveCount(0);
+  await expect(firm.getByText(/^NOAA-20 didn't see this fire again/)).toHaveCount(0);
   await firm.getByText("How this is worked out").click();
   await expect(
     firm.getByText(/Straight below the satellite, NOAA-20 places almost every pixel within 400 m of where it belongs/),
@@ -68,7 +68,7 @@ test("an investigator reads a weak first sighting and its pack, and a judge read
   const steps = page.getByRole("region", { name: "A real case" }).getByRole("listitem");
   await toStep(page, 2);
   await expect(steps.nth(2)).toContainText(
-    "The satellite didn't see the fire again for 25 hours, so that detection may be a separate fire.",
+    "NOAA-20 didn't see the fire again for 25 hours. Fire Watch reads only NOAA-20, so it can't tell whether that detection belongs to the fire.",
   );
   await toStep(page, 3);
   await expect(steps.nth(3)).toContainText(

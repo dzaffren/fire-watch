@@ -152,7 +152,7 @@ export function RealCase({ source, packHref }: { source: CaseSource; packHref: s
                 {alone != null && " as one detection"}, {pack!.first_seen.inside ? "inside" : "outside"} the concession
                 {edge ? ` and ${count(edge.edge_m)} m from its edge` : ""}.
                 {alone != null &&
-                  ` The satellite didn't see the fire again for ${plural(alone, "hour", "hours")}, so that detection may be a separate fire.`}{" "}
+                  ` NOAA-20 didn't see the fire again for ${plural(alone, "hour", "hours")}. Fire Watch reads only NOAA-20, so it can't tell whether that detection belongs to the fire.`}{" "}
                 {MISSED}
                 {before != null &&
                   ` Fire Watch's records begin ${before < 1 ? "less than an hour" : plural(before, "hour", "hours")} before this detection and hold only the NOAA-20 satellite's detections. ${BEFORE_RECORDS}`}{" "}
