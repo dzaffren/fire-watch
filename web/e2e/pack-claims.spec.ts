@@ -9,7 +9,7 @@ const EXAMPLE_PACK =
 const EXAMPLE_FIRES = `${API_URL}/api/concessions/ID-WOOD-CONCESSION-0332/fires/**`;
 
 const LEDE =
-  "It reads NOAA's NOAA-20 satellite through NASA's FIRMS service. It shows where the satellite first saw a fire and how it spread";
+  "It reads NOAA's NOAA-20 satellite through NASA's FIRMS service. It shows where its records first place a fire and how it spread";
 const FIRST_STEP =
   "From 12 Oct to 17 Oct 2026, Fire Watch's records hold this fire on 8 passes of the NOAA-20 satellite, 283 detections in all";
 const RECORDS_HOLD = "Fire Watch's records begin 1 hour before this detection and hold only the NOAA-20 satellite's detections.";

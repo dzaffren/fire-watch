@@ -30,12 +30,12 @@ describe("Landing", () => {
     render(<Landing caseSource={caseSource} />);
 
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
-      "When a company says a fire spread in from outside its land, show where the satellite first saw it.",
+      "When a company says a fire spread in from outside its land, show where the record first places it, and how it spread.",
     );
     expect(document.body.textContent).not.toMatch(/fire started/);
     expect(
       screen.getByText(
-        "Fire Watch is built for the watchdog groups that report plantation fires to the companies that buy from the plantation. It reads NOAA's NOAA-20 satellite through NASA's FIRMS service. It shows where the satellite first saw a fire and how it spread, on records the buyer checks in their own browser.",
+        "Fire Watch is built for the watchdog groups that report plantation fires to the companies that buy from the plantation. It reads NOAA's NOAA-20 satellite through NASA's FIRMS service. It shows where its records first place a fire and how it spread, on records the buyer checks in their own browser.",
       ),
     ).toBeInTheDocument();
     expect(document.body.textContent).not.toMatch(/groups use Fire Watch/);
@@ -54,6 +54,10 @@ describe("Landing", () => {
       "Open a fire.",
       "Make a pack and send its link.",
     ]);
+    expect(steps[2]).toHaveTextContent(
+      "See where its records first place it against the concession's edge, and step through how it spread, pass by pass.",
+    );
+    expect(document.body.textContent).not.toMatch(/satellite first saw/);
     expect(
       screen.getByText(
         "Each dot is a square about 1 km across where the NOAA-20 satellite detected fire on 14 Oct 2026, and near the example fire, one detection. That day it made 62,489 detections worldwide, 9,923 of them in and around Indonesia.",

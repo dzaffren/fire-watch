@@ -10,9 +10,9 @@ const LIST_NOTE = "4 concessions, ranked by hotspots inside.";
 const EXAMPLE_PACK =
   "/?pack=ID-WOOD-CONCESSION-0332&fire=0x13b417c6f54dd95c7c418b5df3f34963cf00f46555d5cae74693cdffbb1d1cf7&as_of=1792227600";
 
-const HEADLINE = "When a company says a fire spread in from outside its land, show where the satellite first saw it.";
+const HEADLINE = "When a company says a fire spread in from outside its land, show where the record first places it, and how it spread.";
 const LEDE =
-  "Fire Watch is built for the watchdog groups that report plantation fires to the companies that buy from the plantation. It reads NOAA's NOAA-20 satellite through NASA's FIRMS service. It shows where the satellite first saw a fire and how it spread, on records the buyer checks in their own browser.";
+  "Fire Watch is built for the watchdog groups that report plantation fires to the companies that buy from the plantation. It reads NOAA's NOAA-20 satellite through NASA's FIRMS service. It shows where its records first place a fire and how it spread, on records the buyer checks in their own browser.";
 const GLOBE_CAPTION =
   "Each dot is a square about 1 km across where the NOAA-20 satellite detected fire on 14 Oct 2026, and near the example fire, one detection. That day it made 62,489 detections worldwide, 9,923 of them in and around Indonesia.";
 const FIRST_STOP =
