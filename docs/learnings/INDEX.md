@@ -58,3 +58,4 @@
 - Read the records-begin note on the example pack; the e2e's 0332 fire has none — [e2e-0332-no-records-begin](e2e-0332-no-records-begin.md)
 - Rerun the web unit suite before blaming a branch for a FireMap or left-out timing failure — [two-web-unit-flakes](two-web-unit-flakes.md)
 - Fire `beforeprint` before print media in an e2e; print tokens swap only the grounds — [print-needs-beforeprint](print-needs-beforeprint.md)
+- `pnpm e2e <slice>` matches the whole path; in a worktree named after the slice, pass the spec file — [e2e-filter-matches-worktree-path](e2e-filter-matches-worktree-path.md)
