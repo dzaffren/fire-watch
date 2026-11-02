@@ -6,6 +6,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-11-02
+
 ### Added
 
 - Fire Watch's mark shows in the browser tab and beside the name at the top of the landing, the tool and the complaint pack, also in print.
@@ -75,5 +77,6 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - When FIRMS answers with an error, the hourly recorder no longer stores or prints the FIRMS map key in its run record and log.
 - Released without pentest: backfilled on 2026-10-24 for the code as it stood on 2026-10-22.
 
-[unreleased]: https://github.com/dzaffren/fire-watch/compare/v1.1.0...HEAD
+[unreleased]: https://github.com/dzaffren/fire-watch/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/dzaffren/fire-watch/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/dzaffren/fire-watch/compare/v1.0.0...v1.1.0
