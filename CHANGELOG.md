@@ -6,6 +6,10 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Security
+
+- The web unit tests no longer run on an undici version with a known denial-of-service bug (GHSA-xjj6-f33q-929c). The deployed site never shipped undici.
+
 ## [1.2.0] - 2026-11-02
 
 ### Added
